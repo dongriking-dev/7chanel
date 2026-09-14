@@ -4,84 +4,58 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>7ちゃんねる</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3C!-- ボード（背景） --%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3C!-- メモ用紙 --%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3C!-- テキスト表現の線 --%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3C!-- 画鋲（ピン） --%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
-  <!-- TailWind CSS -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .post-content img, .post-content video {
-      max-width: 100%;
-      height: auto;
-    }
-    .threads-scroll {
-      max-height: 480px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
+    .post-content img, .post-content video { max-width: 100%; height: auto; }
+    .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
     input[type="file"]::file-selector-button {
-      background-color: #e5e7eb;
-      border: 1px solid #d1d5db;
-      border-radius: 0.375rem;
-      padding: 0.25rem 0.75rem;
-      font-size: 0.75rem;
-      margin-right: 0.5rem;
-      cursor: pointer;
-      transition: background 0.15s;
+      background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem;
+      padding: 0.25rem 0.75rem; font-size: 0.75rem; margin-right: 0.5rem; cursor: pointer;
     }
     input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
     .loading-spinner {
-      display: inline-block;
-      width: 1rem;
-      height: 1rem;
-      border: 2px solid #f3f3f3;
-      border-top: 2px solid #991b1b;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+      display: inline-block; width: 1rem; height: 1rem;
+      border: 2px solid #f3f3f3; border-top: 2px solid #991b1b;
+      border-radius: 50%; animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    /* 楽観的更新用の仮アイテム */
-    .optimistic-item {
-      opacity: 0.55;
-      pointer-events: none;
-      position: relative;
-    }
+    .optimistic-item { opacity: 0.55; pointer-events: none; position: relative; }
     .optimistic-item::after {
-      content: "送信中...";
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 10px;
-      color: #991b1b;
-      background: #fef2f2;
-      padding: 2px 6px;
-      border-radius: 4px;
-      border: 1px solid #fecaca;
+      content: "送信中..."; position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%); font-size: 10px; color: #991b1b;
+      background: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecaca;
     }
-    .optimistic-post {
-      opacity: 0.6;
-      border-left: 3px solid #f59e0b !important;
+    .optimistic-post { opacity: 0.6; border-left: 3px solid #f59e0b !important; }
+    #statusBanner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      text-align: center; padding: 6px; font-size: 12px;
+      transition: transform 0.3s; transform: translateY(-100%);
     }
+    #statusBanner.show { transform: translateY(0); }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- ヘッダー -->
+  <div id="statusBanner" class="bg-red-600 text-white"></div>
+
   <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
     <div>
       <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
-      <p class="text-sm text-gray-600">ネット掲示板</p>
+      <p class="text-sm text-gray-600">
+        <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
+        <span id="connText">接続中...</span>
+      </p>
     </div>
     <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
       ← スレッド一覧に戻る
     </button>
   </header>
 
-  <!-- ================= View 1: スレッド一覧画面 ================= -->
+  <!-- View 1: スレッド一覧 -->
   <div id="threadListView">
-    <!-- 新規スレッド作成フォーム -->
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
       <form id="createThreadForm" class="space-y-3">
@@ -93,7 +67,6 @@
       </form>
     </section>
 
-    <!-- スレッド一覧 -->
     <main>
       <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
       <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
@@ -102,14 +75,13 @@
     </main>
   </div>
 
-  <!-- ================= View 2: スレッド詳細（書き込み）画面 ================= -->
+  <!-- View 2: スレッド詳細 -->
   <div id="threadDetailView" class="hidden">
     <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm">
       <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
       <p id="currentThreadDate" class="text-xs text-gray-500"></p>
     </div>
 
-    <!-- 返信投稿フォーム -->
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
       <form id="postForm" class="space-y-3">
@@ -123,11 +95,9 @@
             書き込む
           </button>
         </div>
-        <p class="text-[10px] text-gray-400 mt-1">※ 大きなファイルはアップロードに時間がかかる場合があります</p>
       </form>
     </section>
 
-    <!-- レス一覧 -->
     <main>
       <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
       <div id="postsContainer" class="space-y-4">
@@ -136,32 +106,28 @@
     </main>
   </div>
 
-  <!-- ============================================================
-       JavaScript ロジック (Firebase Modular SDK v10.8.0 使用)
-       - 楽観的更新 × 並列書き込み で体感速度ゼロへ
-  ============================================================ -->
   <script type="module">
     // ============================================================
-    // Firebase SDK (Modular) のインポート
+    // Firebase SDK (Modular) - Realtime Database 版
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getFirestore,
-      collection,
-      addDoc,
-      doc,
-      onSnapshot,
-      query,
-      orderBy,
+      getDatabase,
+      ref,
+      push,
+      set,
+      update,
+      onValue,
+      off,
       serverTimestamp,
-      setDoc,
-      increment,
-      updateDoc
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+      query,
+      orderByChild,
+      limitToLast
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
       getStorage,
-      ref,
+      ref as storageRef,
       uploadBytes,
       getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -173,33 +139,59 @@
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
       projectId: "chaneler-52b95",
+      // ★ Realtime Database URL（ご提示のもの）
+      databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
       appId: "1:538510918184:web:58232aa80922ff00b92b1d",
       measurementId: "G-QF3LDMNQYQ"
     };
 
-    // ============================================================
-    // Firebase 初期化
-    // ============================================================
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
-    const db = getFirestore(app);
+    const db = getDatabase(app);
     const storage = getStorage(app);
 
     // ============================================================
-    // グローバル変数
+    // 接続状態 & バナー
+    // ============================================================
+    const connDot = document.getElementById('connDot');
+    const connText = document.getElementById('connText');
+    const statusBanner = document.getElementById('statusBanner');
+    let bannerTimer = null;
+
+    function setConnection(online) {
+      if (online) {
+        connDot.className = 'inline-block w-2 h-2 rounded-full bg-green-500';
+        connText.textContent = 'オンライン（リアルタイム同期中）';
+      } else {
+        connDot.className = 'inline-block w-2 h-2 rounded-full bg-red-500';
+        connText.textContent = 'オフライン';
+      }
+    }
+
+    function showBanner(msg, isError = true) {
+      statusBanner.textContent = msg;
+      statusBanner.className = (isError ? 'bg-red-600' : 'bg-green-600') + ' text-white show';
+      statusBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;padding:6px;font-size:12px;transform:translateY(0);';
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => {
+        statusBanner.style.transform = 'translateY(-100%)';
+      }, 4000);
+    }
+
+    window.addEventListener('online', () => setConnection(true));
+    window.addEventListener('offline', () => setConnection(false));
+    setConnection(navigator.onLine);
+
+    // ============================================================
+    // グローバル
     // ============================================================
     let currentThreadId = null;
-    let currentThreadTitle = '';
+    let currentThreadKey = null; // RTDB のキー
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
 
-    // 楽観的更新の管理
-    const pendingThreadIds = new Set();   // 送信中のスレッドID（仮）
-    const pendingPostIds  = new Set();    // 送信中のレスID（仮）
-
-    // DOM 要素
     const threadListView = document.getElementById('threadListView');
     const threadDetailView = document.getElementById('threadDetailView');
     const backToListBtn = document.getElementById('backToListBtn');
@@ -214,16 +206,14 @@
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
       currentThreadId = null;
-      if (postsUnsubscribe) {
-        postsUnsubscribe();
-        postsUnsubscribe = null;
-      }
+      currentThreadKey = null;
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
     };
 
-    function openThread(threadId, title, createdAt) {
-      currentThreadId = threadId;
-      currentThreadTitle = title;
+    function openThread(threadKey, title, createdAt) {
+      currentThreadKey = threadKey;
+      currentThreadId = threadKey;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
@@ -231,13 +221,33 @@
       threadDetailView.classList.remove('hidden');
       backToListBtn.classList.remove('hidden');
 
-      loadPosts(threadId);
+      loadPosts(threadKey);
     }
 
     // ============================================================
-    // 2. スレッド作成処理（最適化版）
-    //    - 先にIDを生成 → 並列で thread & post を書き込み
-    //    - 楽観的更新で即座に一覧へ反映
+    // ユーティリティ
+    // ============================================================
+    function formatContent(str) {
+      if (!str) return '';
+      const escaped = escapeHtml(str);
+      const urlRegex = /(https?:\/\/[^\s<]+)/g;
+      return escaped.replace(urlRegex, (url) =>
+        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`);
+    }
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // ============================================================
+    // 1. スレッド作成（Realtime Database 用）
+    //    構造:
+    //      /threads/{threadKey}/title
+    //      /threads/{threadKey}/createdAt
+    //      /threads/{threadKey}/postCount
+    //      /threads/{threadKey}/posts/{postKey}/...
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -245,172 +255,158 @@
       const content = document.getElementById('firstPostContent').value.trim();
       const btn = document.getElementById('createThreadBtn');
 
-      if (!title) {
-        alert('スレッドタイトルを入力してください。');
-        return;
-      }
+      if (!title) { alert('スレッドタイトルを入力してください。'); return; }
 
-      // ボタンを一旦無効化（連打防止）
       btn.disabled = true;
-      const originalText = btn.innerText;
       btn.innerText = '作成中...';
 
-      // ① 先にIDだけ確定（通信なし）
-      const threadRef = doc(collection(db, 'threads'));
-      const tempId = 'optimistic_thread_' + threadRef.id;
-      pendingThreadIds.add(threadRef.id);
-
-      // ② 楽観的アイテムを先頭に挿入
+      // 楽観的更新：先に仮要素を挿入
+      const tempKey = 'temp_' + Date.now();
       const tempItem = document.createElement('div');
-      tempItem.id = tempId;
+      tempItem.id = 'optimistic_thread_' + tempKey;
       tempItem.className = 'bg-white p-3 border border-gray-300 rounded flex justify-between items-center shadow-sm optimistic-item';
       tempItem.innerHTML = `
         <div class="flex-1 min-w-0">
           <span class="font-bold text-blue-900 break-words">${escapeHtml(title)}</span>
           <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(送信中...)</span>
-        </div>
-      `;
+        </div>`;
       threadsContainer.prepend(tempItem);
 
-      // ③ フォームを即リセット（ユーザーはすぐ次の操作が可能）
       document.getElementById('createThreadForm').reset();
 
-      // ④ バックグラウンドで並列書き込み
       try {
-        const p1 = setDoc(threadRef, {
-          title: title,
-          createdAt: serverTimestamp(),
-          postCount: content ? 1 : 0
-        });
+        // スレッドキーを生成
+        const threadsRef = ref(db, 'threads');
+        const newThreadRef = push(threadsRef);
+        const threadKey = newThreadRef.key;
 
-        let p2 = Promise.resolve();
+        // スレッド本体
+        const threadData = {
+          title: title,
+          createdAt: Date.now(), // クライアント時刻（RTDBはserverTimestampが使えないため）
+          postCount: content ? 1 : 0
+        };
+
+        // 書き込み（並列）
+        const writes = [set(newThreadRef, threadData)];
+
         if (content) {
-          p2 = addDoc(collection(db, 'threads', threadRef.id, 'posts'), {
+          const postRef = push(ref(db, `threads/${threadKey}/posts`));
+          writes.push(set(postRef, {
             author: '名無しさん',
             content: content,
             file: null,
-            createdAt: serverTimestamp()
-          });
+            createdAt: Date.now()
+          }));
         }
 
-        await Promise.all([p1, p2]);
-        // 成功：onSnapshot が本物を描画したら仮要素は消える
+        await Promise.all(writes);
+
+        showBanner('スレッドを保存しました', false);
+        // onValue が本物を描画したら仮要素は削除される
+        const tempEl = document.getElementById('optimistic_thread_' + tempKey);
+        if (tempEl) tempEl.remove();
       } catch (err) {
         console.error("スレッド作成エラー:", err);
-        // 失敗：仮要素を削除して通知
-        const el = document.getElementById(tempId);
+        const el = document.getElementById('optimistic_thread_' + tempKey);
         if (el) el.remove();
-        alert("スレッドの作成に失敗しました。\n" + (err.message || 'ネットワークをご確認ください。'));
+        showBanner('保存失敗: ' + (err.code || err.message || 'ネットワークエラー'), true);
+        alert("スレッドの作成に失敗しました。\n" + (err.message || ''));
       } finally {
-        pendingThreadIds.delete(threadRef.id);
         btn.disabled = false;
-        btn.innerText = originalText;
+        btn.innerText = 'スレッドを立てる';
       }
     });
 
     // ============================================================
-    // 3. スレッド一覧のリアルタイム読み込み
+    // 2. スレッド一覧 リアルタイム監視
     // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
 
-      const q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'));
-      threadsUnsubscribe = onSnapshot(q, (snapshot) => {
-        // 本物のデータで再構築
+      const threadsRef = ref(db, 'threads');
+      const q = query(threadsRef, orderByChild('createdAt'));
+
+      threadsUnsubscribe = onValue(q, (snapshot) => {
+        setConnection(true);
         threadsContainer.innerHTML = '';
 
-        if (snapshot.empty) {
+        if (!snapshot.exists()) {
           threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
           return;
         }
 
-        snapshot.forEach((docSnap) => {
-          const thread = docSnap.data();
+        // 新しい順に並べ替え
+        const threads = [];
+        snapshot.forEach((child) => {
+          threads.push({ key: child.key, ...child.val() });
+        });
+        threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-          // すでに楽観的に表示しているスレッドはスキップ（仮要素が表示されている）
-          // ※ onSnapshot が来た時点で本物が来たので、仮要素を消す
-          const tempEl = document.getElementById('optimistic_thread_' + docSnap.id);
-          if (tempEl) tempEl.remove();
-
-          let date = '作成中...';
+        threads.forEach((thread) => {
+          let date = '日時不明';
           if (thread.createdAt) {
-            try {
-              date = new Date(thread.createdAt.toDate()).toLocaleString('ja-JP');
-            } catch (e) {
-              date = '日時不明';
-            }
+            try { date = new Date(thread.createdAt).toLocaleString('ja-JP'); }
+            catch (e) { date = '日時不明'; }
           }
 
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(docSnap.id, thread.title, date);
-
+          item.onclick = () => openThread(thread.key, thread.title, date);
           item.innerHTML = `
             <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
               <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
             </div>
-            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>
-          `;
+            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
           threadsContainer.appendChild(item);
-        });
-
-        // まだ送信中のスレッドがあれば仮要素を先頭に戻す（順序維持）
-        pendingThreadIds.forEach((id) => {
-          const tempEl = document.getElementById('optimistic_thread_' + id);
-          if (tempEl && !threadsContainer.contains(tempEl)) {
-            threadsContainer.prepend(tempEl);
-          }
         });
       }, (error) => {
         console.error("スレッド一覧の取得エラー:", error);
-        threadsContainer.innerHTML = '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。権限またはネットワークを確認してください。</p>';
+        setConnection(false);
+        threadsContainer.innerHTML =
+          '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。<br>' +
+          'Realtime Database のルールを確認してください。</p>';
+        showBanner('読み込み失敗: ' + (error.code || error.message), true);
       });
     }
 
     // ============================================================
-    // 4. 特定スレッド内の書き込み（レス）読み込み
+    // 3. レス読み込み（リアルタイム）
     // ============================================================
-    function loadPosts(threadId) {
-      if (postsUnsubscribe) {
-        postsUnsubscribe();
-        postsUnsubscribe = null;
-      }
+    function loadPosts(threadKey) {
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
-      const q = query(
-        collection(db, 'threads', threadId, 'posts'),
-        orderBy('createdAt', 'asc')
-      );
+      const postsRef = ref(db, `threads/${threadKey}/posts`);
+      const q = query(postsRef, orderByChild('createdAt'));
 
-      postsUnsubscribe = onSnapshot(q, (snapshot) => {
+      postsUnsubscribe = onValue(q, (snapshot) => {
+        setConnection(true);
         postsContainer.innerHTML = '';
 
-        if (snapshot.empty) {
+        if (!snapshot.exists()) {
           postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
           return;
         }
 
+        // 古い順に並べ替え
+        const posts = [];
+        snapshot.forEach((child) => {
+          posts.push({ key: child.key, ...child.val() });
+        });
+        posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
         let index = 1;
-        snapshot.forEach((docSnap) => {
-          const post = docSnap.data();
-
-          // 本物が来たら仮要素を削除
-          const tempPost = document.getElementById('optimistic_post_' + docSnap.id);
-          if (tempPost) tempPost.remove();
-
+        posts.forEach((post) => {
           let date = '送信中...';
           if (post.createdAt) {
-            try {
-              date = new Date(post.createdAt.toDate()).toLocaleString('ja-JP');
-            } catch (e) {
-              date = '日時不明';
-            }
+            try { date = new Date(post.createdAt).toLocaleString('ja-JP'); }
+            catch (e) { date = '日時不明'; }
           }
 
           const postDiv = document.createElement('div');
           postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
-
           let html = `
             <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
               <span class="post-number">${index}</span>
@@ -419,80 +415,56 @@
               <span>：</span>
               <span class="text-gray-500 text-xs font-normal">${date}</span>
             </div>
-            <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>
-          `;
+            <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>`;
 
           if (post.file && post.file.url) {
             const file = post.file;
             const fileType = file.type || '';
             const fileName = file.name || '添付ファイル';
             const fileUrl = file.url;
-
             html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
-
             if (fileType.startsWith('image/')) {
               html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" class="max-h-64 rounded object-contain mb-1 border" alt="添付画像" loading="lazy"></a>`;
             } else if (fileType.startsWith('video/')) {
-              html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}">お使いのブラウザは動画タグをサポートしていません。</video>`;
+              html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}"></video>`;
             }
-
-            html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a>`;
-            html += `</div>`;
+            html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a></div>`;
           }
 
           postDiv.innerHTML = html;
           postsContainer.appendChild(postDiv);
           index++;
         });
-
-        // まだ送信中のレスがあれば仮要素を最後に戻す
-        pendingPostIds.forEach((id) => {
-          const tempPost = document.getElementById('optimistic_post_' + id);
-          if (tempPost && !postsContainer.contains(tempPost)) {
-            postsContainer.appendChild(tempPost);
-          }
-        });
       }, (error) => {
         console.error("レス読み込みエラー:", error);
+        setConnection(false);
         postsContainer.innerHTML = '<p class="text-red-500 text-sm">レス一覧の読み込みに失敗しました。</p>';
+        showBanner('レス読み込み失敗: ' + (error.code || error.message), true);
       });
     }
 
     // ============================================================
-    // 5. 返信（レス）書き込み処理（最適化版）
-    //    - 楽観的更新で即座にレスを表示
-    //    - ファイルがある場合のみアップロードを待つ
-    //    - postCount は increment() で1回の通信に
+    // 4. レス投稿（Realtime Database）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!currentThreadId) {
-        alert('スレッドが選択されていません。');
-        return;
-      }
+      if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
       const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
 
-      if (!content) {
-        alert('コメントを入力してください。');
-        return;
-      }
+      if (!content) { alert('コメントを入力してください。'); return; }
 
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
       submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
 
-      // ① 先にレス用のIDを確定
-      const postRef = doc(collection(db, 'threads', currentThreadId, 'posts'));
-      const tempPostId = 'optimistic_post_' + postRef.id;
-      pendingPostIds.add(postRef.id);
-
-      // ② 楽観的レスを即座に表示
+      // 楽観的更新
+      const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
-      tempPost.id = tempPostId;
+      tempPost.id = tempId;
       tempPost.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm optimistic-post';
       const optimisticIndex = postsContainer.querySelectorAll('.bg-white.p-3.border.border-gray-300.rounded.text-sm.shadow-sm').length + 1;
       tempPost.innerHTML = `
@@ -504,145 +476,72 @@
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
         <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>
-        ${file ? '<div class="text-xs text-gray-400 mt-1">📎 ' + escapeHtml(file.name) + ' (アップロード中...)</div>' : ''}
-      `;
+        ${file ? '<div class="text-xs text-gray-400 mt-1">📎 ' + escapeHtml(file.name) + ' (アップロード中...)</div>' : ''}`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-      // ③ フォームを即リセット（ユーザーはすぐ次の操作が可能）
       document.getElementById('postForm').reset();
       fileInput.value = '';
 
-      // ④ バックグラウンドで保存
       try {
         let fileData = null;
         if (file) {
-          const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-          if (file.size > MAX_SIZE) {
-            throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
-          }
+          const MAX_SIZE = 10 * 1024 * 1024;
+          if (file.size > MAX_SIZE) throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
 
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const storageRef = ref(storage, `uploads/${Date.now()}_${safeName}`);
-          const snapshot = await uploadBytes(storageRef, file);
+          const sRef = storageRef(storage, `uploads/${Date.now()}_${safeName}`);
+          const snapshot = await uploadBytes(sRef, file);
           const downloadURL = await getDownloadURL(snapshot.ref);
-
-          fileData = {
-            url: downloadURL,
-            name: file.name,
-            type: file.type || 'application/octet-stream'
-          };
+          fileData = { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
         }
 
-        // setDoc で先ほど生成したIDに書き込み（addDoc より1回の通信で済む）
-        await setDoc(postRef, {
+        // レスを push
+        const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
+        const newPostRef = push(postsRef);
+        await set(newPostRef, {
           author: '名無しさん',
           content: content,
           file: fileData,
-          createdAt: serverTimestamp()
+          createdAt: Date.now()
         });
 
-        // postCount を increment で更新（getDoc→setDoc の2回通信を1回に削減）
-        await updateDoc(doc(db, 'threads', currentThreadId), {
-          postCount: increment(1)
+        // postCount をインクリメント
+        const threadRef = ref(db, `threads/${currentThreadKey}`);
+        const countSnapshot = await new Promise((resolve) => {
+          onValue(threadRef, resolve, { onlyOnce: true });
         });
+        const currentCount = (countSnapshot.val() && countSnapshot.val().postCount) || 0;
+        await update(threadRef, { postCount: currentCount + 1 });
 
+        showBanner('書き込みを保存しました', false);
+        const el = document.getElementById(tempId);
+        if (el) el.remove();
       } catch (error) {
         console.error("投稿エラー:", error);
-        // 失敗：仮レスを削除
-        const el = document.getElementById(tempPostId);
+        const el = document.getElementById(tempId);
         if (el) el.remove();
+        showBanner('保存失敗: ' + (error.code || error.message || ''), true);
         alert(`書き込みに失敗しました: ${error.message || '不明なエラー'}`);
       } finally {
-        pendingPostIds.delete(postRef.id);
         submitBtn.disabled = false;
         submitBtn.innerText = originalText;
       }
     });
 
     // ============================================================
-    // ユーティリティ: XSS対策 & URLリンク化
-    // ============================================================
-    function formatContent(str) {
-      if (!str) return '';
-      let escaped = escapeHtml(str);
-      const urlRegex = /(https?:\/\/[^\s<]+)/g;
-      return escaped.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`;
-      });
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    // ============================================================
-    // 初期化: スレッド一覧のリスナー開始
+    // 初期化
     // ============================================================
     initThreadsListener();
 
-    // ページ離脱時にリスナー解除
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
     });
 
-    // エラーハンドリング
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
     });
   </script>
-
-  <!-- ============================================================
-       ★ Firebase セキュリティルール（コンソールで設定してください）★
-  ============================================================
-
-  【Firestore ルール】
-  rules_version = '2';
-  service cloud.firestore {
-    match /databases/{database}/documents {
-      match /threads/{threadId} {
-        allow read: if true;
-        allow create: if request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && request.resource.data.title.size() <= 100
-                      && request.resource.data.postCount is number;
-        allow update: if request.resource.data.postCount is number
-                      && request.resource.data.postCount >= 0;
-        allow delete: if false;
-
-        match /posts/{postId} {
-          allow read: if true;
-          allow create: if request.resource.data.content is string
-                        && request.resource.data.content.size() > 0
-                        && request.resource.data.content.size() <= 2000
-                        && request.resource.data.author is string;
-          allow update, delete: if false;
-        }
-      }
-    }
-  }
-
-  【Storage ルール】
-  rules_version = '2';
-  service firebase.storage {
-    match /b/{bucket}/o {
-      match /uploads/{fileName} {
-        allow read: if true;
-        allow write: if request.resource.size < 10 * 1024 * 1024
-                     && (request.resource.contentType.matches('image/.*')
-                      || request.resource.contentType.matches('video/.*')
-                      || request.resource.contentType == 'application/pdf'
-                      || request.resource.contentType == 'text/plain');
-      }
-    }
-  }
-  ============================================================ -->
 </body>
 </html>
