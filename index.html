@@ -3,16 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>7ch</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3C!-- ボード（背景） --%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3C!-- メモ用紙 --%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3C!-- テキスト表現の線 --%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3C!-- 画鋲（ピン） --%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
+  <title>7ちゃんねる · オンライン掲示板</title>
   <!-- TailWind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase SDKs (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
   <style>
-    /* 微調整：動画・画像のはみ出し防止、スレッド一覧の高さ制限 */
     .post-content img, .post-content video {
       max-width: 100%;
       height: auto;
@@ -22,16 +16,8 @@
       overflow-y: auto;
       scrollbar-width: thin;
     }
-    /* レス番号などの見やすさ */
-    .post-number {
-      font-weight: 700;
-      color: #991b1b;
-    }
-    .post-author {
-      color: #15803d;
-      font-weight: 600;
-    }
-    /* ファイル入力のスタイル調整 */
+    .post-number { font-weight: 700; color: #991b1b; }
+    .post-author { color: #15803d; font-weight: 600; }
     input[type="file"]::file-selector-button {
       background-color: #e5e7eb;
       border: 1px solid #d1d5db;
@@ -42,9 +28,17 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-    input[type="file"]::file-selector-button:hover {
-      background-color: #d1d5db;
+    input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
+    .loading-spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #991b1b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -53,7 +47,7 @@
   <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
     <div>
       <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
-      <p class="text-sm text-gray-600">ネット掲示板</p>
+      <p class="text-sm text-gray-600">クラウド永続保存 / 全世界公開</p>
     </div>
     <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
       ← スレッド一覧に戻る
@@ -66,8 +60,8 @@
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
       <form id="createThreadForm" class="space-y-3">
-        <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
-        <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
+        <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
+        <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
         <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
           スレッドを立てる
         </button>
@@ -78,7 +72,7 @@
     <main>
       <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
       <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
-        <p class="text-gray-500 text-sm">スレッドを読み込み中...</p>
+        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
       </div>
     </main>
   </div>
@@ -94,11 +88,11 @@
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
       <form id="postForm" class="space-y-3">
-        <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
+        <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他):</label>
-            <input type="file" id="fileInput" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+            <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他、最大10MB):</label>
+            <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,text/plain" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
           </div>
           <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
             書き込む
@@ -112,15 +106,41 @@
     <main>
       <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
       <div id="postsContainer" class="space-y-4">
-        <p class="text-gray-500 text-sm">読み込み中...</p>
+        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
       </div>
     </main>
   </div>
 
-  <!-- JavaScript ロジック -->
-  <script>
+  <!-- ============================================================
+       JavaScript ロジック (Firebase Modular SDK v10.8.0 使用)
+  ============================================================ -->
+  <script type="module">
     // ============================================================
-    // 1. Firebase 初期化（設定はそのまま）
+    // Firebase SDK (Modular) のインポート
+    // ============================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      doc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      getDoc,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    // ============================================================
+    // Firebase 設定
     // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
@@ -132,20 +152,20 @@
       measurementId: "G-QF3LDMNQYQ"
     };
 
-    // 初期化（すでに初期化済みの場合はスキップ）
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+    // ============================================================
+    // Firebase 初期化
+    // ============================================================
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
     // ============================================================
     // グローバル変数
     // ============================================================
     let currentThreadId = null;
     let postsUnsubscribe = null;
-    // スレッド一覧のリアルタイム監視解除用（今回は一度だけ監視するが、ページ遷移がないため不要だが、念のため保持しない）
-    // ただし、コンポーネントが破棄されないので監視は残るが問題なし
+    let threadsUnsubscribe = null;
 
     // DOM 要素
     const threadListView = document.getElementById('threadListView');
@@ -157,20 +177,17 @@
     // ============================================================
     // 画面切り替え
     // ============================================================
-    function showThreadList() {
+    window.showThreadList = function() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
-      // 現在のスレッドIDをクリア
       currentThreadId = null;
-      // posts のリアルタイム監視を解除
       if (postsUnsubscribe) {
         postsUnsubscribe();
         postsUnsubscribe = null;
       }
-      // 念のためpostsContainerをクリア
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
-    }
+    };
 
     function openThread(threadId, title, createdAt) {
       currentThreadId = threadId;
@@ -181,7 +198,6 @@
       threadDetailView.classList.remove('hidden');
       backToListBtn.classList.remove('hidden');
 
-      // スレッド内のレスを読み込む
       loadPosts(threadId);
     }
 
@@ -203,25 +219,24 @@
       btn.innerText = '作成中...';
 
       try {
-        // スレッドドキュメントを作成
-        const threadRef = await db.collection('threads').add({
+        // スレッドドキュメントを作成（postCount は初期値0、書き込みがあれば+1）
+        const threadRef = await addDoc(collection(db, 'threads'), {
           title: title,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: serverTimestamp(),
           postCount: content ? 1 : 0
         });
 
         // 最初の書き込みがあれば追加
         if (content) {
-          await db.collection('threads').doc(threadRef.id).collection('posts').add({
+          await addDoc(collection(db, 'threads', threadRef.id, 'posts'), {
             author: '名無しさん',
             content: content,
             file: null,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
           });
         }
 
         document.getElementById('createThreadForm').reset();
-        // 作成成功後、特に通知は不要（一覧がリアルタイム更新される）
       } catch (err) {
         console.error("スレッド作成エラー:", err);
         alert("スレッドの作成に失敗しました。もう一度お試しください。");
@@ -232,125 +247,125 @@
     });
 
     // ============================================================
-    // 3. スレッド一覧のリアルタイム読み込み（エラーハンドリング強化）
+    // 3. スレッド一覧のリアルタイム読み込み
     // ============================================================
-    db.collection('threads').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
-      threadsContainer.innerHTML = '';
+    function initThreadsListener() {
+      if (threadsUnsubscribe) threadsUnsubscribe();
 
-      if (snapshot.empty) {
-        threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
-        return;
-      }
+      const q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'));
+      threadsUnsubscribe = onSnapshot(q, (snapshot) => {
+        threadsContainer.innerHTML = '';
 
-      snapshot.forEach((doc) => {
-        const thread = doc.data();
-        // createdAt が null の場合は「作成中...」を表示（サーバータイムスタンプ前）
-        let date = '作成中...';
-        if (thread.createdAt) {
-          try {
-            date = new Date(thread.createdAt.toDate()).toLocaleString('ja-JP');
-          } catch (e) {
-            date = '日時不明';
-          }
+        if (snapshot.empty) {
+          threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
+          return;
         }
 
-        const item = document.createElement('div');
-        item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-        item.onclick = () => openThread(doc.id, thread.title, date);
+        snapshot.forEach((docSnap) => {
+          const thread = docSnap.data();
+          let date = '作成中...';
+          if (thread.createdAt) {
+            try {
+              date = new Date(thread.createdAt.toDate()).toLocaleString('ja-JP');
+            } catch (e) {
+              date = '日時不明';
+            }
+          }
 
-        // 安全にHTMLを組み立て（タイトルはエスケープ済み）
-        item.innerHTML = `
-          <div class="flex-1 min-w-0">
-            <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
-            <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
-          </div>
-          <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>
-        `;
-        threadsContainer.appendChild(item);
+          const item = document.createElement('div');
+          item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
+          item.onclick = () => openThread(docSnap.id, thread.title, date);
+
+          item.innerHTML = `
+            <div class="flex-1 min-w-0">
+              <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
+              <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
+            </div>
+            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>
+          `;
+          threadsContainer.appendChild(item);
+        });
+      }, (error) => {
+        console.error("スレッド一覧の取得エラー:", error);
+        threadsContainer.innerHTML = '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。権限またはネットワークを確認してください。</p>';
       });
-    }, (error) => {
-      console.error("スレッド一覧の取得エラー:", error);
-      threadsContainer.innerHTML = '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。ページを再読み込みしてください。</p>';
-    });
+    }
 
     // ============================================================
     // 4. 特定スレッド内の書き込み（レス）読み込み
     // ============================================================
     function loadPosts(threadId) {
-      // 既存の監視を解除
       if (postsUnsubscribe) {
         postsUnsubscribe();
         postsUnsubscribe = null;
       }
-      postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
+      postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
-      // 新しい監視を開始
-      postsUnsubscribe = db.collection('threads').doc(threadId).collection('posts')
-        .orderBy('createdAt', 'asc')
-        .onSnapshot((snapshot) => {
-          postsContainer.innerHTML = '';
+      const q = query(
+        collection(db, 'threads', threadId, 'posts'),
+        orderBy('createdAt', 'asc')
+      );
 
-          if (snapshot.empty) {
-            postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
-            return;
+      postsUnsubscribe = onSnapshot(q, (snapshot) => {
+        postsContainer.innerHTML = '';
+
+        if (snapshot.empty) {
+          postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
+          return;
+        }
+
+        let index = 1;
+        snapshot.forEach((docSnap) => {
+          const post = docSnap.data();
+          let date = '送信中...';
+          if (post.createdAt) {
+            try {
+              date = new Date(post.createdAt.toDate()).toLocaleString('ja-JP');
+            } catch (e) {
+              date = '日時不明';
+            }
           }
 
-          let index = 1;
-          snapshot.forEach((doc) => {
-            const post = doc.data();
-            // 日時処理
-            let date = '送信中...';
-            if (post.createdAt) {
-              try {
-                date = new Date(post.createdAt.toDate()).toLocaleString('ja-JP');
-              } catch (e) {
-                date = '日時不明';
-              }
+          const postDiv = document.createElement('div');
+          postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
+
+          let html = `
+            <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
+              <span class="post-number">${index}</span>
+              <span>：</span>
+              <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
+              <span>：</span>
+              <span class="text-gray-500 text-xs font-normal">${date}</span>
+            </div>
+            <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>
+          `;
+
+          if (post.file && post.file.url) {
+            const file = post.file;
+            const fileType = file.type || '';
+            const fileName = file.name || '添付ファイル';
+            const fileUrl = file.url;
+
+            html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
+
+            if (fileType.startsWith('image/')) {
+              html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" class="max-h-64 rounded object-contain mb-1 border" alt="添付画像" loading="lazy"></a>`;
+            } else if (fileType.startsWith('video/')) {
+              html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}">お使いのブラウザは動画タグをサポートしていません。</video>`;
             }
 
-            const postDiv = document.createElement('div');
-            postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
+            html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a>`;
+            html += `</div>`;
+          }
 
-            let html = `
-              <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
-                <span class="post-number">${index}</span>
-                <span>：</span>
-                <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
-                <span>：</span>
-                <span class="text-gray-500 text-xs font-normal">${date}</span>
-              </div>
-              <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>
-            `;
-
-            // ファイル添付処理（file オブジェクトが存在し、urlがある場合）
-            if (post.file && post.file.url) {
-              const file = post.file;
-              // 念のため type が存在するかチェック
-              const fileType = file.type || '';
-              const fileName = file.name || '添付ファイル';
-              const fileUrl = file.url;
-
-              html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
-
-              if (fileType.startsWith('image/')) {
-                html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" class="max-h-64 rounded object-contain mb-1 border" alt="添付画像" loading="lazy"></a>`;
-              } else if (fileType.startsWith('video/')) {
-                html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}">お使いのブラウザは動画タグをサポートしていません。</video>`;
-              }
-
-              // 常にダウンロードリンクを表示
-              html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a>`;
-              html += `</div>`;
-            }
-
-            postDiv.innerHTML = html;
-            postsContainer.appendChild(postDiv);
-            index++;
-          });
-        }, (error) => {
-          console.error("レス読み込みエラー:", error);
-          postsContainer.innerHTML = '<p class="text-red-500 text-sm">レス一覧の読み込みに失敗しました。</p>';
+          postDiv.innerHTML = html;
+          postsContainer.appendChild(postDiv);
+          index++;
         });
+      }, (error) => {
+        console.error("レス読み込みエラー:", error);
+        postsContainer.innerHTML = '<p class="text-red-500 text-sm">レス一覧の読み込みに失敗しました。</p>';
+      });
     }
 
     // ============================================================
@@ -373,41 +388,47 @@
         return;
       }
 
-      // ボタン無効化
       submitBtn.disabled = true;
       submitBtn.innerText = '送信中...';
 
       try {
         let fileData = null;
         if (file) {
-          // ファイルサイズチェック（10MB 上限の例、必要に応じて調整）
           const MAX_SIZE = 10 * 1024 * 1024; // 10MB
           if (file.size > MAX_SIZE) {
             throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
           }
 
-          // ストレージ参照を作成（ファイル名をサニタイズ）
+          // 安全なファイル名に変換
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const storageRef = storage.ref(`uploads/${Date.now()}_${safeName}`);
-          const snapshot = await storageRef.put(file);
-          const downloadURL = await snapshot.ref.getDownloadURL();
+          const storageRef = ref(storage, `uploads/${Date.now()}_${safeName}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+
           fileData = {
             url: downloadURL,
-            name: file.name, // 元のファイル名を保持
+            name: file.name,
             type: file.type || 'application/octet-stream'
           };
         }
 
-        await db.collection('threads').doc(currentThreadId).collection('posts').add({
+        // レスを追加
+        await addDoc(collection(db, 'threads', currentThreadId, 'posts'), {
           author: '名無しさん',
           content: content,
           file: fileData,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: serverTimestamp()
         });
 
-        // 成功したらフォームをリセット
+        // スレッドの postCount をインクリメント
+        const threadRef = doc(db, 'threads', currentThreadId);
+        const threadSnap = await getDoc(threadRef);
+        if (threadSnap.exists()) {
+          const currentCount = threadSnap.data().postCount || 0;
+          await setDoc(threadRef, { postCount: currentCount + 1 }, { merge: true });
+        }
+
         document.getElementById('postForm').reset();
-        // ファイル入力のクリア（resetでクリアされるが念のため）
         fileInput.value = '';
       } catch (error) {
         console.error("投稿エラー:", error);
@@ -423,12 +444,9 @@
     // ============================================================
     function formatContent(str) {
       if (!str) return '';
-      // エスケープ処理
       let escaped = escapeHtml(str);
-      // URLをリンクに変換（正規表現はできるだけ安全に）
       const urlRegex = /(https?:\/\/[^\s<]+)/g;
       return escaped.replace(urlRegex, (url) => {
-        // 念のため、URL内に悪意のある文字がないか（エスケープ後なので安全だが、念のため）
         return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`;
       });
     }
@@ -444,26 +462,66 @@
     }
 
     // ============================================================
-    // 補足: 初回ロード時にスレッド一覧を表示
+    // 初期化: スレッド一覧のリスナー開始
     // ============================================================
-    // 特に何もしなくてもデフォルトで threadListView が表示される
-    // showThreadList() を呼ぶと postsUnsubscribe などを初期化するが、
-    // 初期状態では問題ないので、明示的に呼ぶ必要なし。
-    // ただし、currentThreadId が null で postsUnsubscribe も null なので OK
+    initThreadsListener();
 
-    // エラーハンドリング: unhandledrejection をキャッチしてコンソールに出力
+    // ページ離脱時にリスナー解除
+    window.addEventListener('beforeunload', () => {
+      if (postsUnsubscribe) postsUnsubscribe();
+      if (threadsUnsubscribe) threadsUnsubscribe();
+    });
+
+    // エラーハンドリング
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
-      // 必要に応じてユーザーに通知（ただし頻繁すぎる場合は控えめに）
-    });
-
-    // ページ離脱時に監視解除（必須ではないが行儀よく）
-    window.addEventListener('beforeunload', () => {
-      if (postsUnsubscribe) {
-        postsUnsubscribe();
-        postsUnsubscribe = null;
-      }
     });
   </script>
+
+  <!-- ============================================================
+       ★ Firebase セキュリティルール（コンソールで設定してください）★
+  ============================================================
+
+  【Firestore ルール】
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /threads/{threadId} {
+        allow read: if true;
+        allow create: if request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && request.resource.data.title.size() <= 100
+                      && request.resource.data.postCount is number;
+        allow update: if request.resource.data.postCount is number
+                      && request.resource.data.postCount >= 0;
+        allow delete: if false;
+
+        match /posts/{postId} {
+          allow read: if true;
+          allow create: if request.resource.data.content is string
+                        && request.resource.data.content.size() > 0
+                        && request.resource.data.content.size() <= 2000
+                        && request.resource.data.author is string;
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+
+  【Storage ルール】
+  rules_version = '2';
+  service firebase.storage {
+    match /b/{bucket}/o {
+      match /uploads/{fileName} {
+        allow read: if true;
+        allow write: if request.resource.size < 10 * 1024 * 1024
+                     && (request.resource.contentType.matches('image/.*')
+                      || request.resource.contentType.matches('video/.*')
+                      || request.resource.contentType == 'application/pdf'
+                      || request.resource.contentType == 'text/plain');
+      }
+    }
+  }
+  ============================================================ -->
 </body>
 </html>
