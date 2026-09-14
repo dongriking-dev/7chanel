@@ -35,75 +35,126 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
+    .admin-badge {
+      background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 6px;
+    }
+    .admin-email {
+      background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
+      border-radius: 4px; font-family: monospace;
+    }
+    .delete-btn {
+      background: #dc2626; color: #fff; font-size: 11px; padding: 3px 10px;
+      border-radius: 4px; cursor: pointer; border: none;
+    }
+    .delete-btn:hover { background: #b91c1c; }
+    .delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
 
-  <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
-    <div>
-      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
-      <p class="text-sm text-gray-600">
-        <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
-        <span id="connText">接続中...</span>
-      </p>
+  <!-- ============================================================
+       ログイン画面（未ログイン時に表示）
+       ============================================================ -->
+  <div id="loginView" class="hidden">
+    <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
+      <h1 class="text-3xl font-bold text-red-900 mb-2">7ちゃんねる</h1>
+      <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
+      <button id="googleLoginBtn"
+        class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded shadow-sm flex items-center justify-center gap-3 mx-auto transition w-full">
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+          <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.2 5.2C41.4 35.3 44 30.1 44 24c0-1.3-.1-2.3-.4-3.5z"/>
+        </svg>
+        Googleでログイン
+      </button>
+      <p class="text-xs text-gray-400 mt-4">※ 投稿は匿名で表示されます</p>
     </div>
-    <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
-      ← スレッド一覧に戻る
-    </button>
-  </header>
-
-  <!-- View 1: スレッド一覧 -->
-  <div id="threadListView">
-    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
-      <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
-      <form id="createThreadForm" class="space-y-3">
-        <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
-        <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
-        <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
-          スレッドを立てる
-        </button>
-      </form>
-    </section>
-
-    <main>
-      <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
-      <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
-        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
-      </div>
-    </main>
   </div>
 
-  <!-- View 2: スレッド詳細 -->
-  <div id="threadDetailView" class="hidden">
-    <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm">
-      <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
-      <p id="currentThreadDate" class="text-xs text-gray-500"></p>
+  <!-- ============================================================
+       メイン画面（ログイン後のみ表示）
+       ============================================================ -->
+  <div id="mainView" class="hidden">
+    <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
+      <div>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
+        <p class="text-sm text-gray-600">
+          <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
+          <span id="connText">接続中...</span>
+          <span id="adminBadge" class="admin-badge hidden">管理者</span>
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
+        <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
+          ログアウト
+        </button>
+        <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
+          ← スレッド一覧に戻る
+        </button>
+      </div>
+    </header>
+
+    <!-- View 1: スレッド一覧 -->
+    <div id="threadListView">
+      <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
+        <form id="createThreadForm" class="space-y-3">
+          <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
+          <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
+          <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
+            スレッドを立てる
+          </button>
+        </form>
+      </section>
+
+      <main>
+        <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
+        <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
+          <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
+        </div>
+      </main>
     </div>
 
-    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
-      <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
-      <form id="postForm" class="space-y-3">
-        <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
-        <div class="flex items-center justify-between flex-wrap gap-3">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他、最大10MB):</label>
-            <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,text/plain" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
-          </div>
-          <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
-            書き込む
-          </button>
+    <!-- View 2: スレッド詳細 -->
+    <div id="threadDetailView" class="hidden">
+      <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm flex justify-between items-start gap-3 flex-wrap">
+        <div class="flex-1 min-w-0">
+          <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
+          <p id="currentThreadDate" class="text-xs text-gray-500"></p>
+          <p id="currentThreadAuthor" class="text-xs text-gray-500 mt-1"></p>
         </div>
-      </form>
-    </section>
-
-    <main>
-      <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
-      <div id="postsContainer" class="space-y-4">
-        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
+        <button id="deleteThreadBtn" class="delete-btn hidden" onclick="deleteCurrentThread()">スレッドを削除</button>
       </div>
-    </main>
+
+      <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+        <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
+        <form id="postForm" class="space-y-3">
+          <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex-1 min-w-[200px]">
+              <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他、最大10MB):</label>
+              <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,text/plain" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+            </div>
+            <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
+              書き込む
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <main>
+        <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
+        <div id="postsContainer" class="space-y-4">
+          <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
+        </div>
+      </main>
+    </div>
   </div>
 
   <script type="module">
@@ -113,24 +164,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getDatabase,
-      ref,
-      push,
-      set,
-      update,
-      onValue,
-      off,
-      serverTimestamp,
-      query,
-      orderByChild,
-      limitToLast
+      getDatabase, ref, push, set, update, remove, onValue, off,
+      query, orderByChild, get
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
-      getStorage,
-      ref as storageRef,
-      uploadBytes,
-      getDownloadURL
+      getStorage, ref as storageRef, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // ============================================================
     // Firebase 設定
@@ -139,7 +181,6 @@
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
       projectId: "chaneler-52b95",
-      // ★ Realtime Database URL（ご提示のもの）
       databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
@@ -151,15 +192,41 @@
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
     const storage = getStorage(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // ============================================================
+    // 管理者設定
+    // ============================================================
+    const ADMIN_EMAIL = "katou.noel114514@gmail.com";
+
+    // ============================================================
+    // グローバル
+    // ============================================================
+    let currentUser = null;
+    let isAdmin = false;
+    let currentThreadId = null;
+    let currentThreadKey = null;
+    let postsUnsubscribe = null;
+    let threadsUnsubscribe = null;
+
+    const loginView = document.getElementById('loginView');
+    const mainView = document.getElementById('mainView');
+    const threadListView = document.getElementById('threadListView');
+    const threadDetailView = document.getElementById('threadDetailView');
+    const backToListBtn = document.getElementById('backToListBtn');
+    const threadsContainer = document.getElementById('threadsContainer');
+    const postsContainer = document.getElementById('postsContainer');
+    const connDot = document.getElementById('connDot');
+    const connText = document.getElementById('connText');
+    const statusBanner = document.getElementById('statusBanner');
+    const adminBadge = document.getElementById('adminBadge');
+    const userEmailSpan = document.getElementById('userEmail');
+    let bannerTimer = null;
 
     // ============================================================
     // 接続状態 & バナー
     // ============================================================
-    const connDot = document.getElementById('connDot');
-    const connText = document.getElementById('connText');
-    const statusBanner = document.getElementById('statusBanner');
-    let bannerTimer = null;
-
     function setConnection(online) {
       if (online) {
         connDot.className = 'inline-block w-2 h-2 rounded-full bg-green-500';
@@ -169,7 +236,6 @@
         connText.textContent = 'オフライン';
       }
     }
-
     function showBanner(msg, isError = true) {
       statusBanner.textContent = msg;
       statusBanner.className = (isError ? 'bg-red-600' : 'bg-green-600') + ' text-white show';
@@ -179,50 +245,8 @@
         statusBanner.style.transform = 'translateY(-100%)';
       }, 4000);
     }
-
     window.addEventListener('online', () => setConnection(true));
     window.addEventListener('offline', () => setConnection(false));
-    setConnection(navigator.onLine);
-
-    // ============================================================
-    // グローバル
-    // ============================================================
-    let currentThreadId = null;
-    let currentThreadKey = null; // RTDB のキー
-    let postsUnsubscribe = null;
-    let threadsUnsubscribe = null;
-
-    const threadListView = document.getElementById('threadListView');
-    const threadDetailView = document.getElementById('threadDetailView');
-    const backToListBtn = document.getElementById('backToListBtn');
-    const threadsContainer = document.getElementById('threadsContainer');
-    const postsContainer = document.getElementById('postsContainer');
-
-    // ============================================================
-    // 画面切り替え
-    // ============================================================
-    window.showThreadList = function() {
-      threadListView.classList.remove('hidden');
-      threadDetailView.classList.add('hidden');
-      backToListBtn.classList.add('hidden');
-      currentThreadId = null;
-      currentThreadKey = null;
-      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
-      postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
-    };
-
-    function openThread(threadKey, title, createdAt) {
-      currentThreadKey = threadKey;
-      currentThreadId = threadKey;
-      document.getElementById('currentThreadTitle').innerText = title;
-      document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
-
-      threadListView.classList.add('hidden');
-      threadDetailView.classList.remove('hidden');
-      backToListBtn.classList.remove('hidden');
-
-      loadPosts(threadKey);
-    }
 
     // ============================================================
     // ユーティリティ
@@ -240,17 +264,113 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
+    function showMainView() {
+      loginView.classList.add('hidden');
+      mainView.classList.remove('hidden');
+    }
+    function showLoginView() {
+      loginView.classList.remove('hidden');
+      mainView.classList.add('hidden');
+    }
 
     // ============================================================
-    // 1. スレッド作成（Realtime Database 用）
-    //    構造:
-    //      /threads/{threadKey}/title
-    //      /threads/{threadKey}/createdAt
-    //      /threads/{threadKey}/postCount
-    //      /threads/{threadKey}/posts/{postKey}/...
+    // 認証フロー
+    // ============================================================
+    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error("ログインエラー:", err);
+        if (err.code !== 'auth/popup-closed-by-user') {
+          alert("ログインに失敗しました: " + (err.message || ''));
+        }
+      }
+    });
+
+    window.doLogout = async function() {
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
+      if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
+      try { await signOut(auth); } catch (e) { console.error(e); }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+
+      if (!user) {
+        // 未ログイン
+        isAdmin = false;
+        showLoginView();
+        return;
+      }
+
+      // ログイン済み
+      isAdmin = (user.email === ADMIN_EMAIL);
+
+      // UI 更新
+      if (isAdmin) {
+        adminBadge.classList.remove('hidden');
+        userEmailSpan.classList.remove('hidden');
+        userEmailSpan.textContent = user.email + '（管理者）';
+        userEmailSpan.className = 'text-xs text-red-700 font-bold';
+      } else {
+        adminBadge.classList.add('hidden');
+        userEmailSpan.classList.add('hidden');
+        userEmailSpan.textContent = '';
+      }
+
+      showMainView();
+      setConnection(navigator.onLine);
+
+      // スレッド一覧を初期化
+      showThreadList();
+      initThreadsListener();
+    });
+
+    // ============================================================
+    // 画面切り替え
+    // ============================================================
+    window.showThreadList = function() {
+      threadListView.classList.remove('hidden');
+      threadDetailView.classList.add('hidden');
+      backToListBtn.classList.add('hidden');
+      currentThreadId = null;
+      currentThreadKey = null;
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
+      postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
+    };
+
+    function openThread(threadKey, title, createdAt, authorEmail) {
+      currentThreadKey = threadKey;
+      currentThreadId = threadKey;
+      document.getElementById('currentThreadTitle').innerText = title;
+      document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
+
+      // 管理者のみ作成者メールを表示
+      const authorEl = document.getElementById('currentThreadAuthor');
+      const delBtn = document.getElementById('deleteThreadBtn');
+      if (isAdmin) {
+        authorEl.textContent = '作成者: ' + (authorEmail || '不明');
+        authorEl.className = 'text-xs text-red-700 font-bold mt-1';
+        delBtn.classList.remove('hidden');
+      } else {
+        authorEl.textContent = '';
+        delBtn.classList.add('hidden');
+      }
+
+      threadListView.classList.add('hidden');
+      threadDetailView.classList.remove('hidden');
+      backToListBtn.classList.remove('hidden');
+
+      loadPosts(threadKey);
+    }
+
+    // ============================================================
+    // 1. スレッド作成
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!currentUser) { alert('ログインが必要です。'); return; }
+
       const title = document.getElementById('threadTitle').value.trim();
       const content = document.getElementById('firstPostContent').value.trim();
       const btn = document.getElementById('createThreadBtn');
@@ -260,7 +380,6 @@
       btn.disabled = true;
       btn.innerText = '作成中...';
 
-      // 楽観的更新：先に仮要素を挿入
       const tempKey = 'temp_' + Date.now();
       const tempItem = document.createElement('div');
       tempItem.id = 'optimistic_thread_' + tempKey;
@@ -275,19 +394,18 @@
       document.getElementById('createThreadForm').reset();
 
       try {
-        // スレッドキーを生成
         const threadsRef = ref(db, 'threads');
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
-        // スレッド本体
         const threadData = {
           title: title,
-          createdAt: Date.now(), // クライアント時刻（RTDBはserverTimestampが使えないため）
-          postCount: content ? 1 : 0
+          createdAt: Date.now(),
+          postCount: content ? 1 : 0,
+          authorEmail: currentUser.email,   // ← 管理者のみ閲覧
+          authorUid: currentUser.uid
         };
 
-        // 書き込み（並列）
         const writes = [set(newThreadRef, threadData)];
 
         if (content) {
@@ -296,14 +414,14 @@
             author: '名無しさん',
             content: content,
             file: null,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            authorEmail: currentUser.email,  // ← 管理者のみ閲覧
+            authorUid: currentUser.uid
           }));
         }
 
         await Promise.all(writes);
-
         showBanner('スレッドを保存しました', false);
-        // onValue が本物を描画したら仮要素は削除される
         const tempEl = document.getElementById('optimistic_thread_' + tempKey);
         if (tempEl) tempEl.remove();
       } catch (err) {
@@ -336,7 +454,6 @@
           return;
         }
 
-        // 新しい順に並べ替え
         const threads = [];
         snapshot.forEach((child) => {
           threads.push({ key: child.key, ...child.val() });
@@ -352,7 +469,7 @@
 
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(thread.key, thread.title, date);
+          item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail);
           item.innerHTML = `
             <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
@@ -372,7 +489,7 @@
     }
 
     // ============================================================
-    // 3. レス読み込み（リアルタイム）
+    // 3. レス読み込み
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
@@ -390,7 +507,6 @@
           return;
         }
 
-        // 古い順に並べ替え
         const posts = [];
         snapshot.forEach((child) => {
           posts.push({ key: child.key, ...child.val() });
@@ -407,13 +523,22 @@
 
           const postDiv = document.createElement('div');
           postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
+
+          // 管理者のみメール表示
+          let adminInfo = '';
+          if (isAdmin) {
+            adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
+          }
+
           let html = `
-            <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
+            <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
               <span class="post-number">${index}</span>
               <span>：</span>
               <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
               <span>：</span>
               <span class="text-gray-500 text-xs font-normal">${date}</span>
+              ${adminInfo}
+              ${isAdmin ? `<button class="delete-btn ml-auto" data-post-key="${post.key}">削除</button>` : ''}
             </div>
             <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>`;
 
@@ -432,6 +557,15 @@
           }
 
           postDiv.innerHTML = html;
+
+          // 削除ボタンにイベント登録
+          if (isAdmin) {
+            const btn = postDiv.querySelector('.delete-btn');
+            if (btn) {
+              btn.addEventListener('click', () => deletePost(threadKey, post.key, index));
+            }
+          }
+
           postsContainer.appendChild(postDiv);
           index++;
         });
@@ -444,10 +578,11 @@
     }
 
     // ============================================================
-    // 4. レス投稿（Realtime Database）
+    // 4. レス投稿
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!currentUser) { alert('ログインが必要です。'); return; }
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
@@ -461,7 +596,6 @@
       submitBtn.disabled = true;
       submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
 
-      // 楽観的更新
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
@@ -496,21 +630,20 @@
           fileData = { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
         }
 
-        // レスを push
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
         await set(newPostRef, {
           author: '名無しさん',
           content: content,
           file: fileData,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          authorEmail: currentUser.email,  // ← 管理者のみ閲覧
+          authorUid: currentUser.uid
         });
 
-        // postCount をインクリメント
+        // postCount インクリメント
         const threadRef = ref(db, `threads/${currentThreadKey}`);
-        const countSnapshot = await new Promise((resolve) => {
-          onValue(threadRef, resolve, { onlyOnce: true });
-        });
+        const countSnapshot = await get(threadRef);
         const currentCount = (countSnapshot.val() && countSnapshot.val().postCount) || 0;
         await update(threadRef, { postCount: currentCount + 1 });
 
@@ -530,15 +663,56 @@
     });
 
     // ============================================================
-    // 初期化
+    // 5. 管理者用：レス削除
     // ============================================================
-    initThreadsListener();
+    window.deletePost = async function(threadKey, postKey, index) {
+      if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
+      if (!confirm(`レス #${index} を削除しますか？\nこの操作は取り消せません。`)) return;
 
+      try {
+        await remove(ref(db, `threads/${threadKey}/posts/${postKey}`));
+
+        // postCount を減らす
+        const threadRef = ref(db, `threads/${threadKey}`);
+        const snap = await get(threadRef);
+        const cur = (snap.val() && snap.val().postCount) || 0;
+        await update(threadRef, { postCount: Math.max(0, cur - 1) });
+
+        showBanner('レスを削除しました', false);
+      } catch (err) {
+        console.error("削除エラー:", err);
+        showBanner('削除失敗: ' + (err.code || err.message), true);
+        alert('削除に失敗しました。');
+      }
+    };
+
+    // ============================================================
+    // 6. 管理者用：スレッド削除
+    // ============================================================
+    window.deleteCurrentThread = async function() {
+      if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
+      if (!currentThreadKey) return;
+      if (!confirm('このスレッドをすべてのレスごと削除しますか？\nこの操作は取り消せません。')) return;
+
+      const key = currentThreadKey;
+      try {
+        await remove(ref(db, `threads/${key}`));
+        showBanner('スレッドを削除しました', false);
+        showThreadList();
+      } catch (err) {
+        console.error("スレッド削除エラー:", err);
+        showBanner('削除失敗: ' + (err.code || err.message), true);
+        alert('削除に失敗しました。');
+      }
+    };
+
+    // ============================================================
+    // クリーンアップ
+    // ============================================================
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
     });
-
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
     });
