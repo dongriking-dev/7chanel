@@ -35,6 +35,8 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
+
+    /* ツリー */
     .post-tree { position: relative; }
     .post-tree > .post-children {
       margin-left: 16px; padding-left: 12px;
@@ -47,11 +49,19 @@
       margin-right: 4px; cursor: pointer; text-decoration: none;
     }
     .reply-badge:hover { background: #fde68a; }
+
     .post-card { position: relative; transition: background 0.15s; }
     .post-card:hover { background: #fffdf5; }
     .post-card .reply-btn { opacity: 0; transition: opacity 0.15s; }
     .post-card:hover .reply-btn { opacity: 1; }
-    .post-card.reply-target { background: #eff6ff !important; box-shadow: 0 0 0 2px #3b82f6 inset; }
+    /* タッチデバイスでは常に表示 */
+    @media (hover: none) {
+      .post-card .reply-btn { opacity: 1; }
+    }
+    .post-card.reply-target {
+      background: #eff6ff !important;
+      box-shadow: 0 0 0 2px #3b82f6 inset;
+    }
     .highlight-flash { animation: flashHighlight 1.5s ease-out; }
     @keyframes flashHighlight { 0% { background: #fef08a; } 100% { background: transparent; } }
     #replyModeBar { display: none; }
@@ -66,12 +76,6 @@
     .file-preview-thumb {
       width: 40px; height: 40px; object-fit: cover;
       border-radius: 4px; border: 1px solid #e5e7eb; flex-shrink: 0;
-    }
-    .file-preview-icon {
-      width: 40px; height: 40px; display: flex;
-      align-items: center; justify-content: center;
-      background: #f3f4f6; border-radius: 4px;
-      font-size: 20px; flex-shrink: 0;
     }
     .file-preview-info { flex: 1; min-width: 0; }
     .file-preview-name {
@@ -94,16 +98,12 @@
       border-radius: 6px;
     }
     .attachment-box img { max-height: 256px; border-radius: 4px; }
-    .attachment-box video { max-height: 256px; max-width: 100%; border-radius: 4px; }
     .attachment-download {
       display: inline-flex; align-items: center; gap: 4px;
       font-size: 11px; color: #2563eb; text-decoration: underline;
       margin-top: 4px; word-break: break-all;
     }
-    /* 圧縮中の進捗 */
-    .compress-info {
-      font-size: 10px; color: #f59e0b; margin-top: 2px;
-    }
+    .compress-info { font-size: 10px; color: #f59e0b; margin-top: 2px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -112,18 +112,18 @@
 
   <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
     <div>
-      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
+      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" id="siteTitle">7ちゃんねる</h1>
       <p class="text-sm text-gray-600">
         <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
         <span id="connText">接続中...</span>
       </p>
     </div>
-    <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
+    <button id="backToListBtn" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
       ← スレッド一覧に戻る
     </button>
   </header>
 
-  <!-- View 1: スレッド一覧 -->
+  <!-- View 1 -->
   <div id="threadListView">
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
@@ -144,7 +144,7 @@
     </main>
   </div>
 
-  <!-- View 2: スレッド詳細 -->
+  <!-- View 2 -->
   <div id="threadDetailView" class="hidden">
     <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm">
       <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
@@ -156,7 +156,7 @@
 
       <div id="replyModeBar" class="bg-blue-100 border border-blue-300 rounded p-2 mb-3 text-xs text-blue-800 items-center justify-between gap-2">
         <span>💬 <strong id="replyTargetLabel"></strong> への返信中</span>
-        <button type="button" onclick="cancelReply()" class="bg-blue-200 hover:bg-blue-300 text-blue-900 px-2 py-1 rounded font-bold">キャンセル</button>
+        <button type="button" id="cancelReplyBtn" class="bg-blue-200 hover:bg-blue-300 text-blue-900 px-2 py-1 rounded font-bold">キャンセル</button>
       </div>
 
       <form id="postForm" class="space-y-3">
@@ -167,7 +167,7 @@
             添付ファイル（最大2つ / 画像は自動圧縮されます）
           </label>
           <input type="file" id="fileInput" multiple accept="image/*" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
-          <p class="text-[10px] text-gray-400 mt-1">※ Storage不要版：画像のみ対応、自動で縮小されます（最大800px / JPEG）</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 画像のみ対応、自動で縮小されます（最大800px / JPEG）</p>
         </div>
 
         <div id="filePreviewList" class="space-y-2"></div>
@@ -197,7 +197,7 @@
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // ============================================================
-    // Firebase 設定（Storage 不使用）
+    // Firebase 設定
     // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
@@ -215,11 +215,11 @@
     const db = getDatabase(app);
 
     // ============================================================
-    // 定数（画像圧縮用）
+    // 定数
     // ============================================================
-    const MAX_IMAGE_DIM = 800;         // 最大800pxに縮小
-    const JPEG_QUALITY = 0.7;          // JPEG品質70%
-    const MAX_BASE64_SIZE = 200 * 1024; // 圧縮後の上限200KB
+    const MAX_IMAGE_DIM = 800;
+    const JPEG_QUALITY = 0.7;
+    const MAX_BASE64_SIZE = 200 * 1024;
     const MAX_FILES = 2;
 
     // ============================================================
@@ -268,17 +268,19 @@
     const threadListView = document.getElementById('threadListView');
     const threadDetailView = document.getElementById('threadDetailView');
     const backToListBtn = document.getElementById('backToListBtn');
+    const siteTitle = document.getElementById('siteTitle');
     const threadsContainer = document.getElementById('threadsContainer');
     const postsContainer = document.getElementById('postsContainer');
     const replyModeBar = document.getElementById('replyModeBar');
     const replyTargetLabel = document.getElementById('replyTargetLabel');
+    const cancelReplyBtn = document.getElementById('cancelReplyBtn');
     const fileInput = document.getElementById('fileInput');
     const filePreviewList = document.getElementById('filePreviewList');
 
     // ============================================================
     // 画面切り替え
     // ============================================================
-    window.showThreadList = function() {
+    function showThreadList() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
@@ -287,7 +289,7 @@
       clearSelectedFiles();
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
-    };
+    }
 
     function openThread(threadKey, title, createdAt) {
       currentThreadKey = threadKey;
@@ -304,7 +306,8 @@
     // ============================================================
     // 返信モード
     // ============================================================
-    window.startReply = function(postKey, postNumber) {
+    function startReply(postKey, postNumber) {
+      console.log('startReply called:', postKey, postNumber);
       replyTargetId = postKey;
       replyTargetNumber = postNumber;
       replyTargetLabel.textContent = '>>' + postNumber;
@@ -312,25 +315,57 @@
       document.querySelectorAll('.post-card').forEach(el => el.classList.remove('reply-target'));
       const target = document.querySelector(`[data-post-key="${postKey}"]`);
       if (target) target.classList.add('reply-target');
-      document.getElementById('postContent').focus();
-      document.getElementById('postContent').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
+      const ta = document.getElementById('postContent');
+      ta.focus();
+      ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showBanner('返信モードに入りました（>>' + postNumber + '）', false);
+    }
 
-    window.cancelReply = function() {
+    function cancelReply() {
       replyTargetId = null;
       replyTargetNumber = null;
       replyModeBar.classList.remove('active');
       document.querySelectorAll('.post-card').forEach(el => el.classList.remove('reply-target'));
-    };
+    }
 
-    window.jumpToPost = function(postKey) {
+    function jumpToPost(postKey) {
       const el = document.querySelector(`[data-post-key="${postKey}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('highlight-flash');
         setTimeout(() => el.classList.remove('highlight-flash'), 1500);
       }
-    };
+    }
+
+    // ============================================================
+    // イベント委譲（ここが返信の要）
+    // ============================================================
+    postsContainer.addEventListener('click', (e) => {
+      // 返信ボタン
+      const replyBtn = e.target.closest('[data-action="reply"]');
+      if (replyBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const postKey = replyBtn.getAttribute('data-post-key');
+        const postNumber = parseInt(replyBtn.getAttribute('data-post-number'), 10);
+        startReply(postKey, postNumber);
+        return;
+      }
+      // 返信バッジ（ジャンプ）
+      const badge = e.target.closest('[data-action="jump"]');
+      if (badge) {
+        e.preventDefault();
+        e.stopPropagation();
+        const postKey = badge.getAttribute('data-post-key');
+        jumpToPost(postKey);
+        return;
+      }
+    });
+
+    // ヘッダー・戻るボタン・キャンセル
+    backToListBtn.addEventListener('click', showThreadList);
+    siteTitle.addEventListener('click', showThreadList);
+    cancelReplyBtn.addEventListener('click', cancelReply);
 
     // ============================================================
     // ユーティリティ
@@ -355,7 +390,7 @@
     }
 
     // ============================================================
-    // 画像圧縮（Canvas → Base64 JPEG）
+    // 画像圧縮
     // ============================================================
     function compressImage(file) {
       return new Promise((resolve, reject) => {
@@ -363,12 +398,10 @@
           reject(new Error('画像ファイルのみ対応しています'));
           return;
         }
-
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
-            // 縮小率を計算
             let { width, height } = img;
             if (width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
               if (width > height) {
@@ -379,33 +412,24 @@
                 height = MAX_IMAGE_DIM;
               }
             }
-
-            // Canvas に描画
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
-
-            // 背景を白で塗る（透過PNG対策）
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
-            // JPEG の Base64 に変換
             let quality = JPEG_QUALITY;
             let dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-            // 200KBを超えたら品質を下げる
             let attempts = 0;
             while (dataUrl.length > MAX_BASE64_SIZE * 1.4 && quality > 0.3 && attempts < 5) {
               quality -= 0.1;
               dataUrl = canvas.toDataURL('image/jpeg', quality);
               attempts++;
             }
-
             const base64Data = dataUrl.split(',')[1];
             const approxBytes = Math.round((base64Data.length * 3) / 4);
-
             resolve({
               name: file.name,
               type: 'image/jpeg',
@@ -430,24 +454,18 @@
       const files = Array.from(fileInput.files);
       const remaining = MAX_FILES - selectedFiles.length;
       const toAdd = files.slice(0, remaining);
-
-      if (files.length > remaining) {
-        showBanner(`最大 ${MAX_FILES} ファイルまでです`, true);
-      }
+      if (files.length > remaining) showBanner(`最大 ${MAX_FILES} ファイルまでです`, true);
 
       for (const file of toAdd) {
         if (!file.type.startsWith('image/')) {
           showBanner(`「${file.name}」は画像ではないため追加できません`, true);
           continue;
         }
-        if (selectedFiles.some(s => s.file.name === file.name && s.file.size === file.size)) {
-          continue;
-        }
+        if (selectedFiles.some(s => s.file.name === file.name && s.file.size === file.size)) continue;
         const id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
         const previewUrl = URL.createObjectURL(file);
         selectedFiles.push({ id, file, previewUrl, compressed: null, compressing: false });
       }
-
       fileInput.value = '';
       renderFilePreview();
     });
@@ -455,12 +473,10 @@
     function renderFilePreview() {
       filePreviewList.innerHTML = '';
       if (selectedFiles.length === 0) return;
-
       selectedFiles.forEach(item => {
         const el = document.createElement('div');
         el.className = 'file-preview-item';
         el.dataset.fileId = item.id;
-
         let infoHtml;
         if (item.compressed) {
           const ratio = Math.round((1 - item.compressed.size / item.compressed.originalSize) * 100);
@@ -470,7 +486,6 @@
         } else {
           infoHtml = `<div class="file-preview-size">${formatSize(item.file.size)}</div>`;
         }
-
         el.innerHTML = `
           <img src="${item.previewUrl}" class="file-preview-thumb" alt="preview">
           <div class="file-preview-info">
@@ -481,19 +496,13 @@
         `;
         filePreviewList.appendChild(el);
       });
-
       filePreviewList.querySelectorAll('.file-preview-remove').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          const fileId = e.currentTarget.dataset.fileId;
-          removeSelectedFile(fileId);
+          removeSelectedFile(e.currentTarget.dataset.fileId);
         });
       });
-
-      // 未圧縮のものがあれば自動的に圧縮を開始
       selectedFiles.forEach(item => {
-        if (!item.compressed && !item.compressing) {
-          compressSelectedFile(item);
-        }
+        if (!item.compressed && !item.compressing) compressSelectedFile(item);
       });
     }
 
@@ -557,13 +566,11 @@
       try {
         const newThreadRef = push(ref(db, 'threads'));
         const threadKey = newThreadRef.key;
-        const threadData = {
+        const writes = [set(newThreadRef, {
           title: title,
           createdAt: Date.now(),
           postCount: content ? 1 : 0
-        };
-        const writes = [set(newThreadRef, threadData)];
-
+        })];
         if (content) {
           const postRef = push(ref(db, `threads/${threadKey}/posts`));
           writes.push(set(postRef, {
@@ -615,7 +622,7 @@
           }
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(thread.key, thread.title, date);
+          item.addEventListener('click', () => openThread(thread.key, thread.title, date));
           item.innerHTML = `
             <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
@@ -695,14 +702,10 @@
         try { date = new Date(post.createdAt).toLocaleString('ja-JP'); } catch (e) {}
       }
 
+      // 返信バッジ（データ属性でイベント委譲）
       let replyBadge = '';
       if (post.parentId && post.replyTo) {
-        const parentPost = latestPosts.find(p => p.key === post.parentId);
-        if (parentPost) {
-          replyBadge = `<a class="reply-badge" onclick="jumpToPost('${post.parentId}')">>>${post.replyTo}</a>`;
-        } else {
-          replyBadge = `<span class="reply-badge">>>${post.replyTo}</span>`;
-        }
+        replyBadge = `<a class="reply-badge" data-action="jump" data-post-key="${post.parentId}" href="javascript:void(0)">>>${post.replyTo}</a>`;
       }
 
       const card = document.createElement('div');
@@ -721,17 +724,16 @@
           </div>
           <button type="button"
             class="reply-btn text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded transition whitespace-nowrap"
-            onclick="startReply('${post.key}', ${post._number})">
+            data-action="reply"
+            data-post-key="${post.key}"
+            data-post-number="${post._number}">
             ↩ 返信
           </button>
         </div>
         <div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${replyBadge}${formatContent(post.content)}</div>`;
 
-      // Base64 画像表示
       const images = [];
-      if (post.images && Array.isArray(post.images)) {
-        post.images.forEach(img => images.push(img));
-      }
+      if (post.images && Array.isArray(post.images)) post.images.forEach(img => images.push(img));
 
       if (images.length > 0) {
         html += `<div class="space-y-2 mt-2">`;
@@ -766,7 +768,7 @@
     }
 
     // ============================================================
-    // レス投稿（Base64 画像対応）
+    // レス投稿
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -774,10 +776,8 @@
 
       const content = document.getElementById('postContent').value.trim();
       const submitBtn = document.getElementById('submitBtn');
-
       if (!content) { alert('コメントを入力してください。'); return; }
 
-      // 圧縮完了を待つ
       const stillCompressing = selectedFiles.some(s => s.compressing);
       if (stillCompressing) {
         alert('画像を圧縮中です。少しお待ちください。');
@@ -786,17 +786,12 @@
 
       const parentIdForPost = replyTargetId;
       const replyToNumber = replyTargetNumber;
-
-      // 圧縮済み画像のスナップショット
-      const imagesToSave = selectedFiles
-        .filter(s => s.compressed)
-        .map(s => s.compressed);
+      const imagesToSave = selectedFiles.filter(s => s.compressed).map(s => s.compressed);
 
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
       submitBtn.innerText = '送信中...';
 
-      // 楽観的レス
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
@@ -847,7 +842,6 @@
           replyTo: replyToNumber || null
         });
 
-        // postCount インクリメント
         const threadRef = ref(db, `threads/${currentThreadKey}`);
         const countSnapshot = await new Promise((resolve) => {
           onValue(threadRef, resolve, { onlyOnce: true });
