@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>7ちゃんねる</title>
+  <title>7ch</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -169,10 +169,9 @@
       push,
       set,
       update,
+      get,
       onValue,
-      off,
-      query,
-      orderByChild
+      off
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // ============================================================
@@ -376,14 +375,13 @@
     });
 
     // ============================================================
-    // 2. スレッド一覧
+    // 2. スレッド一覧（インデックス不要・クライアント側ソート）
     // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
       const threadsRef = ref(db, 'threads');
-      const q = query(threadsRef, orderByChild('createdAt'));
 
-      threadsUnsubscribe = onValue(q, (snapshot) => {
+      threadsUnsubscribe = onValue(threadsRef, (snapshot) => {
         setConnection(true);
         threadsContainer.innerHTML = '';
         if (!snapshot.exists()) {
@@ -392,6 +390,7 @@
         }
         const threads = [];
         snapshot.forEach((child) => threads.push({ key: child.key, ...child.val() }));
+        // 新しい順にソート
         threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
         threads.forEach((thread) => {
@@ -419,16 +418,15 @@
     }
 
     // ============================================================
-    // 3. レス読み込み（ツリー構造で表示）
+    // 3. レス読み込み（インデックス不要・クライアント側ソート）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
       const postsRef = ref(db, `threads/${threadKey}/posts`);
-      const q = query(postsRef, orderByChild('createdAt'));
 
-      postsUnsubscribe = onValue(q, (snapshot) => {
+      postsUnsubscribe = onValue(postsRef, (snapshot) => {
         setConnection(true);
         postsContainer.innerHTML = '';
 
@@ -444,6 +442,7 @@
         });
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
+        // レス番号を割り当て（表示順 = 時系列順）
         const numberMap = new Map();
         posts.forEach((p, i) => numberMap.set(p.key, i + 1));
 
@@ -452,6 +451,7 @@
           p._children = [];
         });
 
+        // 親子関係を構築
         const rootPosts = [];
         const keyToPost = new Map(posts.map(p => [p.key, p]));
         posts.forEach(p => {
@@ -464,6 +464,7 @@
 
         latestPosts = posts;
 
+        // 再帰的に描画
         rootPosts.forEach(p => postsContainer.appendChild(renderPost(p)));
       }, (error) => {
         console.error("レス読み込みエラー:", error);
@@ -486,6 +487,7 @@
         try { date = new Date(post.createdAt).toLocaleString('ja-JP'); } catch (e) {}
       }
 
+      // 返信先バッジ
       let replyBadge = '';
       if (post.parentId && post.replyTo) {
         const parentPost = latestPosts.find(p => p.key === post.parentId);
@@ -521,6 +523,7 @@
       card.innerHTML = html;
       wrapper.appendChild(card);
 
+      // 子レスを再帰的に描画
       if (post._children && post._children.length > 0) {
         post._children.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         const childrenContainer = document.createElement('div');
@@ -553,6 +556,7 @@
       const parentIdForPost = replyTargetId;
       const replyToNumber = replyTargetNumber;
 
+      // 楽観的更新
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
@@ -578,6 +582,7 @@
       cancelReply();
 
       try {
+        // レスを push（parentId, replyTo 付き）
         const newPostRef = push(ref(db, `threads/${currentThreadKey}/posts`));
         await set(newPostRef, {
           author: '名無しさん',
@@ -587,10 +592,9 @@
           replyTo: replyToNumber || null
         });
 
+        // postCount をインクリメント
         const threadRef = ref(db, `threads/${currentThreadKey}`);
-        const countSnapshot = await new Promise((resolve) => {
-          onValue(threadRef, resolve, { onlyOnce: true });
-        });
+        const countSnapshot = await get(threadRef);
         const currentCount = (countSnapshot.val() && countSnapshot.val().postCount) || 0;
         await update(threadRef, { postCount: currentCount + 1 });
 
