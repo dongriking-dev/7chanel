@@ -7,15 +7,9 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .post-content img, .post-content video { max-width: 100%; height: auto; }
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
-    input[type="file"]::file-selector-button {
-      background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem;
-      padding: 0.25rem 0.75rem; font-size: 0.75rem; margin-right: 0.5rem; cursor: pointer;
-    }
-    input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
     .loading-spinner {
       display: inline-block; width: 1rem; height: 1rem;
       border: 2px solid #f3f3f3; border-top: 2px solid #991b1b;
@@ -56,7 +50,7 @@
   <div id="statusBanner" class="bg-red-600 text-white"></div>
 
   <!-- ============================================================
-       ログイン画面（未ログイン時に表示）
+       ログイン画面
        ============================================================ -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
@@ -77,7 +71,7 @@
   </div>
 
   <!-- ============================================================
-       メイン画面（ログイン後のみ表示）
+       メイン画面
        ============================================================ -->
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
@@ -136,11 +130,7 @@
         <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
         <form id="postForm" class="space-y-3">
           <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
-          <div class="flex items-center justify-between flex-wrap gap-3">
-            <div class="flex-1 min-w-[200px]">
-              <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他、最大10MB):</label>
-              <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,text/plain" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
-            </div>
+          <div class="flex justify-end">
             <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
               書き込む
             </button>
@@ -159,17 +149,14 @@
 
   <script type="module">
     // ============================================================
-    // Firebase SDK (Modular) - Realtime Database 版
+    // Firebase SDK (Modular) - Realtime Database 版（Storage は不使用）
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getDatabase, ref, push, set, update, remove, onValue, off,
+      getDatabase, ref, push, set, remove, onValue, off,
       query, orderByChild, get
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import {
-      getStorage, ref as storageRef, uploadBytes, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import {
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -191,7 +178,6 @@
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
-    const storage = getStorage(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
@@ -205,7 +191,6 @@
     // ============================================================
     let currentUser = null;
     let isAdmin = false;
-    let currentThreadId = null;
     let currentThreadKey = null;
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
@@ -297,16 +282,13 @@
       currentUser = user;
 
       if (!user) {
-        // 未ログイン
         isAdmin = false;
         showLoginView();
         return;
       }
 
-      // ログイン済み
       isAdmin = (user.email === ADMIN_EMAIL);
 
-      // UI 更新
       if (isAdmin) {
         adminBadge.classList.remove('hidden');
         userEmailSpan.classList.remove('hidden');
@@ -321,7 +303,6 @@
       showMainView();
       setConnection(navigator.onLine);
 
-      // スレッド一覧を初期化
       showThreadList();
       initThreadsListener();
     });
@@ -333,7 +314,6 @@
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
-      currentThreadId = null;
       currentThreadKey = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
@@ -341,11 +321,9 @@
 
     function openThread(threadKey, title, createdAt, authorEmail) {
       currentThreadKey = threadKey;
-      currentThreadId = threadKey;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
-      // 管理者のみ作成者メールを表示
       const authorEl = document.getElementById('currentThreadAuthor');
       const delBtn = document.getElementById('deleteThreadBtn');
       if (isAdmin) {
@@ -398,11 +376,12 @@
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
+        // スレッド本体を「一括で」作成（postCount 更新は行わない）
         const threadData = {
           title: title,
           createdAt: Date.now(),
           postCount: content ? 1 : 0,
-          authorEmail: currentUser.email,   // ← 管理者のみ閲覧
+          authorEmail: currentUser.email,
           authorUid: currentUser.uid
         };
 
@@ -413,9 +392,8 @@
           writes.push(set(postRef, {
             author: '名無しさん',
             content: content,
-            file: null,
             createdAt: Date.now(),
-            authorEmail: currentUser.email,  // ← 管理者のみ閲覧
+            authorEmail: currentUser.email,
             authorUid: currentUser.uid
           }));
         }
@@ -524,7 +502,6 @@
           const postDiv = document.createElement('div');
           postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
 
-          // 管理者のみメール表示
           let adminInfo = '';
           if (isAdmin) {
             adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
@@ -542,23 +519,8 @@
             </div>
             <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>`;
 
-          if (post.file && post.file.url) {
-            const file = post.file;
-            const fileType = file.type || '';
-            const fileName = file.name || '添付ファイル';
-            const fileUrl = file.url;
-            html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
-            if (fileType.startsWith('image/')) {
-              html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" class="max-h-64 rounded object-contain mb-1 border" alt="添付画像" loading="lazy"></a>`;
-            } else if (fileType.startsWith('video/')) {
-              html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}"></video>`;
-            }
-            html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a></div>`;
-          }
-
           postDiv.innerHTML = html;
 
-          // 削除ボタンにイベント登録
           if (isAdmin) {
             const btn = postDiv.querySelector('.delete-btn');
             if (btn) {
@@ -578,7 +540,7 @@
     }
 
     // ============================================================
-    // 4. レス投稿
+    // 4. レス投稿（postCount 更新は行わない）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -586,15 +548,13 @@
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
 
       if (!content) { alert('コメントを入力してください。'); return; }
 
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
-      submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
+      submitBtn.innerText = '送信中...';
 
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
@@ -609,43 +569,24 @@
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
-        <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>
-        ${file ? '<div class="text-xs text-gray-400 mt-1">📎 ' + escapeHtml(file.name) + ' (アップロード中...)</div>' : ''}`;
+        <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
       document.getElementById('postForm').reset();
-      fileInput.value = '';
 
       try {
-        let fileData = null;
-        if (file) {
-          const MAX_SIZE = 10 * 1024 * 1024;
-          if (file.size > MAX_SIZE) throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
-
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const sRef = storageRef(storage, `uploads/${Date.now()}_${safeName}`);
-          const snapshot = await uploadBytes(sRef, file);
-          const downloadURL = await getDownloadURL(snapshot.ref);
-          fileData = { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
-        }
-
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
         await set(newPostRef, {
           author: '名無しさん',
           content: content,
-          file: fileData,
           createdAt: Date.now(),
-          authorEmail: currentUser.email,  // ← 管理者のみ閲覧
+          authorEmail: currentUser.email,
           authorUid: currentUser.uid
         });
 
-        // postCount インクリメント
-        const threadRef = ref(db, `threads/${currentThreadKey}`);
-        const countSnapshot = await get(threadRef);
-        const currentCount = (countSnapshot.val() && countSnapshot.val().postCount) || 0;
-        await update(threadRef, { postCount: currentCount + 1 });
+        // ★ postCount 更新は行わない（新ルールで弾かれるため）
 
         showBanner('書き込みを保存しました', false);
         const el = document.getElementById(tempId);
@@ -671,13 +612,6 @@
 
       try {
         await remove(ref(db, `threads/${threadKey}/posts/${postKey}`));
-
-        // postCount を減らす
-        const threadRef = ref(db, `threads/${threadKey}`);
-        const snap = await get(threadRef);
-        const cur = (snap.val() && snap.val().postCount) || 0;
-        await update(threadRef, { postCount: Math.max(0, cur - 1) });
-
         showBanner('レスを削除しました', false);
       } catch (err) {
         console.error("削除エラー:", err);
