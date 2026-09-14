@@ -43,6 +43,66 @@
     }
     .delete-btn:hover { background: #b91c1c; }
     .delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    /* ★ 返信機能用のスタイル */
+    .reply-btn {
+      background: #2563eb; color: #fff; font-size: 11px; padding: 3px 10px;
+      border-radius: 4px; cursor: pointer; border: none;
+    }
+    .reply-btn:hover { background: #1d4ed8; }
+    .reply-cancel-btn {
+      background: #6b7280; color: #fff; font-size: 11px; padding: 3px 10px;
+      border-radius: 4px; cursor: pointer; border: none;
+    }
+    .reply-cancel-btn:hover { background: #4b5563; }
+    .post-card {
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    /* ネスト（入れ子）用：左に縦線を引く */
+    .post-children {
+      margin-left: 20px;
+      padding-left: 12px;
+      border-left: 2px solid #fbbf24;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .post-tree { display: flex; flex-direction: column; gap: 8px; }
+    .inline-reply-box {
+      margin-top: 8px;
+      padding: 10px;
+      background: #fffbeb;
+      border: 1px dashed #fbbf24;
+      border-radius: 6px;
+    }
+    .inline-reply-box textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 13px;
+      outline: none;
+      resize: vertical;
+      min-height: 60px;
+    }
+    .inline-reply-box textarea:focus {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239,68,68,0.15);
+    }
+    .reply-target-label {
+      font-size: 11px;
+      color: #92400e;
+      background: #fef3c7;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -141,7 +201,8 @@
 
       <main>
         <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
-        <div id="postsContainer" class="space-y-4">
+        <!-- ★ 返信ツリーを描画するコンテナ -->
+        <div id="postsContainer" class="post-tree">
           <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
         </div>
       </main>
@@ -150,7 +211,7 @@
 
   <script type="module">
     // ============================================================
-    // Firebase SDK (Modular) - Realtime Database 版（Storage は不使用）
+    // Firebase SDK
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
@@ -195,6 +256,13 @@
     let currentThreadKey = null;
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
+
+    // ★ 現在開いている返信ボックスの親ID（null なら閉じている）
+    let activeReplyParentId = null;
+    // ★ スレッド内の全レスを保持（番号付け・返信時に参照）
+    let allPostsCache = [];
+    // ★ レス番号マップ： postKey -> 表示番号
+    let postNumberMap = new Map();
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -255,8 +323,8 @@
       mainView.classList.remove('hidden');
     }
     function showLoginView() {
-      loginView.classList.remove('hidden');
-      mainView.classList.add('hidden');
+      loginView.classList.add('hidden');
+      mainView.classList.remove('hidden');
     }
 
     // ============================================================
@@ -316,12 +384,14 @@
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
       currentThreadKey = null;
+      activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
     };
 
     function openThread(threadKey, title, createdAt, authorEmail) {
       currentThreadKey = threadKey;
+      activeReplyParentId = null;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
@@ -377,7 +447,6 @@
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
-        // スレッド本体を「一括で」作成（postCount 更新は行わない）
         const threadData = {
           title: title,
           createdAt: Date.now(),
@@ -395,7 +464,8 @@
             content: content,
             createdAt: Date.now(),
             authorEmail: currentUser.email,
-            authorUid: currentUser.uid
+            authorUid: currentUser.uid,
+            parentId: null   // ★ トップレベル
           }));
         }
 
@@ -468,7 +538,7 @@
     }
 
     // ============================================================
-    // 3. レス読み込み
+    // ★ 3. レス読み込み（ツリー構築に変更）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
@@ -482,56 +552,59 @@
         postsContainer.innerHTML = '';
 
         if (!snapshot.exists()) {
+          allPostsCache = [];
+          postNumberMap = new Map();
           postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
           return;
         }
 
+        // --- 全レスを配列化 ---
         const posts = [];
         snapshot.forEach((child) => {
           posts.push({ key: child.key, ...child.val() });
         });
+
+        // 時系列順（古い→新しい）
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        allPostsCache = posts;
 
-        let index = 1;
-        posts.forEach((post) => {
-          let date = '送信中...';
-          if (post.createdAt) {
-            try { date = new Date(post.createdAt).toLocaleString('ja-JP'); }
-            catch (e) { date = '日時不明'; }
-          }
-
-          const postDiv = document.createElement('div');
-          postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
-
-          let adminInfo = '';
-          if (isAdmin) {
-            adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
-          }
-
-          let html = `
-            <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
-              <span class="post-number">${index}</span>
-              <span>：</span>
-              <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
-              <span>：</span>
-              <span class="text-gray-500 text-xs font-normal">${date}</span>
-              ${adminInfo}
-              ${isAdmin ? `<button class="delete-btn ml-auto" data-post-key="${post.key}">削除</button>` : ''}
-            </div>
-            <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(post.content)}</div>`;
-
-          postDiv.innerHTML = html;
-
-          if (isAdmin) {
-            const btn = postDiv.querySelector('.delete-btn');
-            if (btn) {
-              btn.addEventListener('click', () => deletePost(threadKey, post.key, index));
-            }
-          }
-
-          postsContainer.appendChild(postDiv);
-          index++;
+        // --- 通し番号を付与（すべてのレスに 1,2,3... と振る） ---
+        postNumberMap = new Map();
+        posts.forEach((p, i) => {
+          postNumberMap.set(p.key, i + 1);
         });
+
+        // --- 親子関係を構築 ---
+        const childrenMap = new Map(); // parentId -> 子レス配列
+        const rootPosts = [];          // parentId が null or 存在しない親を指すもの
+        const keySet = new Set(posts.map(p => p.key));
+
+        posts.forEach((p) => {
+          let pid = p.parentId || null;
+          // 親が既に削除されている場合はトップレベル扱い
+          if (pid && !keySet.has(pid)) pid = null;
+
+          if (pid === null) {
+            rootPosts.push(p);
+          } else {
+            if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+            childrenMap.get(pid).push(p);
+          }
+        });
+
+        // --- 再帰的にツリーを描画 ---
+        const frag = document.createDocumentFragment();
+        rootPosts.forEach((p) => {
+          frag.appendChild(renderPostTree(p, childrenMap));
+        });
+        postsContainer.appendChild(frag);
+
+        // もし activeReplyParentId がまだ生きているなら、その返信ボックスを再展開
+        if (activeReplyParentId && keySet.has(activeReplyParentId)) {
+          openReplyBox(activeReplyParentId);
+        } else {
+          activeReplyParentId = null;
+        }
       }, (error) => {
         console.error("レス読み込みエラー:", error);
         setConnection(false);
@@ -540,8 +613,178 @@
       });
     }
 
+    // ★ 再帰的に1つのレス＋その子レスたちを描画
+    function renderPostTree(post, childrenMap) {
+      const wrap = document.createElement('div');
+      wrap.className = 'post-tree';
+      wrap.dataset.postKey = post.key;
+
+      const number = postNumberMap.get(post.key) || '?';
+      let date = '送信中...';
+      if (post.createdAt) {
+        try { date = new Date(post.createdAt).toLocaleString('ja-JP'); }
+        catch (e) { date = '日時不明'; }
+      }
+
+      let adminInfo = '';
+      if (isAdmin) {
+        adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
+      }
+
+      // ★ 返信先ラベル（親がいる場合、その番号を表示）
+      let replyLabel = '';
+      if (post.parentId && postNumberMap.has(post.parentId)) {
+        const parentNum = postNumberMap.get(post.parentId);
+        replyLabel = `<span class="reply-target-label">↩ >>${parentNum}</span>`;
+      }
+
+      const postDiv = document.createElement('div');
+      postDiv.className = 'post-card';
+      postDiv.innerHTML = `
+        <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
+          <span class="post-number">${number}</span>
+          <span>：</span>
+          <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
+          <span>：</span>
+          <span class="text-gray-500 text-xs font-normal">${date}</span>
+          ${adminInfo}
+          <span class="ml-auto flex gap-1">
+            <button class="reply-btn" data-reply-key="${post.key}">返信</button>
+            ${isAdmin ? `<button class="delete-btn" data-post-key="${post.key}">削除</button>` : ''}
+          </span>
+        </div>
+        <div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${formatContent(post.content)}</div>
+        ${replyLabel ? `<div class="mt-1">${replyLabel}</div>` : ''}
+      `;
+
+      // 返信ボタン
+      const rbtn = postDiv.querySelector('.reply-btn');
+      if (rbtn) {
+        rbtn.addEventListener('click', () => onReplyClick(post.key));
+      }
+      // 削除ボタン（管理者）
+      if (isAdmin) {
+        const dbtn = postDiv.querySelector('.delete-btn');
+        if (dbtn) {
+          dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
+        }
+      }
+
+      wrap.appendChild(postDiv);
+
+      // 子レス
+      const children = childrenMap.get(post.key) || [];
+      if (children.length > 0) {
+        const childWrap = document.createElement('div');
+        childWrap.className = 'post-children';
+        children.forEach((c) => {
+          childWrap.appendChild(renderPostTree(c, childrenMap));
+        });
+        wrap.appendChild(childWrap);
+      }
+
+      return wrap;
+    }
+
+    // ★ 返信ボタンが押された時
+    function onReplyClick(parentId) {
+      if (!currentUser) { alert('ログインが必要です。'); return; }
+      // 同じ親なら閉じる（トグル）
+      if (activeReplyParentId === parentId) {
+        closeReplyBox();
+        return;
+      }
+      activeReplyParentId = parentId;
+      openReplyBox(parentId);
+    }
+
+    // ★ 指定したレスの直下に返信入力ボックスを開く
+    function openReplyBox(parentId) {
+      // 既存の返信ボックスをすべて除去
+      document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
+
+      const targetWrap = postsContainer.querySelector(`.post-tree[data-post-key="${parentId}"]`);
+      if (!targetWrap) return;
+
+      const targetCard = targetWrap.querySelector('.post-card');
+      if (!targetCard) return;
+
+      // 親の番号
+      const parentNum = postNumberMap.get(parentId) || '?';
+
+      const box = document.createElement('div');
+      box.className = 'inline-reply-box';
+      box.innerHTML = `
+        <div class="reply-target-label">>>${parentNum} への返信</div>
+        <textarea class="reply-textarea" placeholder="返信を入力（最大2000文字）" maxlength="2000"></textarea>
+        <div class="flex justify-end gap-2 mt-2">
+          <button class="reply-cancel-btn">キャンセル</button>
+          <button class="reply-send-btn bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded">返信する</button>
+        </div>
+      `;
+
+      // カードの直後（子レス群の手前）に挿入
+      targetCard.insertAdjacentElement('afterend', box);
+
+      const ta = box.querySelector('.reply-textarea');
+      const cancelBtn = box.querySelector('.reply-cancel-btn');
+      const sendBtn = box.querySelector('.reply-send-btn');
+
+      cancelBtn.addEventListener('click', () => {
+        activeReplyParentId = null;
+        box.remove();
+      });
+
+      sendBtn.addEventListener('click', async () => {
+        const content = ta.value.trim();
+        if (!content) { alert('返信内容を入力してください。'); return; }
+        sendBtn.disabled = true;
+        sendBtn.textContent = '送信中...';
+        try {
+          await submitReply(parentId, content);
+          activeReplyParentId = null;
+          box.remove();
+        } catch (err) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = '返信する';
+        }
+      });
+
+      // Ctrl+Enter でも送信
+      ta.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          sendBtn.click();
+        }
+      });
+
+      ta.focus();
+    }
+
+    function closeReplyBox() {
+      activeReplyParentId = null;
+      document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
+    }
+
+    // ★ 返信を保存
+    async function submitReply(parentId, content) {
+      if (!currentUser) throw new Error('ログインが必要です');
+      if (!currentThreadKey) throw new Error('スレッドが選択されていません');
+
+      const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
+      const newPostRef = push(postsRef);
+      await set(newPostRef, {
+        author: '名無しさん',
+        content: content,
+        createdAt: Date.now(),
+        authorEmail: currentUser.email,
+        authorUid: currentUser.uid,
+        parentId: parentId  // ★ 親レスを指定
+      });
+      showBanner('返信を保存しました', false);
+    }
+
     // ============================================================
-    // 4. レス投稿（postCount 更新は行わない）
+    // 4. レス投稿（トップレベル）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -560,8 +803,8 @@
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
-      tempPost.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm optimistic-post';
-      const optimisticIndex = postsContainer.querySelectorAll('.bg-white.p-3.border.border-gray-300.rounded.text-sm.shadow-sm').length + 1;
+      tempPost.className = 'post-card optimistic-post';
+      const optimisticIndex = allPostsCache.length + 1;
       tempPost.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
           <span class="post-number">${optimisticIndex}</span>
@@ -584,10 +827,9 @@
           content: content,
           createdAt: Date.now(),
           authorEmail: currentUser.email,
-          authorUid: currentUser.uid
+          authorUid: currentUser.uid,
+          parentId: null   // ★ トップレベル
         });
-
-        // ★ postCount 更新は行わない（新ルールで弾かれるため）
 
         showBanner('書き込みを保存しました', false);
         const el = document.getElementById(tempId);
@@ -609,10 +851,23 @@
     // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
-      if (!confirm(`レス #${index} を削除しますか？\nこの操作は取り消せません。`)) return;
+
+      // 子レスがあるかチェック
+      const hasChildren = allPostsCache.some(p => p.parentId === postKey);
+      const msg = hasChildren
+        ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。\nこの操作は取り消せません。`
+        : `レス #${index} を削除しますか？\nこの操作は取り消せません。`;
+      if (!confirm(msg)) return;
 
       try {
-        await remove(ref(db, `threads/${threadKey}/posts/${postKey}`));
+        // ★ 子レスも再帰的に削除
+        const toDelete = collectDescendants(postKey);
+        toDelete.push(postKey);
+
+        for (const key of toDelete) {
+          await remove(ref(db, `threads/${threadKey}/posts/${key}`));
+        }
+
         showBanner('レスを削除しました', false);
       } catch (err) {
         console.error("削除エラー:", err);
@@ -620,6 +875,22 @@
         alert('削除に失敗しました。');
       }
     };
+
+    // ★ 子孫レスを全部集める
+    function collectDescendants(parentKey) {
+      const result = [];
+      const stack = [parentKey];
+      while (stack.length) {
+        const cur = stack.pop();
+        allPostsCache.forEach(p => {
+          if (p.parentId === cur) {
+            result.push(p.key);
+            stack.push(p.key);
+          }
+        });
+      }
+      return result;
+    }
 
     // ============================================================
     // 6. 管理者用：スレッド削除
