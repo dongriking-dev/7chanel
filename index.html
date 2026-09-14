@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>7ch</title>
+  <title>7ちゃんねる</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -36,65 +36,88 @@
     }
     #statusBanner.show { transform: translateY(0); }
 
-    /* ============================================================
-       レスツリー表示用スタイル
-    ============================================================ */
-    /* 子レス（返信）のインデント */
-    .post-tree {
-      position: relative;
-    }
+    /* ツリー表示 */
+    .post-tree { position: relative; }
     .post-tree > .post-children {
-      margin-left: 16px;
-      padding-left: 12px;
-      border-left: 2px solid #fbbf24; /* アンバー色の縦線 */
-      margin-top: 8px;
-      position: relative;
+      margin-left: 16px; padding-left: 12px;
+      border-left: 2px solid #fbbf24; margin-top: 8px;
     }
-    /* 返信先番号バッジ */
     .reply-badge {
-      display: inline-block;
-      background: #fef3c7;
-      color: #92400e;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 4px;
-      border: 1px solid #fcd34d;
-      margin-right: 4px;
-      cursor: pointer;
-      text-decoration: none;
+      display: inline-block; background: #fef3c7; color: #92400e;
+      font-size: 11px; font-weight: 700; padding: 1px 6px;
+      border-radius: 4px; border: 1px solid #fcd34d;
+      margin-right: 4px; cursor: pointer; text-decoration: none;
     }
     .reply-badge:hover { background: #fde68a; }
 
-    /* レスにホバーしたときの返信ボタン表示 */
-    .post-card {
-      position: relative;
-      transition: background 0.15s;
-    }
+    .post-card { position: relative; transition: background 0.15s; }
     .post-card:hover { background: #fffdf5; }
-    .post-card .reply-btn {
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
+    .post-card .reply-btn { opacity: 0; transition: opacity 0.15s; }
     .post-card:hover .reply-btn { opacity: 1; }
-    .post-card.reply-target {
-      background: #eff6ff !important;
-      box-shadow: 0 0 0 2px #3b82f6 inset;
+    @media (hover: none) { .post-card .reply-btn { opacity: 1; } }
+    .post-card.reply-target { background: #eff6ff !important; box-shadow: 0 0 0 2px #3b82f6 inset; }
+    .highlight-flash { animation: flashHighlight 1.5s ease-out; }
+    @keyframes flashHighlight { 0% { background: #fef08a; } 100% { background: transparent; } }
+    #replyModeBar { display: none; }
+    #replyModeBar.active { display: flex; }
+
+    /* ============================================================
+       ファイルプレビュー & 進捗
+    ============================================================ */
+    .file-preview-item {
+      display: flex; align-items: center; gap: 8px;
+      background: white; border: 1px solid #e5e7eb;
+      border-radius: 6px; padding: 6px 8px; font-size: 12px;
+      margin-top: 4px;
     }
-    /* 新規レス投稿時のハイライト */
-    .highlight-flash {
-      animation: flashHighlight 1.5s ease-out;
+    .file-preview-thumb {
+      width: 40px; height: 40px; object-fit: cover;
+      border-radius: 4px; border: 1px solid #e5e7eb; flex-shrink: 0;
     }
-    @keyframes flashHighlight {
-      0% { background: #fef08a; }
-      100% { background: transparent; }
+    .file-preview-icon {
+      width: 40px; height: 40px; display: flex;
+      align-items: center; justify-content: center;
+      background: #f3f4f6; border-radius: 4px;
+      font-size: 20px; flex-shrink: 0;
     }
-    /* 返信モードの表示 */
-    #replyModeBar {
-      display: none;
+    .file-preview-info { flex: 1; min-width: 0; }
+    .file-preview-name {
+      font-weight: 600; color: #374151;
+      white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; font-size: 11px;
     }
-    #replyModeBar.active {
-      display: flex;
+    .file-preview-size { color: #9ca3af; font-size: 10px; }
+    .file-preview-remove {
+      background: #fee2e2; color: #991b1b; border: none;
+      border-radius: 4px; width: 20px; height: 20px;
+      cursor: pointer; font-weight: bold; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .file-preview-remove:hover { background: #fecaca; }
+
+    .progress-bar-container {
+      width: 100%; height: 4px; background: #e5e7eb;
+      border-radius: 2px; overflow: hidden; margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #dc2626, #f59e0b);
+      transition: width 0.2s;
+    }
+
+    /* レス内の添付ファイル */
+    .attachment-box {
+      margin-top: 8px; padding: 8px;
+      border: 1px solid #e5e7eb; background: #f9fafb;
+      border-radius: 6px;
+    }
+    .attachment-box img { max-height: 256px; border-radius: 4px; }
+    .attachment-box video { max-height: 256px; max-width: 100%; border-radius: 4px; }
+    .attachment-box audio { width: 100%; max-width: 400px; margin: 4px 0; }
+    .attachment-download {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: #2563eb; text-decoration: underline;
+      margin-top: 4px; word-break: break-all;
     }
   </style>
 </head>
@@ -104,13 +127,13 @@
 
   <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
     <div>
-      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
+      <h1 id="siteTitle" class="text-3xl font-bold text-red-900 cursor-pointer">7ちゃんねる</h1>
       <p class="text-sm text-gray-600">
         <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
         <span id="connText">接続中...</span>
       </p>
     </div>
-    <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
+    <button id="backToListBtn" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
       ← スレッド一覧に戻る
     </button>
   </header>
@@ -146,22 +169,36 @@
     <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
       <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
 
-      <!-- 返信モード表示バー -->
       <div id="replyModeBar" class="bg-blue-100 border border-blue-300 rounded p-2 mb-3 text-xs text-blue-800 items-center justify-between gap-2">
         <span>💬 <strong id="replyTargetLabel"></strong> への返信中</span>
-        <button type="button" onclick="cancelReply()" class="bg-blue-200 hover:bg-blue-300 text-blue-900 px-2 py-1 rounded font-bold">キャンセル</button>
+        <button type="button" id="cancelReplyBtn" class="bg-blue-200 hover:bg-blue-300 text-blue-900 px-2 py-1 rounded font-bold">キャンセル</button>
       </div>
 
       <form id="postForm" class="space-y-3">
         <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
+
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">
+            添付ファイル（最大3つ、各10MB / 画像・動画・音声・PDF・テキスト）
+          </label>
+          <input type="file" id="fileInput" multiple
+            accept="image/*,video/*,audio/*,application/pdf,text/plain"
+            class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+        </div>
+
+        <!-- 選択済みファイル一覧 -->
+        <div id="filePreviewList" class="space-y-2"></div>
+
         <div class="flex items-center justify-between flex-wrap gap-3">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他、最大10MB):</label>
-            <input type="file" id="fileInput" accept="image/*,video/*,application/pdf,text/plain" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+          <p class="text-[10px] text-gray-400">※ 大きいファイルは時間がかかります</p>
+          <div class="flex gap-2">
+            <button type="button" id="cancelUploadBtn" class="hidden bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded text-sm transition">
+              キャンセル
+            </button>
+            <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
+              書き込む
+            </button>
           </div>
-          <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
-            書き込む
-          </button>
         </div>
       </form>
     </section>
@@ -178,20 +215,13 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getDatabase,
-      ref,
-      push,
-      set,
-      update,
-      onValue,
-      off,
-      query,
-      orderByChild
+      getDatabase, ref, push, set, update, onValue,
+      query, orderByChild
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
       getStorage,
       ref as storageRef,
-      uploadBytes,
+      uploadBytesResumable,
       getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -213,6 +243,16 @@
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
     const storage = getStorage(app);
+
+    // ============================================================
+    // 定数
+    // ============================================================
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILES = 3;
+    const ALLOWED_PREFIXES = [
+      'image/', 'video/', 'audio/',
+      'application/pdf', 'text/plain'
+    ];
 
     // ============================================================
     // 接続状態 & バナー
@@ -252,30 +292,41 @@
     let currentThreadKey = null;
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
-    let replyTargetId = null;      // 返信先の postKey
-    let replyTargetNumber = null;  // 表示用レス番号
-    let latestPosts = [];          // 最新のレス配列（親子解決用）
+    let replyTargetId = null;
+    let replyTargetNumber = null;
+    let latestPosts = [];
+
+    // ファイル管理
+    let selectedFiles = [];
+    let currentUploadTasks = [];
+    let isUploading = false;
 
     const threadListView = document.getElementById('threadListView');
     const threadDetailView = document.getElementById('threadDetailView');
     const backToListBtn = document.getElementById('backToListBtn');
+    const siteTitle = document.getElementById('siteTitle');
     const threadsContainer = document.getElementById('threadsContainer');
     const postsContainer = document.getElementById('postsContainer');
     const replyModeBar = document.getElementById('replyModeBar');
     const replyTargetLabel = document.getElementById('replyTargetLabel');
+    const cancelReplyBtn = document.getElementById('cancelReplyBtn');
+    const fileInput = document.getElementById('fileInput');
+    const filePreviewList = document.getElementById('filePreviewList');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
 
     // ============================================================
     // 画面切り替え
     // ============================================================
-    window.showThreadList = function() {
+    function showThreadList() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
       currentThreadKey = null;
       cancelReply();
+      clearSelectedFiles();
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
-    };
+    }
 
     function openThread(threadKey, title, createdAt) {
       currentThreadKey = threadKey;
@@ -285,41 +336,67 @@
       threadDetailView.classList.remove('hidden');
       backToListBtn.classList.remove('hidden');
       cancelReply();
+      clearSelectedFiles();
       loadPosts(threadKey);
     }
 
     // ============================================================
-    // 返信モード管理
+    // 返信モード
     // ============================================================
-    window.startReply = function(postKey, postNumber) {
+    function startReply(postKey, postNumber) {
       replyTargetId = postKey;
       replyTargetNumber = postNumber;
       replyTargetLabel.textContent = '>>' + postNumber;
       replyModeBar.classList.add('active');
-      // ハイライト
       document.querySelectorAll('.post-card').forEach(el => el.classList.remove('reply-target'));
       const target = document.querySelector(`[data-post-key="${postKey}"]`);
       if (target) target.classList.add('reply-target');
-      // フォームへスクロール
-      document.getElementById('postContent').focus();
-      document.getElementById('postContent').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
+      const ta = document.getElementById('postContent');
+      ta.focus();
+      ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-    window.cancelReply = function() {
+    function cancelReply() {
       replyTargetId = null;
       replyTargetNumber = null;
       replyModeBar.classList.remove('active');
       document.querySelectorAll('.post-card').forEach(el => el.classList.remove('reply-target'));
-    };
+    }
 
-    window.jumpToPost = function(postKey) {
+    function jumpToPost(postKey) {
       const el = document.querySelector(`[data-post-key="${postKey}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('highlight-flash');
         setTimeout(() => el.classList.remove('highlight-flash'), 1500);
       }
-    };
+    }
+
+    // ============================================================
+    // イベント委譲（返信ボタン・バッジ）
+    // ============================================================
+    postsContainer.addEventListener('click', (e) => {
+      const replyBtn = e.target.closest('[data-action="reply"]');
+      if (replyBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        startReply(
+          replyBtn.getAttribute('data-post-key'),
+          parseInt(replyBtn.getAttribute('data-post-number'), 10)
+        );
+        return;
+      }
+      const badge = e.target.closest('[data-action="jump"]');
+      if (badge) {
+        e.preventDefault();
+        e.stopPropagation();
+        jumpToPost(badge.getAttribute('data-post-key'));
+      }
+    });
+
+    backToListBtn.addEventListener('click', showThreadList);
+    siteTitle.addEventListener('click', showThreadList);
+    cancelReplyBtn.addEventListener('click', cancelReply);
 
     // ============================================================
     // ユーティリティ
@@ -337,9 +414,195 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    }
+    function isAllowedType(file) {
+      return ALLOWED_PREFIXES.some(p => file.type.startsWith(p));
+    }
+    function sanitizeFileName(name) {
+      const lastDot = name.lastIndexOf('.');
+      const base = lastDot > 0 ? name.substring(0, lastDot) : name;
+      const ext = lastDot > 0 ? name.substring(lastDot) : '';
+      const safeBase = base.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50) || 'file';
+      const safeExt = ext.replace(/[^a-zA-Z0-9.]/g, '').slice(0, 10);
+      return safeBase + safeExt;
+    }
 
     // ============================================================
-    // 1. スレッド作成
+    // ファイル選択 UI
+    // ============================================================
+    fileInput.addEventListener('change', () => {
+      const files = Array.from(fileInput.files);
+      const remaining = MAX_FILES - selectedFiles.length;
+      const toAdd = files.slice(0, remaining);
+
+      if (files.length > remaining) {
+        showBanner(`最大 ${MAX_FILES} ファイルまでです。${remaining} 個だけ追加しました。`, true);
+      }
+
+      for (const file of toAdd) {
+        if (file.size > MAX_FILE_SIZE) {
+          showBanner(`「${file.name}」はサイズが大きすぎます（最大 10MB）`, true);
+          continue;
+        }
+        if (!isAllowedType(file)) {
+          showBanner(`「${file.name}」は対応していない形式です`, true);
+          continue;
+        }
+        if (selectedFiles.some(s => s.file.name === file.name && s.file.size === file.size)) {
+          continue;
+        }
+        const id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        let previewUrl = null;
+        if (file.type.startsWith('image/')) {
+          previewUrl = URL.createObjectURL(file);
+        }
+        selectedFiles.push({ id, file, previewUrl });
+      }
+
+      fileInput.value = '';
+      renderFilePreview();
+    });
+
+    function renderFilePreview() {
+      filePreviewList.innerHTML = '';
+      if (selectedFiles.length === 0) return;
+
+      selectedFiles.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'file-preview-item';
+        el.dataset.fileId = item.id;
+
+        let thumbHtml;
+        if (item.previewUrl) {
+          thumbHtml = `<img src="${item.previewUrl}" class="file-preview-thumb" alt="preview">`;
+        } else if (item.file.type.startsWith('video/')) {
+          thumbHtml = `<div class="file-preview-icon">🎬</div>`;
+        } else if (item.file.type.startsWith('audio/')) {
+          thumbHtml = `<div class="file-preview-icon">🎵</div>`;
+        } else if (item.file.type === 'application/pdf') {
+          thumbHtml = `<div class="file-preview-icon">📄</div>`;
+        } else if (item.file.type.startsWith('text/')) {
+          thumbHtml = `<div class="file-preview-icon">📝</div>`;
+        } else {
+          thumbHtml = `<div class="file-preview-icon">📎</div>`;
+        }
+
+        el.innerHTML = `
+          ${thumbHtml}
+          <div class="file-preview-info">
+            <div class="file-preview-name" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</div>
+            <div class="file-preview-size">${formatSize(item.file.size)}</div>
+          </div>
+          <button type="button" class="file-preview-remove" data-file-id="${item.id}" title="削除">✕</button>
+        `;
+        filePreviewList.appendChild(el);
+      });
+
+      filePreviewList.querySelectorAll('.file-preview-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          removeSelectedFile(e.currentTarget.dataset.fileId);
+        });
+      });
+    }
+
+    function removeSelectedFile(fileId) {
+      const idx = selectedFiles.findIndex(s => s.id === fileId);
+      if (idx >= 0) {
+        if (selectedFiles[idx].previewUrl) URL.revokeObjectURL(selectedFiles[idx].previewUrl);
+        selectedFiles.splice(idx, 1);
+      }
+      renderFilePreview();
+    }
+
+    function clearSelectedFiles() {
+      selectedFiles.forEach(s => { if (s.previewUrl) URL.revokeObjectURL(s.previewUrl); });
+      selectedFiles = [];
+      renderFilePreview();
+      fileInput.value = '';
+    }
+
+    // ============================================================
+    // アップロード（進捗 + リトライ）
+    // ============================================================
+    function uploadFileWithProgress(file, onProgress, maxRetries = 3) {
+      return new Promise((resolve, reject) => {
+        let attempt = 0;
+        const safeName = sanitizeFileName(file.name);
+        const storagePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+        const sRef = storageRef(storage, storagePath);
+
+        const tryUpload = () => {
+          attempt++;
+          const uploadTask = uploadBytesResumable(sRef, file, {
+            contentType: file.type || 'application/octet-stream',
+            customMetadata: {
+              originalName: file.name,
+              uploadedAt: new Date().toISOString()
+            }
+          });
+
+          const taskEntry = { uploadTask, storagePath };
+          currentUploadTasks.push(taskEntry);
+
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              onProgress(pct, snapshot);
+            },
+            (error) => {
+              console.error(`アップロードエラー (試行 ${attempt}/${maxRetries}):`, error);
+              const i = currentUploadTasks.indexOf(taskEntry);
+              if (i >= 0) currentUploadTasks.splice(i, 1);
+              if (attempt < maxRetries) {
+                setTimeout(tryUpload, 1000 * attempt);
+              } else {
+                reject(error);
+              }
+            },
+            async () => {
+              const i = currentUploadTasks.indexOf(taskEntry);
+              if (i >= 0) currentUploadTasks.splice(i, 1);
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve({
+                  url: downloadURL,
+                  name: file.name,
+                  type: file.type || 'application/octet-stream',
+                  size: file.size,
+                  storagePath
+                });
+              } catch (e) {
+                reject(e);
+              }
+            }
+          );
+        };
+        tryUpload();
+      });
+    }
+
+    // キャンセル
+    cancelUploadBtn.addEventListener('click', () => {
+      if (currentUploadTasks.length === 0) return;
+      if (!confirm('アップロードをキャンセルしますか？')) return;
+      currentUploadTasks.forEach(t => {
+        try { t.uploadTask.cancel(); } catch (e) {}
+      });
+      currentUploadTasks = [];
+      isUploading = false;
+      cancelUploadBtn.classList.add('hidden');
+      const sb = document.getElementById('submitBtn');
+      sb.disabled = false;
+      sb.innerText = '書き込む';
+      showBanner('アップロードをキャンセルしました', true);
+    });
+
+    // ============================================================
+    // スレッド作成
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -366,19 +629,18 @@
       try {
         const newThreadRef = push(ref(db, 'threads'));
         const threadKey = newThreadRef.key;
-        const threadData = {
+        const writes = [set(newThreadRef, {
           title: title,
           createdAt: Date.now(),
           postCount: content ? 1 : 0
-        };
-        const writes = [set(newThreadRef, threadData)];
-
+        })];
         if (content) {
           const postRef = push(ref(db, `threads/${threadKey}/posts`));
           writes.push(set(postRef, {
             author: '名無しさん',
             content: content,
             file: null,
+            files: null,
             createdAt: Date.now(),
             parentId: null,
             replyTo: null
@@ -392,7 +654,7 @@
         console.error("スレッド作成エラー:", err);
         const el = document.getElementById('optimistic_thread_' + tempKey);
         if (el) el.remove();
-        showBanner('保存失敗: ' + (err.code || err.message || 'ネットワークエラー'), true);
+        showBanner('保存失敗: ' + (err.code || err.message || ''), true);
       } finally {
         btn.disabled = false;
         btn.innerText = 'スレッドを立てる';
@@ -400,12 +662,11 @@
     });
 
     // ============================================================
-    // 2. スレッド一覧
+    // スレッド一覧
     // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
-      const threadsRef = ref(db, 'threads');
-      const q = query(threadsRef, orderByChild('createdAt'));
+      const q = query(ref(db, 'threads'), orderByChild('createdAt'));
 
       threadsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
@@ -425,7 +686,7 @@
           }
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(thread.key, thread.title, date);
+          item.addEventListener('click', () => openThread(thread.key, thread.title, date));
           item.innerHTML = `
             <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
@@ -443,14 +704,13 @@
     }
 
     // ============================================================
-    // 3. レス読み込み（ツリー構造で表示）
+    // レス読み込み（ツリー）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
-      const postsRef = ref(db, `threads/${threadKey}/posts`);
-      const q = query(postsRef, orderByChild('createdAt'));
+      const q = query(ref(db, `threads/${threadKey}/posts`), orderByChild('createdAt'));
 
       postsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
@@ -462,24 +722,18 @@
           return;
         }
 
-        // フラットな配列に
         const posts = [];
-        snapshot.forEach((child) => {
-          posts.push({ key: child.key, ...child.val() });
-        });
+        snapshot.forEach((child) => posts.push({ key: child.key, ...child.val() }));
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
-        // レス番号を割り当て（表示順 = 時系列順）
         const numberMap = new Map();
         posts.forEach((p, i) => numberMap.set(p.key, i + 1));
 
-        // 各投稿に番号を付与
         posts.forEach(p => {
           p._number = numberMap.get(p.key);
           p._children = [];
         });
 
-        // 親子関係を構築
         const rootPosts = [];
         const keyToPost = new Map(posts.map(p => [p.key, p]));
         posts.forEach(p => {
@@ -491,8 +745,6 @@
         });
 
         latestPosts = posts;
-
-        // 再帰的に描画
         rootPosts.forEach(p => postsContainer.appendChild(renderPost(p)));
       }, (error) => {
         console.error("レス読み込みエラー:", error);
@@ -503,7 +755,7 @@
     }
 
     // ============================================================
-    // レスを1つ描画（子レスがあれば再帰）
+    // レス1件描画（画像・動画・音声・PDF・テキスト対応）
     // ============================================================
     function renderPost(post) {
       const wrapper = document.createElement('div');
@@ -515,15 +767,9 @@
         try { date = new Date(post.createdAt).toLocaleString('ja-JP'); } catch (e) {}
       }
 
-      // 返信先バッジ
       let replyBadge = '';
       if (post.parentId && post.replyTo) {
-        const parentPost = latestPosts.find(p => p.key === post.parentId);
-        if (parentPost) {
-          replyBadge = `<a class="reply-badge" onclick="jumpToPost('${post.parentId}')">>>${post.replyTo}</a>`;
-        } else {
-          replyBadge = `<span class="reply-badge">>>${post.replyTo}</span>`;
-        }
+        replyBadge = `<a class="reply-badge" data-action="jump" data-post-key="${post.parentId}" href="javascript:void(0)">>>${post.replyTo}</a>`;
       }
 
       const card = document.createElement('div');
@@ -542,32 +788,68 @@
           </div>
           <button type="button"
             class="reply-btn text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded transition whitespace-nowrap"
-            onclick="startReply('${post.key}', ${post._number})">
+            data-action="reply"
+            data-post-key="${post.key}"
+            data-post-number="${post._number}">
             ↩ 返信
           </button>
         </div>
         <div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${replyBadge}${formatContent(post.content)}</div>`;
 
-      if (post.file && post.file.url) {
-        const file = post.file;
-        const fileType = file.type || '';
-        const fileName = file.name || '添付ファイル';
-        const fileUrl = file.url;
-        html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
-        if (fileType.startsWith('image/')) {
-          html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer"><img src="${fileUrl}" class="max-h-64 rounded object-contain mb-1 border" alt="添付画像" loading="lazy"></a>`;
-        } else if (fileType.startsWith('video/')) {
-          html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1 border" preload="metadata"><source src="${fileUrl}" type="${fileType}"></video>`;
-        }
-        html += `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer" download class="text-xs text-blue-600 underline break-all flex items-center gap-1">📎 ${escapeHtml(fileName)}</a></div>`;
+      // ============================================================
+      // 添付ファイル表示（単一 file / 複数 files 両対応）
+      // ============================================================
+      const attachments = [];
+      if (post.files && Array.isArray(post.files)) {
+        post.files.forEach(f => attachments.push(f));
+      } else if (post.file && post.file.url) {
+        attachments.push(post.file);
+      }
+
+      if (attachments.length > 0) {
+        html += `<div class="space-y-2 mt-2">`;
+        attachments.forEach((file) => {
+          const ft = file.type || '';
+          const fn = file.name || '添付ファイル';
+          const fu = file.url;
+
+          html += `<div class="attachment-box">`;
+
+          if (ft.startsWith('image/')) {
+            html += `<a href="${fu}" target="_blank" rel="noopener noreferrer">
+              <img src="${fu}" alt="${escapeHtml(fn)}" loading="lazy">
+            </a>`;
+          } else if (ft.startsWith('video/')) {
+            html += `<video controls preload="metadata">
+              <source src="${fu}" type="${ft}">
+              お使いのブラウザは video タグをサポートしていません。
+            </video>`;
+          } else if (ft.startsWith('audio/')) {
+            html += `<div class="text-xs text-gray-600 mb-1">🎵 音声ファイル</div>
+              <audio controls preload="metadata">
+                <source src="${fu}" type="${ft}">
+                お使いのブラウザは audio タグをサポートしていません。
+              </audio>`;
+          } else if (ft === 'application/pdf') {
+            html += `<div class="text-xs text-gray-600 mb-1">📄 PDF ファイル</div>`;
+          } else if (ft.startsWith('text/')) {
+            html += `<div class="text-xs text-gray-600 mb-1">📝 テキストファイル</div>`;
+          } else {
+            html += `<div class="text-xs text-gray-600 mb-1">📎 ファイル</div>`;
+          }
+
+          html += `<a class="attachment-download" href="${fu}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(fn)}">
+            ⬇ ${escapeHtml(fn)}${file.size ? ' (' + formatSize(file.size) + ')' : ''}
+          </a>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
       }
 
       card.innerHTML = html;
       wrapper.appendChild(card);
 
-      // 子レスを再帰的に描画
       if (post._children && post._children.length > 0) {
-        // 子は時系列順
         post._children.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         const childrenContainer = document.createElement('div');
         childrenContainer.className = 'post-children';
@@ -581,26 +863,27 @@
     }
 
     // ============================================================
-    // 4. レス投稿（返信対応）
+    // レス投稿（複数ファイル + 進捗）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
+      if (isUploading) { alert('アップロード中です。しばらくお待ちください。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
 
       if (!content) { alert('コメントを入力してください。'); return; }
 
-      const originalText = submitBtn.innerText;
-      submitBtn.disabled = true;
-      submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
-
-      // 返信先情報を保持（送信後にリセットするため）
       const parentIdForPost = replyTargetId;
       const replyToNumber = replyTargetNumber;
+      const filesToUpload = selectedFiles.map(s => s.file);
+
+      isUploading = true;
+      const originalText = submitBtn.innerText;
+      submitBtn.disabled = true;
+      submitBtn.innerText = filesToUpload.length > 0 ? 'アップロード中...' : '送信中...';
+      if (filesToUpload.length > 0) cancelUploadBtn.classList.remove('hidden');
 
       // 楽観的更新
       const tempId = 'optimistic_post_' + Date.now();
@@ -612,6 +895,33 @@
         optimisticBadge = `<span class="reply-badge">>>${replyToNumber}</span>`;
       }
       const optimisticIndex = latestPosts.length + 1;
+
+      // ファイルごとの進捗バー
+      let filesProgressHtml = '';
+      if (filesToUpload.length > 0) {
+        filesProgressHtml = `<div class="mt-2 space-y-2">`;
+        filesToUpload.forEach((f, i) => {
+          let icon = '📎';
+          if (f.type.startsWith('image/')) icon = '🖼';
+          else if (f.type.startsWith('video/')) icon = '🎬';
+          else if (f.type.startsWith('audio/')) icon = '🎵';
+          else if (f.type === 'application/pdf') icon = '📄';
+          else if (f.type.startsWith('text/')) icon = '📝';
+
+          filesProgressHtml += `
+            <div class="file-preview-item">
+              <div class="file-preview-icon">${icon}</div>
+              <div class="file-preview-info">
+                <div class="file-preview-name">${escapeHtml(f.name)}</div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar-fill" id="prog_${tempId}_${i}" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>`;
+        });
+        filesProgressHtml += `</div>`;
+      }
+
       tempPost.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
           <span class="post-number">${optimisticIndex}</span>
@@ -621,38 +931,37 @@
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
         <div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${optimisticBadge}${formatContent(content)}</div>
-        ${file ? '<div class="text-xs text-gray-400 mt-1">📎 ' + escapeHtml(file.name) + ' (アップロード中...)</div>' : ''}`;
+        ${filesProgressHtml}`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
       document.getElementById('postForm').reset();
-      fileInput.value = '';
       cancelReply();
+      clearSelectedFiles();
 
       try {
-        let fileData = null;
-        if (file) {
-          const MAX_SIZE = 10 * 1024 * 1024;
-          if (file.size > MAX_SIZE) throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const sRef = storageRef(storage, `uploads/${Date.now()}_${safeName}`);
-          const snapshot = await uploadBytes(sRef, file);
-          const downloadURL = await getDownloadURL(snapshot.ref);
-          fileData = { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
+        let uploadedFiles = [];
+        if (filesToUpload.length > 0) {
+          const uploadPromises = filesToUpload.map((file, i) =>
+            uploadFileWithProgress(file, (pct) => {
+              const el = document.getElementById(`prog_${tempId}_${i}`);
+              if (el) el.style.width = pct.toFixed(1) + '%';
+            })
+          );
+          uploadedFiles = await Promise.all(uploadPromises);
         }
 
-        // レスを push（parentId, replyTo 付き）
         const newPostRef = push(ref(db, `threads/${currentThreadKey}/posts`));
         await set(newPostRef, {
           author: '名無しさん',
           content: content,
-          file: fileData,
+          file: uploadedFiles[0] || null, // 後方互換
+          files: uploadedFiles.length > 0 ? uploadedFiles : null,
           createdAt: Date.now(),
           parentId: parentIdForPost || null,
           replyTo: replyToNumber || null
         });
 
-        // postCount をインクリメント
         const threadRef = ref(db, `threads/${currentThreadKey}`);
         const countSnapshot = await new Promise((resolve) => {
           onValue(threadRef, resolve, { onlyOnce: true });
@@ -660,7 +969,7 @@
         const currentCount = (countSnapshot.val() && countSnapshot.val().postCount) || 0;
         await update(threadRef, { postCount: currentCount + 1 });
 
-        showBanner('書き込みを保存しました', false);
+        showBanner(`${uploadedFiles.length > 0 ? uploadedFiles.length + '件のファイルを' : ''}保存しました`, false);
         const el = document.getElementById(tempId);
         if (el) el.remove();
       } catch (error) {
@@ -670,6 +979,9 @@
         showBanner('保存失敗: ' + (error.code || error.message || ''), true);
         alert(`書き込みに失敗しました: ${error.message || '不明なエラー'}`);
       } finally {
+        isUploading = false;
+        currentUploadTasks = [];
+        cancelUploadBtn.classList.add('hidden');
         submitBtn.disabled = false;
         submitBtn.innerText = originalText;
       }
@@ -683,6 +995,7 @@
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
+      selectedFiles.forEach(s => { if (s.previewUrl) URL.revokeObjectURL(s.previewUrl); });
     });
 
     window.addEventListener('unhandledrejection', (event) => {
