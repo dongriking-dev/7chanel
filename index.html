@@ -29,12 +29,6 @@
       background: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecaca;
     }
     .optimistic-post { opacity: 0.6; border-left: 3px solid #f59e0b !important; }
-    .deleting-item { opacity: 0.4; pointer-events: none; position: relative; }
-    .deleting-item::after {
-      content: "削除中..."; position: absolute; right: 12px; top: 50%;
-      transform: translateY(-50%); font-size: 10px; color: #991b1b;
-      background: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecaca;
-    }
     #statusBanner {
       position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
       text-align: center; padding: 6px; font-size: 12px;
@@ -124,7 +118,6 @@
       push,
       set,
       update,
-      remove,
       onValue,
       off,
       serverTimestamp,
@@ -136,8 +129,7 @@
       getStorage,
       ref as storageRef,
       uploadBytes,
-      getDownloadURL,
-      deleteObject
+      getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     // ============================================================
@@ -147,6 +139,7 @@
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
       projectId: "chaneler-52b95",
+      // ★ Realtime Database URL（ご提示のもの）
       databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
@@ -195,7 +188,7 @@
     // グローバル
     // ============================================================
     let currentThreadId = null;
-    let currentThreadKey = null;
+    let currentThreadKey = null; // RTDB のキー
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
 
@@ -250,6 +243,11 @@
 
     // ============================================================
     // 1. スレッド作成（Realtime Database 用）
+    //    構造:
+    //      /threads/{threadKey}/title
+    //      /threads/{threadKey}/createdAt
+    //      /threads/{threadKey}/postCount
+    //      /threads/{threadKey}/posts/{postKey}/...
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -262,6 +260,7 @@
       btn.disabled = true;
       btn.innerText = '作成中...';
 
+      // 楽観的更新：先に仮要素を挿入
       const tempKey = 'temp_' + Date.now();
       const tempItem = document.createElement('div');
       tempItem.id = 'optimistic_thread_' + tempKey;
@@ -276,16 +275,19 @@
       document.getElementById('createThreadForm').reset();
 
       try {
+        // スレッドキーを生成
         const threadsRef = ref(db, 'threads');
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
+        // スレッド本体
         const threadData = {
           title: title,
-          createdAt: Date.now(),
+          createdAt: Date.now(), // クライアント時刻（RTDBはserverTimestampが使えないため）
           postCount: content ? 1 : 0
         };
 
+        // 書き込み（並列）
         const writes = [set(newThreadRef, threadData)];
 
         if (content) {
@@ -301,6 +303,7 @@
         await Promise.all(writes);
 
         showBanner('スレッドを保存しました', false);
+        // onValue が本物を描画したら仮要素は削除される
         const tempEl = document.getElementById('optimistic_thread_' + tempKey);
         if (tempEl) tempEl.remove();
       } catch (err) {
@@ -316,73 +319,7 @@
     });
 
     // ============================================================
-    // 2. スレッド削除
-    // ============================================================
-    async function deleteThread(threadKey, threadTitle, itemEl) {
-      if (!confirm(`スレッド「${threadTitle}」を削除しますか？\n\nこのスレッド内のすべてのレスも削除されます。この操作は取り消せません。`)) {
-        return;
-      }
-
-      // 楽観的更新：削除中表示
-      itemEl.classList.add('deleting-item');
-
-      try {
-        // まずスレッド内のレスを取得して、添付ファイルを Storage から削除
-        const postsRef = ref(db, `threads/${threadKey}/posts`);
-        const snapshot = await new Promise((resolve, reject) => {
-          onValue(postsRef, resolve, (err) => reject(err), { onlyOnce: true });
-        });
-
-        const deletePromises = [];
-        if (snapshot.exists()) {
-          snapshot.forEach((child) => {
-            const post = child.val();
-            if (post.file && post.file.url) {
-              // Storage の URL からファイルパスを逆算して削除を試みる
-              // URL 形式: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encodedPath}?alt=media&token=...
-              try {
-                const urlObj = new URL(post.file.url);
-                const pathMatch = urlObj.pathname.match(/\/o\/(.+)/);
-                if (pathMatch) {
-                  const decodedPath = decodeURIComponent(pathMatch[1]);
-                  const fileRef = storageRef(storage, decodedPath);
-                  deletePromises.push(
-                    deleteObject(fileRef).catch((e) => {
-                      console.warn('添付ファイルの削除に失敗（無視）:', e);
-                    })
-                  );
-                }
-              } catch (e) {
-                console.warn('URL 解析失敗:', e);
-              }
-            }
-          });
-        }
-
-        // スレッド本体を削除（posts も含めて一括削除）
-        await remove(ref(db, `threads/${threadKey}`));
-
-        // 添付ファイルの削除はバックグラウンドで実行
-        if (deletePromises.length > 0) {
-          Promise.allSettled(deletePromises);
-        }
-
-        showBanner('スレッドを削除しました', false);
-
-        // 削除したスレッドを開いていた場合は一覧に戻る
-        if (currentThreadKey === threadKey) {
-          showThreadList();
-        }
-      } catch (err) {
-        console.error("スレッド削除エラー:", err);
-        itemEl.classList.remove('deleting-item');
-        showBanner('削除失敗: ' + (err.code || err.message || ''), true);
-        alert(`スレッドの削除に失敗しました: ${err.message || '不明なエラー'}`);
-      }
-    }
-
-    // ============================================================
-    // 3. スレッド一覧 リアルタイム監視
+    // 2. スレッド一覧 リアルタイム監視
     // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
@@ -399,6 +336,7 @@
           return;
         }
 
+        // 新しい順に並べ替え
         const threads = [];
         snapshot.forEach((child) => {
           threads.push({ key: child.key, ...child.val() });
@@ -413,30 +351,14 @@
           }
 
           const item = document.createElement('div');
-          item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 transition flex justify-between items-center shadow-sm';
+          item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
+          item.onclick = () => openThread(thread.key, thread.title, date);
           item.innerHTML = `
-            <div class="flex-1 min-w-0 cursor-pointer" data-action="open">
+            <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
               <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
             </div>
-            <div class="flex items-center gap-2 ml-2 shrink-0">
-              <button data-action="open" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-full transition whitespace-nowrap">開く</button>
-              <button data-action="delete" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded-full transition whitespace-nowrap">削除</button>
-            </div>`;
-
-          // イベント委譲
-          item.addEventListener('click', (e) => {
-            const target = e.target.closest('[data-action]');
-            if (!target) return;
-            const action = target.getAttribute('data-action');
-            if (action === 'open') {
-              openThread(thread.key, thread.title, date);
-            } else if (action === 'delete') {
-              e.stopPropagation();
-              deleteThread(thread.key, thread.title, item);
-            }
-          });
-
+            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
           threadsContainer.appendChild(item);
         });
       }, (error) => {
@@ -450,7 +372,7 @@
     }
 
     // ============================================================
-    // 4. レス読み込み（リアルタイム）
+    // 3. レス読み込み（リアルタイム）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
@@ -468,6 +390,7 @@
           return;
         }
 
+        // 古い順に並べ替え
         const posts = [];
         snapshot.forEach((child) => {
           posts.push({ key: child.key, ...child.val() });
@@ -521,7 +444,7 @@
     }
 
     // ============================================================
-    // 5. レス投稿（Realtime Database）
+    // 4. レス投稿（Realtime Database）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -538,6 +461,7 @@
       submitBtn.disabled = true;
       submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
 
+      // 楽観的更新
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
@@ -572,6 +496,7 @@
           fileData = { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
         }
 
+        // レスを push
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
         await set(newPostRef, {
@@ -581,6 +506,7 @@
           createdAt: Date.now()
         });
 
+        // postCount をインクリメント
         const threadRef = ref(db, `threads/${currentThreadKey}`);
         const countSnapshot = await new Promise((resolve) => {
           onValue(threadRef, resolve, { onlyOnce: true });
