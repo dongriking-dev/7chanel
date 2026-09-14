@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>匿名掲示板 (2ch風)</title>
-  <!-- デザイン用のTailwind CSS -->
+  <title>7ch</title>
+  <!-- TailWind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Firebase SDK (v10 modular/compat) -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -15,45 +14,75 @@
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
   <!-- ヘッダー -->
-  <header class="border-b-2 border-red-800 pb-2 mb-4">
-    <h1 class="text-3xl font-bold text-red-900">2ch風 匿名掲示板</h1>
-    <p class="text-sm text-gray-600">画像・動画・ファイル・自動URLリンク対応</p>
+  <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
+      <p class="text-sm text-gray-600">全データ クラウド永続保存対応</p>
+    </div>
+    <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded">
+      ← スレッド一覧に戻る
+    </button>
   </header>
 
-  <!-- 投稿フォーム -->
-  <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
-    <h2 class="text-lg font-bold text-gray-700 mb-2">新規書き込み</h2>
-    <form id="postForm" class="space-y-3">
-      
-      <!-- 本文入力欄 -->
-      <div>
-        <textarea id="content" rows="4" placeholder="コメントを入力してください（必須）。URLを入れると自動でリンクになります。" class="w-full border p-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-red-800" required></textarea>
-      </div>
-
-      <!-- ファイル添付と送信ボタン -->
-      <div class="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他):</label>
-          <input type="file" id="fileInput" class="text-xs text-gray-600">
-        </div>
-        <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition">
-          書き込む
+  <!-- ================= View 1: スレッド一覧画面 ================= -->
+  <div id="threadListView">
+    <!-- 新規スレッド作成フォーム -->
+    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+      <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
+      <form id="createThreadForm" class="space-y-3">
+        <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" class="w-full border p-2 rounded text-sm" required>
+        <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" class="w-full border p-2 rounded text-sm"></textarea>
+        <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition">
+          スレッドを立てる
         </button>
+      </form>
+    </section>
+
+    <!-- スレッド一覧 -->
+    <main>
+      <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
+      <div id="threadsContainer" class="space-y-2">
+        <p class="text-gray-500 text-sm">スレッドを読み込み中...</p>
       </div>
-    </form>
-  </section>
+    </main>
+  </div>
 
-  <!-- 投稿一覧表示エリア -->
-  <main>
-    <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
-    <div id="postsContainer" class="space-y-4">
-      <p class="text-gray-500 text-sm">読み込み中...</p>
+  <!-- ================= View 2: スレッド詳細（書き込み）画面 ================= -->
+  <div id="threadDetailView" class="hidden">
+    <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm">
+      <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1"></h2>
+      <p id="currentThreadDate" class="text-xs text-gray-500"></p>
     </div>
-  </main>
 
-  <!-- JavaScript (Firebase連携ロジック) -->
+    <!-- 返信投稿フォーム -->
+    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+      <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
+      <form id="postForm" class="space-y-3">
+        <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" class="w-full border p-2 rounded text-sm" required></textarea>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">添付ファイル (画像/動画/その他):</label>
+            <input type="file" id="fileInput" class="text-xs text-gray-600">
+          </div>
+          <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition">
+            書き込む
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- レス一覧 -->
+    <main>
+      <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
+      <div id="postsContainer" class="space-y-4">
+        <p class="text-gray-500 text-sm">読み込み中...</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- JavaScript ロジック -->
   <script>
-    // 1. Firebaseの設定（提供された情報をそのまま埋め込んでいます）
+    // 1. Firebase設定
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
@@ -64,141 +93,213 @@
       measurementId: "G-QF3LDMNQYQ"
     };
 
-    // Firebaseの初期化
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // DOM要素の取得
-    const postForm = document.getElementById('postForm');
-    const postsContainer = document.getElementById('postsContainer');
-    const submitBtn = document.getElementById('submitBtn');
+    let currentThreadId = null;
+    let postsUnsubscribe = null;
 
-    // 2. 投稿処理
-    postForm.addEventListener('submit', async (e) => {
+    // DOM Elements
+    const threadListView = document.getElementById('threadListView');
+    const threadDetailView = document.getElementById('threadDetailView');
+    const backToListBtn = document.getElementById('backToListBtn');
+    const threadsContainer = document.getElementById('threadsContainer');
+    const postsContainer = document.getElementById('postsContainer');
+
+    // 画面切り替え: スレッド一覧を表示
+    function showThreadList() {
+      threadListView.classList.remove('hidden');
+      threadDetailView.classList.add('hidden');
+      backToListBtn.classList.add('hidden');
+      currentThreadId = null;
+      if (postsUnsubscribe) postsUnsubscribe(); // リアルタイム監視解除
+    }
+
+    // 画面切り替え: スレッド詳細を表示
+    function openThread(threadId, title, createdAt) {
+      currentThreadId = threadId;
+      document.getElementById('currentThreadTitle').innerText = title;
+      document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
+
+      threadListView.classList.add('hidden');
+      threadDetailView.classList.remove('hidden');
+      backToListBtn.classList.remove('hidden');
+
+      loadPosts(threadId);
+    }
+
+    // 2. スレッド作成処理
+    document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      const content = document.getElementById('content').value.trim();
+      const title = document.getElementById('threadTitle').value.trim();
+      const content = document.getElementById('firstPostContent').value.trim();
+      const btn = document.getElementById('createThreadBtn');
+
+      if (!title) return;
+
+      btn.disabled = true;
+      btn.innerText = '作成中...';
+
+      try {
+        // スレッドドキュメントを作成
+        const threadRef = await db.collection('threads').add({
+          title: title,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          postCount: content ? 1 : 0
+        });
+
+        // 最初の書き込みがあれば追加
+        if (content) {
+          await db.collection('threads').doc(threadRef.id).collection('posts').add({
+            author: '名無しさん',
+            content: content,
+            file: null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+        document.getElementById('createThreadForm').reset();
+      } catch (err) {
+        console.error("スレッド作成エラー:", err);
+        alert("スレッドの作成に失敗しました。");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'スレッドを立てる';
+      }
+    });
+
+    // 3. スレッド一覧のリアルタイム読み込み
+    db.collection('threads').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+      threadsContainer.innerHTML = '';
+
+      if (snapshot.empty) {
+        threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
+        return;
+      }
+
+      snapshot.forEach((doc) => {
+        const thread = doc.data();
+        const date = thread.createdAt ? new Date(thread.createdAt.toDate()).toLocaleString('ja-JP') : '作成中...';
+
+        const item = document.createElement('div');
+        item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center';
+        item.onclick = () => openThread(doc.id, thread.title, date);
+
+        item.innerHTML = `
+          <div>
+            <span class="font-bold text-blue-900">${escapeHtml(thread.title)}</span>
+            <span class="text-xs text-gray-400 ml-2">(${date})</span>
+          </div>
+          <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">開く</span>
+        `;
+        threadsContainer.appendChild(item);
+      });
+    });
+
+    // 4. 特定スレッド内の書き込み（レス）読み込み
+    function loadPosts(threadId) {
+      postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
+
+      if (postsUnsubscribe) postsUnsubscribe();
+
+      postsUnsubscribe = db.collection('threads').doc(threadId).collection('posts')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot((snapshot) => {
+          postsContainer.innerHTML = '';
+
+          if (snapshot.empty) {
+            postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
+            return;
+          }
+
+          let index = 1;
+          snapshot.forEach((doc) => {
+            const post = doc.data();
+            const date = post.createdAt ? new Date(post.createdAt.toDate()).toLocaleString('ja-JP') : '送信中...';
+
+            const postDiv = document.createElement('div');
+            postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
+
+            let html = `
+              <div class="font-bold text-gray-700 mb-1">
+                <span class="text-red-800">${index}</span> ：
+                <span class="text-green-700">名無しさん</span>：
+                <span class="text-gray-500 text-xs font-normal">${date}</span>
+              </div>
+              <div class="text-gray-900 whitespace-pre-wrap mb-2">${formatContent(post.content)}</div>
+            `;
+
+            if (post.file) {
+              const file = post.file;
+              html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
+              if (file.type.startsWith('image/')) {
+                html += `<a href="${file.url}" target="_blank"><img src="${file.url}" class="max-h-64 rounded object-contain mb-1"></a>`;
+              } else if (file.type.startsWith('video/')) {
+                html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1"><source src="${file.url}" type="${file.type}"></video>`;
+              }
+              html += `<a href="${file.url}" target="_blank" download class="text-xs text-blue-600 underline">📎 ${escapeHtml(file.name)}</a></div>`;
+            }
+
+            postDiv.innerHTML = html;
+            postsContainer.appendChild(postDiv);
+            index++;
+          });
+        });
+    }
+
+    // 5. 返信（レス）書き込み処理
+    document.getElementById('postForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentThreadId) return;
+
+      const content = document.getElementById('postContent').value.trim();
       const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
+      const submitBtn = document.getElementById('submitBtn');
 
       if (!content) return;
 
-      // 連投防止のためにボタンを無効化
       submitBtn.disabled = true;
       submitBtn.innerText = '送信中...';
 
       try {
         let fileData = null;
-
-        // ファイルが選択されている場合、Firebase Storageにアップロード
         if (file) {
           const storageRef = storage.ref(`uploads/${Date.now()}_${file.name}`);
           const snapshot = await storageRef.put(file);
           const downloadURL = await snapshot.ref.getDownloadURL();
-          
-          fileData = {
-            url: downloadURL,
-            name: file.name,
-            type: file.type
-          };
+          fileData = { url: downloadURL, name: file.name, type: file.type };
         }
 
-        // Firestoreに投稿データを保存（名前は「名無しさん」固定）
-        await db.collection('posts').add({
+        await db.collection('threads').doc(currentThreadId).collection('posts').add({
           author: '名無しさん',
           content: content,
           file: fileData,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // フォームのリセット
-        postForm.reset();
+        document.getElementById('postForm').reset();
       } catch (error) {
         console.error("投稿エラー:", error);
-        alert("投稿に失敗しました。Cloud FirestoreやStorageのセキュリティルール（書き込み許可）を確認してください。");
+        alert("書き込みに失敗しました。");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = '書き込む';
       }
     });
 
-    // 3. リアルタイム投稿取得と画面表示
-    db.collection('posts').orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
-      postsContainer.innerHTML = ''; 
-
-      if (snapshot.empty) {
-        postsContainer.innerHTML = '<p class="text-gray-500 text-sm">投稿がまだありません。</p>';
-        return;
-      }
-
-      let index = 1;
-      snapshot.forEach((doc) => {
-        const post = doc.data();
-        const date = post.createdAt ? new Date(post.createdAt.toDate()).toLocaleString('ja-JP') : '送信中...';
-
-        // 投稿表示用の枠組み作成
-        const postDiv = document.createElement('div');
-        postDiv.className = 'bg-white p-3 border border-gray-300 rounded text-sm shadow-sm';
-
-        // ヘッダー部（番号・「名無しさん」・日時）と本文
-        let html = `
-          <div class="font-bold text-gray-700 mb-1">
-            <span class="text-red-800">${index}</span> ：
-            <span class="text-green-700">名無しさん</span>：
-            <span class="text-gray-500 text-xs font-normal">${date}</span>
-          </div>
-          <div class="text-gray-900 whitespace-pre-wrap mb-2">${formatContent(post.content)}</div>
-        `;
-
-        // 添付ファイルの描画（画像・動画・その他ファイル）
-        if (post.file) {
-          const file = post.file;
-          html += `<div class="mt-2 p-2 border border-gray-200 bg-gray-50 rounded">`;
-          
-          if (file.type.startsWith('image/')) {
-            // 画像
-            html += `<a href="${file.url}" target="_blank"><img src="${file.url}" class="max-h-64 rounded object-contain mb-1" alt="添付画像"></a>`;
-          } else if (file.type.startsWith('video/')) {
-            // 動画
-            html += `<video controls class="max-h-64 rounded w-full max-w-md mb-1"><source src="${file.url}" type="${file.type}">動画を再生できません。</video>`;
-          }
-          
-          // ダウンロードリンク
-          html += `
-            <a href="${file.url}" target="_blank" download class="text-xs text-blue-600 underline flex items-center gap-1">
-              📎 添付ファイル: ${escapeHtml(file.name)}
-            </a>
-          </div>`;
-        }
-
-        postDiv.innerHTML = html;
-        postsContainer.appendChild(postDiv);
-        index++;
-      });
-    });
-
-    // HTMLエスケープ＆URLの自動リンク化処理
+    // ユーティリティ: XSS対策 & URLリンク化
     function formatContent(str) {
       if (!str) return '';
-      // 1. エスケープ処理（XSS対策）
       let escaped = escapeHtml(str);
-      
-      // 2. 本文内のURLを検出してクリック可能なリンク（<a>タグ）に自動置換
       const urlRegex = /(https?:\/\/[^\s]+)/g;
-      return escaped.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`;
-      });
+      return escaped.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`);
     }
 
-    // XSS対策のエスケープ関数
     function escapeHtml(str) {
       if (!str) return '';
-      return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
   </script>
 </body>
