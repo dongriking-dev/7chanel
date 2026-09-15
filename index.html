@@ -44,7 +44,6 @@
     .delete-btn:hover { background: #b91c1c; }
     .delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
 
-    /* ★ 返信機能用のスタイル */
     .reply-btn {
       background: #2563eb; color: #fff; font-size: 11px; padding: 3px 10px;
       border-radius: 4px; cursor: pointer; border: none;
@@ -62,7 +61,6 @@
       padding: 12px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
-    /* ネスト（入れ子）用：左に縦線を引く */
     .post-children {
       margin-left: 20px;
       padding-left: 12px;
@@ -137,7 +135,7 @@
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
         <p class="text-sm text-gray-600">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
@@ -201,7 +199,6 @@
 
       <main>
         <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
-        <!-- ★ 返信ツリーを描画するコンテナ -->
         <div id="postsContainer" class="post-tree">
           <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
         </div>
@@ -214,10 +211,9 @@
     // Firebase SDK
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getDatabase, ref, push, set, remove, onValue, off,
-      query, orderByChild, get
+      getDatabase, ref, push, set, remove, onValue,
+      query, orderByChild, limitToLast
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
@@ -233,12 +229,10 @@
       databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
-      appId: "1:538510918184:web:58232aa80922ff00b92b1d",
-      measurementId: "G-QF3LDMNQYQ"
+      appId: "1:538510918184:web:58232aa80922ff00b92b1d"
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const db = getDatabase(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
@@ -257,12 +251,14 @@
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
 
-    // ★ 現在開いている返信ボックスの親ID（null なら閉じている）
     let activeReplyParentId = null;
-    // ★ スレッド内の全レスを保持（番号付け・返信時に参照）
     let allPostsCache = [];
-    // ★ レス番号マップ： postKey -> 表示番号
     let postNumberMap = new Map();
+    // ★ DOM参照キャッシュ（querySelector 全走査の排除）
+    let postElementMap = new Map();
+
+    // ★ レス取得件数の上限（Chromebook負荷対策）
+    const POST_FETCH_LIMIT = 200;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -323,8 +319,8 @@
       mainView.classList.remove('hidden');
     }
     function showLoginView() {
-      loginView.classList.add('hidden');
-      mainView.classList.remove('hidden');
+      loginView.classList.remove('hidden');
+      mainView.classList.add('hidden');
     }
 
     // ============================================================
@@ -386,6 +382,10 @@
       currentThreadKey = null;
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
+      // キャッシュもクリア
+      postElementMap = new Map();
+      allPostsCache = [];
+      postNumberMap = new Map();
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
     };
 
@@ -465,7 +465,7 @@
             createdAt: Date.now(),
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
-            parentId: null   // ★ トップレベル
+            parentId: null
           }));
         }
 
@@ -509,6 +509,7 @@
         });
         threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
+        const frag = document.createDocumentFragment();
         threads.forEach((thread) => {
           let date = '日時不明';
           if (thread.createdAt) {
@@ -525,8 +526,9 @@
               <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
             </div>
             <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
-          threadsContainer.appendChild(item);
+          frag.appendChild(item);
         });
+        threadsContainer.appendChild(frag);
       }, (error) => {
         console.error("スレッド一覧の取得エラー:", error);
         setConnection(false);
@@ -538,18 +540,25 @@
     }
 
     // ============================================================
-    // ★ 3. レス読み込み（ツリー構築に変更）
+    // 3. レス読み込み（ツリー構築・最適化版）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
+      // キャッシュ初期化
+      postElementMap = new Map();
+
       const postsRef = ref(db, `threads/${threadKey}/posts`);
-      const q = query(postsRef, orderByChild('createdAt'));
+      // ★ 最新 POST_FETCH_LIMIT 件のみ取得（負荷軽減）
+      const q = query(postsRef, orderByChild('createdAt'), limitToLast(POST_FETCH_LIMIT));
 
       postsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
+
+        // ★ 残存 optimistic 要素を掃除してから再構築
         postsContainer.innerHTML = '';
+        postElementMap = new Map();
 
         if (!snapshot.exists()) {
           allPostsCache = [];
@@ -564,24 +573,22 @@
           posts.push({ key: child.key, ...child.val() });
         });
 
-        // 時系列順（古い→新しい）
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         allPostsCache = posts;
 
-        // --- 通し番号を付与（すべてのレスに 1,2,3... と振る） ---
+        // --- 通し番号を付与 ---
         postNumberMap = new Map();
         posts.forEach((p, i) => {
           postNumberMap.set(p.key, i + 1);
         });
 
         // --- 親子関係を構築 ---
-        const childrenMap = new Map(); // parentId -> 子レス配列
-        const rootPosts = [];          // parentId が null or 存在しない親を指すもの
+        const childrenMap = new Map();
+        const rootPosts = [];
         const keySet = new Set(posts.map(p => p.key));
 
         posts.forEach((p) => {
           let pid = p.parentId || null;
-          // 親が既に削除されている場合はトップレベル扱い
           if (pid && !keySet.has(pid)) pid = null;
 
           if (pid === null) {
@@ -599,7 +606,7 @@
         });
         postsContainer.appendChild(frag);
 
-        // もし activeReplyParentId がまだ生きているなら、その返信ボックスを再展開
+        // 返信ボックスの再展開
         if (activeReplyParentId && keySet.has(activeReplyParentId)) {
           openReplyBox(activeReplyParentId);
         } else {
@@ -618,6 +625,8 @@
       const wrap = document.createElement('div');
       wrap.className = 'post-tree';
       wrap.dataset.postKey = post.key;
+      // ★ DOM参照キャッシュに登録
+      postElementMap.set(post.key, wrap);
 
       const number = postNumberMap.get(post.key) || '?';
       let date = '送信中...';
@@ -631,11 +640,10 @@
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
       }
 
-      // ★ 返信先ラベル（親がいる場合、その番号を表示）
       let replyLabel = '';
       if (post.parentId && postNumberMap.has(post.parentId)) {
         const parentNum = postNumberMap.get(post.parentId);
-        replyLabel = `<span class="reply-target-label">↩ >>${parentNum}</span>`;
+        replyLabel = `<span class="reply-target-label">↩ &gt;&gt;${parentNum}</span>`;
       }
 
       const postDiv = document.createElement('div');
@@ -657,12 +665,10 @@
         ${replyLabel ? `<div class="mt-1">${replyLabel}</div>` : ''}
       `;
 
-      // 返信ボタン
       const rbtn = postDiv.querySelector('.reply-btn');
       if (rbtn) {
         rbtn.addEventListener('click', () => onReplyClick(post.key));
       }
-      // 削除ボタン（管理者）
       if (isAdmin) {
         const dbtn = postDiv.querySelector('.delete-btn');
         if (dbtn) {
@@ -672,7 +678,6 @@
 
       wrap.appendChild(postDiv);
 
-      // 子レス
       const children = childrenMap.get(post.key) || [];
       if (children.length > 0) {
         const childWrap = document.createElement('div');
@@ -686,10 +691,9 @@
       return wrap;
     }
 
-    // ★ 返信ボタンが押された時
+    // ★ 返信ボタン
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
-      // 同じ親なら閉じる（トグル）
       if (activeReplyParentId === parentId) {
         closeReplyBox();
         return;
@@ -698,24 +702,23 @@
       openReplyBox(parentId);
     }
 
-    // ★ 指定したレスの直下に返信入力ボックスを開く
+    // ★ 返信ボックスを開く（Map参照で高速化）
     function openReplyBox(parentId) {
-      // 既存の返信ボックスをすべて除去
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
 
-      const targetWrap = postsContainer.querySelector(`.post-tree[data-post-key="${parentId}"]`);
+      // ★ querySelector ではなく Map 参照
+      const targetWrap = postElementMap.get(parentId);
       if (!targetWrap) return;
 
       const targetCard = targetWrap.querySelector('.post-card');
       if (!targetCard) return;
 
-      // 親の番号
       const parentNum = postNumberMap.get(parentId) || '?';
 
       const box = document.createElement('div');
       box.className = 'inline-reply-box';
       box.innerHTML = `
-        <div class="reply-target-label">>>${parentNum} への返信</div>
+        <div class="reply-target-label">&gt;&gt;${parentNum} への返信</div>
         <textarea class="reply-textarea" placeholder="返信を入力（最大2000文字）" maxlength="2000"></textarea>
         <div class="flex justify-end gap-2 mt-2">
           <button class="reply-cancel-btn">キャンセル</button>
@@ -723,7 +726,6 @@
         </div>
       `;
 
-      // カードの直後（子レス群の手前）に挿入
       targetCard.insertAdjacentElement('afterend', box);
 
       const ta = box.querySelector('.reply-textarea');
@@ -750,7 +752,6 @@
         }
       });
 
-      // Ctrl+Enter でも送信
       ta.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           sendBtn.click();
@@ -778,7 +779,7 @@
         createdAt: Date.now(),
         authorEmail: currentUser.email,
         authorUid: currentUser.uid,
-        parentId: parentId  // ★ 親レスを指定
+        parentId: parentId
       });
       showBanner('返信を保存しました', false);
     }
@@ -828,7 +829,7 @@
           createdAt: Date.now(),
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
-          parentId: null   // ★ トップレベル
+          parentId: null
         });
 
         showBanner('書き込みを保存しました', false);
@@ -852,7 +853,6 @@
     window.deletePost = async function(threadKey, postKey, index) {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
 
-      // 子レスがあるかチェック
       const hasChildren = allPostsCache.some(p => p.parentId === postKey);
       const msg = hasChildren
         ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。\nこの操作は取り消せません。`
@@ -860,7 +860,6 @@
       if (!confirm(msg)) return;
 
       try {
-        // ★ 子レスも再帰的に削除
         const toDelete = collectDescendants(postKey);
         toDelete.push(postKey);
 
@@ -876,7 +875,6 @@
       }
     };
 
-    // ★ 子孫レスを全部集める
     function collectDescendants(parentKey) {
       const result = [];
       const stack = [parentKey];
