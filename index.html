@@ -86,10 +86,12 @@
       background: #991b1b; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
+    /* ★ 保護マークは使用しない（CSSは残しても害はないがコメント化）
     .protected-mark {
       background: #059669; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
+    */
     .reply-cancel-btn {
       background: #6b7280; color: #fff; font-size: 11px; padding: 3px 10px;
       border-radius: 4px; cursor: pointer; border: none;
@@ -331,7 +333,9 @@
     .user-row .role-tag.vip   { background: #7c3aed; }
     .user-row .role-tag.none  { background: #6b7280; }
     .user-row .role-tag.banned { background: #991b1b; }
+    /* ★ .role-tag.protected は使用しない
     .user-row .role-tag.protected { background: #059669; }
+    */
     .user-row .action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
     .user-row .btn-mini {
       font-size: 10px; padding: 3px 8px; border-radius: 4px;
@@ -677,7 +681,6 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- ★ ユーザー一覧を adminControls の中に移動 -->
         <div id="adminControls" class="hidden flex gap-2 flex-wrap">
           <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
@@ -1484,7 +1487,6 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
-      // ★ 管理者・主のみ管理ボタン群（ユーザー一覧含む）を表示
       if (canBackup()) {
         adminControls.classList.remove('hidden');
       } else {
@@ -1854,8 +1856,10 @@
 
       const isBanned = isPostBanned(post);
       const bannedMark = isBanned ? `<span class="banned-mark">BAN中</span>` : '';
+
+      // ★ 保護マークは表示しない（BAN不可判定には使うが、見た目には出さない）
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
-      const protectedMark = isProtected ? `<span class="protected-mark">保護</span>` : '';
+      const protectedMark = '';
 
       let adminInfo = '';
       if (canViewEmail()) {
@@ -2170,7 +2174,6 @@
     const userCountLabel = document.getElementById('userCountLabel');
     const userShowOnlyNotBanned = document.getElementById('userShowOnlyNotBanned');
 
-    // ★ 管理者・主のみ閲覧可能に戻す
     window.openUserModal = function() {
       if (!canBan()) { alert('ユーザー一覧の閲覧権限がありません。'); return; }
       userModal.classList.remove('hidden');
@@ -2245,7 +2248,7 @@
         else if (u.role === 'owner') roleTag = '<span class="role-tag owner">主</span>';
         else if (u.role === 'vip') roleTag = '<span class="role-tag vip">VIP</span>';
         if (isBanned) roleTag += ' <span class="role-tag banned">BAN中</span>';
-        if (isProtected) roleTag += ' <span class="role-tag protected">保護</span>';
+        // ★ 保護タグは表示しない
 
         const row = document.createElement('div');
         row.className = 'user-row';
