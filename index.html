@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>69ch</title>
+  <title>69ちゃんねる</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -29,7 +29,7 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
-    /* 4種類のバッジ */
+    /* バッジ類 */
     .admin-badge {
       background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 6px;
@@ -46,6 +46,15 @@
       background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
+    /* ★ 投稿に付くロールバッジ */
+    .role-post-badge {
+      color: #fff; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 4px; font-weight: 700;
+    }
+    .role-post-badge.admin { background: #7c2d12; }
+    .role-post-badge.owner { background: #1e40af; }
+    .role-post-badge.vip   { background: #7c3aed; }
+
     .admin-email {
       background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
       border-radius: 4px; font-family: monospace;
@@ -165,7 +174,7 @@
     .preview-box.show { display: block; }
     .preview-box img { max-height: 160px; border-radius: 4px; }
     .preview-info { font-size: 11px; color: #64748b; margin-top: 4px; }
-    /* ★ バッジ表示トグル */
+    /* バッジ表示トグル */
     .badge-toggle-wrap {
       display: inline-flex;
       align-items: center;
@@ -213,20 +222,19 @@
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">69ちゃんねる</h1>
         <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
           <span id="roleBadgeContainer"></span>
-          <!-- ★ バッジ表示トグル（admin/owner/vip のみ表示） -->
-          <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分のロールバッジを表示するかどうか">
+          <!-- ★ バッジ表示トグル（admin/owner/vip のみ） -->
+          <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分の投稿に付くバッジを他の人に見せるかどうか">
             <input type="checkbox" id="badgeToggle" checked>
-            <span>バッジを表示</span>
+            <span>バッジを他の人に見せる</span>
           </label>
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- バックアップ/復元（管理者・主のみ） -->
         <div id="backupControls" class="hidden flex gap-2">
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
@@ -322,9 +330,6 @@
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // ============================================================
-    // Firebase 設定
-    // ============================================================
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
@@ -342,20 +347,16 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ============================================================
-    // ロール定義
-    // ============================================================
-    const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";   // 管理者
-    const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";        // 主
-    const ROLE_VIP_EMAIL   = "18104@v.nakijin.ed.jp";        // VIP
+    // ★ ロール定義
+    const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
+    const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
+    const ROLE_VIP_EMAIL   = "18104@v.nakijin.ed.jp";
 
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
-    // ============================================================
     // グローバル
-    // ============================================================
     let currentUser = null;
     let userRole = null;
     let currentThreadKey = null;
@@ -366,6 +367,9 @@
     let activeReplyParentId = null;
     let allPostsCache = [];
     let postNumberMap = new Map();
+
+    // ★ 現在のユーザーがバッジを他人に見せる設定かどうか
+    let myBadgePublic = true;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -384,9 +388,6 @@
     const badgeToggle = document.getElementById('badgeToggle');
     let bannerTimer = null;
 
-    // ============================================================
-    // 権限ヘルパー
-    // ============================================================
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
@@ -394,22 +395,21 @@
       return userRole === 'admin' || userRole === 'owner';
     }
 
-    // ============================================================
-    // ★ バッジ表示設定（localStorage）
-    // ============================================================
+    // ★ バッジ表示設定（localStorage・本人の操作UIの状態としてのみ使用）
     function badgeStorageKey(email) {
       return 'badgeVisible_' + (email || 'anonymous');
     }
     function loadBadgeVisibility(email) {
       const v = localStorage.getItem(badgeStorageKey(email));
-      return v === null ? true : v === 'true';   // デフォルトは表示
+      return v === null ? true : v === 'true';
     }
     function saveBadgeVisibility(email, visible) {
       localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
     }
-    function renderRoleBadge(role, visible) {
+
+    // ★ ヘッダーのロールバッジ描画
+    function renderRoleBadge(role) {
       roleBadgeContainer.innerHTML = '';
-      if (!visible) return;
       if (role === 'admin') {
         roleBadgeContainer.innerHTML = '<span class="admin-badge">管理者</span>';
       } else if (role === 'owner') {
@@ -419,9 +419,7 @@
       }
     }
 
-    // ============================================================
     // 接続状態 & バナー
-    // ============================================================
     function setConnection(online) {
       if (online) {
         connDot.className = 'inline-block w-2 h-2 rounded-full bg-green-500';
@@ -443,9 +441,6 @@
     window.addEventListener('online', () => setConnection(true));
     window.addEventListener('offline', () => setConnection(false));
 
-    // ============================================================
-    // ユーティリティ
-    // ============================================================
     function formatContent(str) {
       if (!str) return '';
       const escaped = escapeHtml(str);
@@ -560,9 +555,7 @@
       }
     }
 
-    // ============================================================
-    // 認証フロー
-    // ============================================================
+    // 認証
     document.getElementById('googleLoginBtn').addEventListener('click', async () => {
       try {
         await signInWithPopup(auth, provider);
@@ -580,6 +573,14 @@
       try { await signOut(auth); } catch (e) { console.error(e); }
     };
 
+    // ★ メールからロールを判定
+    function roleFromEmail(email) {
+      if (email === ROLE_ADMIN_EMAIL) return 'admin';
+      if (email === ROLE_OWNER_EMAIL) return 'owner';
+      if (email === ROLE_VIP_EMAIL)   return 'vip';
+      return null;
+    }
+
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
 
@@ -589,25 +590,21 @@
         return;
       }
 
-      // ロール判定
-      if (user.email === ROLE_ADMIN_EMAIL) userRole = 'admin';
-      else if (user.email === ROLE_OWNER_EMAIL) userRole = 'owner';
-      else if (user.email === ROLE_VIP_EMAIL) userRole = 'vip';
-      else userRole = null;
+      userRole = roleFromEmail(user.email);
 
-      // ★ バッジ表示設定を読み込む
-      const badgeVisible = loadBadgeVisibility(user.email);
+      // ★ 自分のバッジ表示設定を読み込む
+      myBadgePublic = loadBadgeVisibility(user.email);
 
-      // ★ トグルスイッチの表示制御
+      // トグルUI
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
-        badgeToggle.checked = badgeVisible;
+        badgeToggle.checked = myBadgePublic;
       } else {
         badgeToggleWrap.classList.add('hidden');
       }
 
-      // ★ バッジ描画
-      renderRoleBadge(userRole, badgeVisible);
+      // ヘッダーのバッジ（本人画面用）
+      renderRoleBadge(userRole);
 
       // メール表示
       userEmailSpan.classList.add('hidden');
@@ -626,7 +623,6 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
-      // バックアップボタン
       if (canBackup()) {
         backupControls.classList.remove('hidden');
       } else {
@@ -640,13 +636,44 @@
       initThreadsListener();
     });
 
-    // ★ バッジ表示トグルのイベント
-    badgeToggle.addEventListener('change', () => {
+    // ★ トグル操作：過去の投稿もまとめて更新
+    badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
       const visible = badgeToggle.checked;
       saveBadgeVisibility(currentUser.email, visible);
-      renderRoleBadge(userRole, visible);
-      showBanner(visible ? 'バッジを表示します' : 'バッジを非表示にしました', false);
+      myBadgePublic = visible;
+
+      showBanner('バッジ表示を更新中...', false);
+
+      try {
+        // 全スレッドを走査して、自分の投稿を更新
+        const snap = await get(ref(db, 'threads'));
+        if (snap.exists()) {
+          const updates = {};
+          snap.forEach((threadSnap) => {
+            const tid = threadSnap.key;
+            const posts = threadSnap.child('posts');
+            if (posts.exists()) {
+              posts.forEach((postSnap) => {
+                const post = postSnap.val();
+                if (post && post.authorUid === currentUser.uid) {
+                  updates[`threads/${tid}/posts/${postSnap.key}/badgeVisible`] = visible;
+                }
+              });
+            }
+          });
+          if (Object.keys(updates).length > 0) {
+            await update(ref(db), updates);
+          }
+        }
+        showBanner(visible ? 'バッジを他の人に表示します' : 'バッジを他の人に非表示にしました', false);
+      } catch (err) {
+        console.error('バッジ更新エラー:', err);
+        showBanner('バッジ設定の保存に失敗: ' + (err.code || err.message), true);
+        // 失敗したら元に戻す
+        badgeToggle.checked = !visible;
+        myBadgePublic = !visible;
+      }
     });
 
     // 画像プレビュー
@@ -657,9 +684,7 @@
       updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
-    // ============================================================
     // 画面切り替え
-    // ============================================================
     window.showThreadList = function() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
@@ -696,9 +721,7 @@
       loadPosts(threadKey);
     }
 
-    // ============================================================
     // 1. スレッド作成
-    // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) { alert('ログインが必要です。'); return; }
@@ -736,12 +759,14 @@
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
+        // ★ スレッド作成者のロールを保存
         const threadData = {
           title: title,
           createdAt: Date.now(),
           postCount: content || fileData ? 1 : 0,
           authorEmail: currentUser.email,
-          authorUid: currentUser.uid
+          authorUid: currentUser.uid,
+          authorRole: userRole || null   // ★
         };
 
         const writes = [set(newThreadRef, threadData)];
@@ -754,6 +779,8 @@
             createdAt: Date.now(),
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
+            authorRole: userRole || null,     // ★
+            badgeVisible: myBadgePublic,      // ★
             parentId: null,
             file: fileData
           }));
@@ -775,9 +802,7 @@
       }
     });
 
-    // ============================================================
     // 2. スレッド一覧
-    // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
 
@@ -827,9 +852,7 @@
       });
     }
 
-    // ============================================================
     // 3. レス読み込み
-    // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
@@ -890,6 +913,17 @@
       });
     }
 
+    // ★ 投稿のロールバッジ（全員に見える）
+    function buildPostRoleBadge(post) {
+      if (!post) return '';
+      if (post.badgeVisible === false) return '';   // バッジ非公開
+      const role = post.authorRole;
+      if (role === 'admin') return `<span class="role-post-badge admin">管理者</span>`;
+      if (role === 'owner') return `<span class="role-post-badge owner">主</span>`;
+      if (role === 'vip')   return `<span class="role-post-badge vip">VIP</span>`;
+      return '';
+    }
+
     function renderPostTree(post, childrenMap) {
       const wrap = document.createElement('div');
       wrap.className = 'post-tree';
@@ -906,6 +940,9 @@
       if (currentThreadOwnerUid && post.authorUid === currentThreadOwnerUid) {
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
+
+      // ★ 投稿に付くロールバッジ（管理者・主・VIP、全員に見える）
+      const roleBadgeHtml = buildPostRoleBadge(post);
 
       let adminInfo = '';
       if (canDelete()) {
@@ -928,6 +965,7 @@
           <span>：</span>
           <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
           ${opBadge}
+          ${roleBadgeHtml}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">${date}</span>
           ${adminInfo}
@@ -1071,15 +1109,15 @@
         createdAt: Date.now(),
         authorEmail: currentUser.email,
         authorUid: currentUser.uid,
+        authorRole: userRole || null,     // ★
+        badgeVisible: myBadgePublic,      // ★
         parentId: parentId,
         file: fileData
       });
       showBanner('返信を保存しました', false);
     }
 
-    // ============================================================
     // 4. レス投稿
-    // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) { alert('ログインが必要です。'); return; }
@@ -1105,12 +1143,20 @@
       if (currentThreadOwnerUid && currentUser.uid === currentThreadOwnerUid) {
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
+      // 楽観的表示にもロールバッジを出す
+      let optimisticRoleBadge = '';
+      if (myBadgePublic) {
+        if (userRole === 'admin') optimisticRoleBadge = `<span class="role-post-badge admin">管理者</span>`;
+        else if (userRole === 'owner') optimisticRoleBadge = `<span class="role-post-badge owner">主</span>`;
+        else if (userRole === 'vip') optimisticRoleBadge = `<span class="role-post-badge vip">VIP</span>`;
+      }
       tempPost.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
           <span class="post-number">${optimisticIndex}</span>
           <span>：</span>
           <span class="post-author">名無しさん</span>
           ${opBadge}
+          ${optimisticRoleBadge}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
@@ -1134,6 +1180,8 @@
           createdAt: Date.now(),
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
+          authorRole: userRole || null,     // ★
+          badgeVisible: myBadgePublic,      // ★
           parentId: null,
           file: fileData
         });
@@ -1153,9 +1201,7 @@
       }
     });
 
-    // ============================================================
     // 5. 削除
-    // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
 
@@ -1211,9 +1257,7 @@
       }
     };
 
-    // ============================================================
-    // 6. バックアップ / 復元（管理者・主のみ）
-    // ============================================================
+    // 6. バックアップ / 復元
     window.doBackup = async function() {
       if (!canBackup()) { alert('バックアップ権限がありません。'); return; }
       try {
@@ -1224,7 +1268,7 @@
           _meta: {
             exportedAt: new Date().toISOString(),
             exportedBy: currentUser.email,
-            app: '7ch'
+            app: '69ch'
           },
           threads: data
         };
@@ -1234,7 +1278,7 @@
         const a = document.createElement('a');
         const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         a.href = url;
-        a.download = `7ch-backup-${ts}.json`;
+        a.download = `69ch-backup-${ts}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1292,9 +1336,6 @@
       }
     });
 
-    // ============================================================
-    // クリーンアップ
-    // ============================================================
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
