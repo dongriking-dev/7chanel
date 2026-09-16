@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>69ch</title>
+  <title>69ちゃんねる</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -29,7 +29,6 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
-    /* バッジ類 */
     .admin-badge {
       background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 6px;
@@ -46,7 +45,6 @@
       background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
-    /* ★ 投稿に付くロールバッジ */
     .role-post-badge {
       color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
@@ -54,7 +52,6 @@
     .role-post-badge.admin { background: #7c2d12; }
     .role-post-badge.owner { background: #1e40af; }
     .role-post-badge.vip   { background: #7c3aed; }
-
     .admin-email {
       background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
       border-radius: 4px; font-family: monospace;
@@ -174,7 +171,6 @@
     .preview-box.show { display: block; }
     .preview-box img { max-height: 160px; border-radius: 4px; }
     .preview-info { font-size: 11px; color: #64748b; margin-top: 4px; }
-    /* バッジ表示トグル */
     .badge-toggle-wrap {
       display: inline-flex;
       align-items: center;
@@ -201,7 +197,7 @@
   <!-- ログイン画面 -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
-      <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃんねる</h1>
+      <h1 class="text-3xl font-bold text-red-900 mb-2">69ちゃんねる</h1>
       <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
       <p class="text-sm text-gray-600 mb-6">安全のためです。</p>
       <button id="googleLoginBtn"
@@ -222,12 +218,11 @@
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">69ちゃんねる</h1>
         <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
           <span id="roleBadgeContainer"></span>
-          <!-- ★ バッジ表示トグル（admin/owner/vip のみ） -->
           <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分の投稿に付くバッジを他の人に見せるかどうか">
             <input type="checkbox" id="badgeToggle" checked>
             <span>バッジを他の人に見せる</span>
@@ -350,13 +345,17 @@
     // ★ ロール定義
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
-    const ROLE_VIP_EMAIL   = "18104@v.nakijin.ed.jp";
+    // ★ VIPは複数人を配列で管理
+    const ROLE_VIP_EMAILS = [
+      "18104@v.nakijin.ed.jp",
+      "setsu.setsuna1229@gmail.com",
+      "roblox.2026.20th@gmail.com"
+    ];
 
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
-    // グローバル
     let currentUser = null;
     let userRole = null;
     let currentThreadKey = null;
@@ -368,7 +367,6 @@
     let allPostsCache = [];
     let postNumberMap = new Map();
 
-    // ★ 現在のユーザーがバッジを他人に見せる設定かどうか
     let myBadgePublic = true;
 
     const loginView = document.getElementById('loginView');
@@ -388,14 +386,23 @@
     const badgeToggle = document.getElementById('badgeToggle');
     let bannerTimer = null;
 
+    // ============================================================
+    // ★ 権限ヘルパー（3種類）
+    // ============================================================
+    // 削除できるか：管理者・主・VIP
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
+    // バックアップできるか：管理者・主のみ
     function canBackup() {
       return userRole === 'admin' || userRole === 'owner';
     }
+    // ★ メール閲覧できるか：管理者・主のみ（VIPは不可）
+    function canViewEmail() {
+      return userRole === 'admin' || userRole === 'owner';
+    }
 
-    // ★ バッジ表示設定（localStorage・本人の操作UIの状態としてのみ使用）
+    // バッジ表示設定（localStorage）
     function badgeStorageKey(email) {
       return 'badgeVisible_' + (email || 'anonymous');
     }
@@ -407,7 +414,7 @@
       localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
     }
 
-    // ★ ヘッダーのロールバッジ描画
+    // ヘッダーのロールバッジ
     function renderRoleBadge(role) {
       roleBadgeContainer.innerHTML = '';
       if (role === 'admin') {
@@ -419,7 +426,6 @@
       }
     }
 
-    // 接続状態 & バナー
     function setConnection(online) {
       if (online) {
         connDot.className = 'inline-block w-2 h-2 rounded-full bg-green-500';
@@ -573,11 +579,10 @@
       try { await signOut(auth); } catch (e) { console.error(e); }
     };
 
-    // ★ メールからロールを判定
     function roleFromEmail(email) {
       if (email === ROLE_ADMIN_EMAIL) return 'admin';
       if (email === ROLE_OWNER_EMAIL) return 'owner';
-      if (email === ROLE_VIP_EMAIL)   return 'vip';
+      if (ROLE_VIP_EMAILS.includes(email)) return 'vip';
       return null;
     }
 
@@ -591,11 +596,8 @@
       }
 
       userRole = roleFromEmail(user.email);
-
-      // ★ 自分のバッジ表示設定を読み込む
       myBadgePublic = loadBadgeVisibility(user.email);
 
-      // トグルUI
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
         badgeToggle.checked = myBadgePublic;
@@ -603,10 +605,9 @@
         badgeToggleWrap.classList.add('hidden');
       }
 
-      // ヘッダーのバッジ（本人画面用）
       renderRoleBadge(userRole);
 
-      // メール表示
+      // ヘッダー右上のメール表示（自分のメール）
       userEmailSpan.classList.add('hidden');
       userEmailSpan.textContent = '';
       if (userRole === 'admin') {
@@ -636,7 +637,7 @@
       initThreadsListener();
     });
 
-    // ★ トグル操作：過去の投稿もまとめて更新
+    // バッジ表示トグル
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
       const visible = badgeToggle.checked;
@@ -646,7 +647,6 @@
       showBanner('バッジ表示を更新中...', false);
 
       try {
-        // 全スレッドを走査して、自分の投稿を更新
         const snap = await get(ref(db, 'threads'));
         if (snap.exists()) {
           const updates = {};
@@ -670,13 +670,11 @@
       } catch (err) {
         console.error('バッジ更新エラー:', err);
         showBanner('バッジ設定の保存に失敗: ' + (err.code || err.message), true);
-        // 失敗したら元に戻す
         badgeToggle.checked = !visible;
         myBadgePublic = !visible;
       }
     });
 
-    // 画像プレビュー
     document.getElementById('threadFileInput').addEventListener('change', () => {
       updatePreview(document.getElementById('threadFileInput'), 'threadPreviewBox', 'threadPreviewImg', 'threadPreviewInfo');
     });
@@ -684,7 +682,6 @@
       updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
-    // 画面切り替え
     window.showThreadList = function() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
@@ -703,14 +700,19 @@
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
+      // ★ 作成者メールは canViewEmail() の人だけが見られる
       const authorEl = document.getElementById('currentThreadAuthor');
       const delBtn = document.getElementById('deleteThreadBtn');
-      if (canDelete()) {
+      if (canViewEmail()) {
         authorEl.textContent = '作成者: ' + (authorEmail || '不明');
         authorEl.className = 'text-xs text-red-700 font-bold mt-1';
-        delBtn.classList.remove('hidden');
       } else {
         authorEl.textContent = '';
+      }
+      // スレッド削除ボタンは canDelete() の人
+      if (canDelete()) {
+        delBtn.classList.remove('hidden');
+      } else {
         delBtn.classList.add('hidden');
       }
 
@@ -759,14 +761,13 @@
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
 
-        // ★ スレッド作成者のロールを保存
         const threadData = {
           title: title,
           createdAt: Date.now(),
           postCount: content || fileData ? 1 : 0,
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
-          authorRole: userRole || null   // ★
+          authorRole: userRole || null
         };
 
         const writes = [set(newThreadRef, threadData)];
@@ -779,8 +780,8 @@
             createdAt: Date.now(),
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
-            authorRole: userRole || null,     // ★
-            badgeVisible: myBadgePublic,      // ★
+            authorRole: userRole || null,
+            badgeVisible: myBadgePublic,
             parentId: null,
             file: fileData
           }));
@@ -913,10 +914,10 @@
       });
     }
 
-    // ★ 投稿のロールバッジ（全員に見える）
+    // 投稿のロールバッジ（全員に見える）
     function buildPostRoleBadge(post) {
       if (!post) return '';
-      if (post.badgeVisible === false) return '';   // バッジ非公開
+      if (post.badgeVisible === false) return '';
       const role = post.authorRole;
       if (role === 'admin') return `<span class="role-post-badge admin">管理者</span>`;
       if (role === 'owner') return `<span class="role-post-badge owner">主</span>`;
@@ -941,11 +942,11 @@
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
 
-      // ★ 投稿に付くロールバッジ（管理者・主・VIP、全員に見える）
       const roleBadgeHtml = buildPostRoleBadge(post);
 
+      // ★ 投稿者のメールは canViewEmail() の人だけに見える
       let adminInfo = '';
-      if (canDelete()) {
+      if (canViewEmail()) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
       }
 
@@ -1109,8 +1110,8 @@
         createdAt: Date.now(),
         authorEmail: currentUser.email,
         authorUid: currentUser.uid,
-        authorRole: userRole || null,     // ★
-        badgeVisible: myBadgePublic,      // ★
+        authorRole: userRole || null,
+        badgeVisible: myBadgePublic,
         parentId: parentId,
         file: fileData
       });
@@ -1143,7 +1144,6 @@
       if (currentThreadOwnerUid && currentUser.uid === currentThreadOwnerUid) {
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
-      // 楽観的表示にもロールバッジを出す
       let optimisticRoleBadge = '';
       if (myBadgePublic) {
         if (userRole === 'admin') optimisticRoleBadge = `<span class="role-post-badge admin">管理者</span>`;
@@ -1180,8 +1180,8 @@
           createdAt: Date.now(),
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
-          authorRole: userRole || null,     // ★
-          badgeVisible: myBadgePublic,      // ★
+          authorRole: userRole || null,
+          badgeVisible: myBadgePublic,
           parentId: null,
           file: fileData
         });
