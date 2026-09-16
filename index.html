@@ -29,7 +29,7 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
-    /* ★ 4種類のバッジ */
+    /* 4種類のバッジ */
     .admin-badge {
       background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 6px;
@@ -165,6 +165,24 @@
     .preview-box.show { display: block; }
     .preview-box img { max-height: 160px; border-radius: 4px; }
     .preview-info { font-size: 11px; color: #64748b; margin-top: 4px; }
+    /* ★ バッジ表示トグル */
+    .badge-toggle-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #374151;
+      margin-left: 6px;
+      background: #f3f4f6;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      cursor: pointer;
+      user-select: none;
+    }
+    .badge-toggle-wrap input {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -196,14 +214,19 @@
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
         <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
           <span id="roleBadgeContainer"></span>
+          <!-- ★ バッジ表示トグル（admin/owner/vip のみ表示） -->
+          <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分のロールバッジを表示するかどうか">
+            <input type="checkbox" id="badgeToggle" checked>
+            <span>バッジを表示</span>
+          </label>
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- ★ バックアップ/復元（管理者・主のみ） -->
+        <!-- バックアップ/復元（管理者・主のみ） -->
         <div id="backupControls" class="hidden flex gap-2">
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
@@ -320,13 +343,12 @@
     const provider = new GoogleAuthProvider();
 
     // ============================================================
-    // ★ ロール定義
+    // ロール定義
     // ============================================================
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";   // 管理者
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";        // 主
     const ROLE_VIP_EMAIL   = "18104@v.nakijin.ed.jp";        // VIP
 
-    // ★ 画像設定
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
@@ -335,7 +357,7 @@
     // グローバル
     // ============================================================
     let currentUser = null;
-    let userRole = null;   // 'admin' | 'owner' | 'vip' | null
+    let userRole = null;
     let currentThreadKey = null;
     let currentThreadOwnerUid = null;
     let postsUnsubscribe = null;
@@ -358,16 +380,43 @@
     const roleBadgeContainer = document.getElementById('roleBadgeContainer');
     const userEmailSpan = document.getElementById('userEmail');
     const backupControls = document.getElementById('backupControls');
+    const badgeToggleWrap = document.getElementById('badgeToggleWrap');
+    const badgeToggle = document.getElementById('badgeToggle');
     let bannerTimer = null;
 
     // ============================================================
-    // ★ 権限ヘルパー
+    // 権限ヘルパー
     // ============================================================
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
     function canBackup() {
       return userRole === 'admin' || userRole === 'owner';
+    }
+
+    // ============================================================
+    // ★ バッジ表示設定（localStorage）
+    // ============================================================
+    function badgeStorageKey(email) {
+      return 'badgeVisible_' + (email || 'anonymous');
+    }
+    function loadBadgeVisibility(email) {
+      const v = localStorage.getItem(badgeStorageKey(email));
+      return v === null ? true : v === 'true';   // デフォルトは表示
+    }
+    function saveBadgeVisibility(email, visible) {
+      localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
+    }
+    function renderRoleBadge(role, visible) {
+      roleBadgeContainer.innerHTML = '';
+      if (!visible) return;
+      if (role === 'admin') {
+        roleBadgeContainer.innerHTML = '<span class="admin-badge">管理者</span>';
+      } else if (role === 'owner') {
+        roleBadgeContainer.innerHTML = '<span class="owner-badge">主</span>';
+      } else if (role === 'vip') {
+        roleBadgeContainer.innerHTML = '<span class="vip-badge">VIP</span>';
+      }
     }
 
     // ============================================================
@@ -419,7 +468,6 @@
       mainView.classList.add('hidden');
     }
 
-    // ★ 画像 → Base64
     function fileToBase64Image(file) {
       return new Promise((resolve, reject) => {
         if (!file) { resolve(null); return; }
@@ -541,35 +589,44 @@
         return;
       }
 
-      // ★ ロール判定
+      // ロール判定
       if (user.email === ROLE_ADMIN_EMAIL) userRole = 'admin';
       else if (user.email === ROLE_OWNER_EMAIL) userRole = 'owner';
       else if (user.email === ROLE_VIP_EMAIL) userRole = 'vip';
       else userRole = null;
 
-      // ★ バッジ表示
-      roleBadgeContainer.innerHTML = '';
+      // ★ バッジ表示設定を読み込む
+      const badgeVisible = loadBadgeVisibility(user.email);
+
+      // ★ トグルスイッチの表示制御
+      if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
+        badgeToggleWrap.classList.remove('hidden');
+        badgeToggle.checked = badgeVisible;
+      } else {
+        badgeToggleWrap.classList.add('hidden');
+      }
+
+      // ★ バッジ描画
+      renderRoleBadge(userRole, badgeVisible);
+
+      // メール表示
       userEmailSpan.classList.add('hidden');
       userEmailSpan.textContent = '';
-
       if (userRole === 'admin') {
-        roleBadgeContainer.innerHTML = '<span class="admin-badge">管理者</span>';
         userEmailSpan.classList.remove('hidden');
         userEmailSpan.textContent = user.email + '（管理者）';
         userEmailSpan.className = 'text-xs text-red-700 font-bold';
       } else if (userRole === 'owner') {
-        roleBadgeContainer.innerHTML = '<span class="owner-badge">主</span>';
         userEmailSpan.classList.remove('hidden');
         userEmailSpan.textContent = user.email + '（主）';
         userEmailSpan.className = 'text-xs text-blue-700 font-bold';
       } else if (userRole === 'vip') {
-        roleBadgeContainer.innerHTML = '<span class="vip-badge">VIP</span>';
         userEmailSpan.classList.remove('hidden');
         userEmailSpan.textContent = user.email + '（VIP）';
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
-      // ★ バックアップボタン（admin / owner のみ）
+      // バックアップボタン
       if (canBackup()) {
         backupControls.classList.remove('hidden');
       } else {
@@ -581,6 +638,15 @@
 
       showThreadList();
       initThreadsListener();
+    });
+
+    // ★ バッジ表示トグルのイベント
+    badgeToggle.addEventListener('change', () => {
+      if (!currentUser) return;
+      const visible = badgeToggle.checked;
+      saveBadgeVisibility(currentUser.email, visible);
+      renderRoleBadge(userRole, visible);
+      showBanner(visible ? 'バッジを表示します' : 'バッジを非表示にしました', false);
     });
 
     // 画像プレビュー
@@ -614,7 +680,6 @@
 
       const authorEl = document.getElementById('currentThreadAuthor');
       const delBtn = document.getElementById('deleteThreadBtn');
-      // ★ 管理者・主・VIPは作成者メールを見られる、削除もできる
       if (canDelete()) {
         authorEl.textContent = '作成者: ' + (authorEmail || '不明');
         authorEl.className = 'text-xs text-red-700 font-bold mt-1';
@@ -842,7 +907,6 @@
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
 
-      // ★ 管理者・主・VIPはメールを見られる
       let adminInfo = '';
       if (canDelete()) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
@@ -1090,7 +1154,7 @@
     });
 
     // ============================================================
-    // 5. 削除（管理者・主・VIP）
+    // 5. 削除
     // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
@@ -1148,7 +1212,7 @@
     };
 
     // ============================================================
-    // 6. ★ バックアップ / 復元（管理者・主のみ）
+    // 6. バックアップ / 復元（管理者・主のみ）
     // ============================================================
     window.doBackup = async function() {
       if (!canBackup()) { alert('バックアップ権限がありません。'); return; }
@@ -1183,7 +1247,6 @@
       }
     };
 
-    // 復元ファイルが選択された時
     document.getElementById('restoreInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       e.target.value = '';
@@ -1197,9 +1260,7 @@
         '本当に復元しますか？'
       )) return;
 
-      const doubleCheck = prompt(
-        '確認のため「RESTORE」と入力してください（大文字・半角）:'
-      );
+      const doubleCheck = prompt('確認のため「RESTORE」と入力してください（大文字・半角）:');
       if (doubleCheck !== 'RESTORE') {
         alert('キャンセルしました。');
         return;
@@ -1210,18 +1271,15 @@
         const text = await file.text();
         const parsed = JSON.parse(text);
 
-        // 形式チェック
         let threadsData;
         if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
           threadsData = parsed.threads;
         } else if (parsed && typeof parsed === 'object') {
-          // _meta なしの古い形式も一応受け付ける
           threadsData = parsed;
         } else {
           throw new Error('不正なバックアップファイル形式です');
         }
 
-        // threads ノードを丸ごと置き換え
         await set(ref(db, 'threads'), threadsData);
 
         showBanner('復元が完了しました', false);
