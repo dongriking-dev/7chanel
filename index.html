@@ -391,22 +391,63 @@
       font-size: 14px; margin-top: 16px; color: #fca5a5;
       line-height: 1.6; max-width: 400px;
     }
+    #banOverlay .ban-actions {
+      margin-top: 24px;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      justify-content: center;
+    }
+    #banOverlay .ban-actions button {
+      font-size: 13px; padding: 10px 20px; border-radius: 6px;
+      border: none; cursor: pointer; font-weight: 600;
+      font-family: sans-serif;
+    }
+    #banOverlay .btn-switch-account {
+      background: #2563eb; color: #fff;
+    }
+    #banOverlay .btn-switch-account:hover {
+      background: #1d4ed8;
+    }
 
-    /* ★ サイトルール（デフォルトは閉じた状態） */
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
     #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
+
+    /* ★ 起動時ローディング画面 */
+    #bootOverlay {
+      position: fixed; inset: 0; background: #111827;
+      z-index: 99998; display: flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-family: sans-serif;
+      flex-direction: column; gap: 16px;
+    }
+    #bootOverlay.hidden { display: none; }
+    #bootOverlay .boot-msg {
+      font-size: 14px; color: #9ca3af;
+    }
+    #bootOverlay .boot-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #374151;
+      border-top-color: #ef4444;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- ★ サイトルール（デフォルト：閉じた状態） -->
+  <!-- ★ 起動時ローディング -->
+  <div id="bootOverlay">
+    <div class="boot-spinner"></div>
+    <div class="boot-msg">アカウントを確認しています...</div>
+  </div>
+
+  <!-- サイトルール（デフォルト：閉じた状態） -->
   <div id="siteRules" class="collapsed bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
     <button id="rulesToggleBtn"
       class="w-full bg-red-900 hover:bg-red-800 text-white text-left px-4 py-3 flex items-center justify-between transition">
       <span class="font-bold text-base flex items-center gap-2">
-        📜 69ちゃんねる 利用ルール
+        📜 シクナイちゃんねる 利用ルール
       </span>
       <span id="rulesToggleIcon" class="text-xl">▼</span>
     </button>
@@ -465,6 +506,9 @@
   <div id="banOverlay">
     <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
     <div class="ban-sub" id="banOverlaySub"></div>
+    <div class="ban-actions" id="banOverlayActions" style="display:none;">
+      <button class="btn-switch-account" id="switchAccountBtn">別のGoogleアカウントでログイン</button>
+    </div>
   </div>
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
@@ -617,7 +661,7 @@
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">69ちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
         <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
@@ -787,6 +831,11 @@
 
     let myBadgePublic = true;
 
+    // ★ 自動サインイン試行済みフラグ
+    let silentSignInAttempted = false;
+    // ★ 意図的なログアウト後かどうか
+    let intentionalSignOut = false;
+
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
     const threadListView = document.getElementById('threadListView');
@@ -805,6 +854,8 @@
     const banOverlay = document.getElementById('banOverlay');
     const banOverlayMsg = document.getElementById('banOverlayMsg');
     const banOverlaySub = document.getElementById('banOverlaySub');
+    const banOverlayActions = document.getElementById('banOverlayActions');
+    const bootOverlay = document.getElementById('bootOverlay');
     let bannerTimer = null;
 
     function canDelete() {
@@ -929,12 +980,17 @@
       loginView.classList.remove('hidden');
       mainView.classList.add('hidden');
     }
+    function hideBootOverlay() {
+      bootOverlay.classList.add('hidden');
+    }
 
-    // ★ BAN実行（タブを閉じる）
+    // ★ BAN実行
     function executeBan() {
       banOverlayMsg.textContent = 'アクセスが拒否されました';
-      banOverlaySub.textContent = '';
+      banOverlaySub.textContent = 'このアカウントはBANされています。';
+      banOverlayActions.style.display = 'flex';
       banOverlay.classList.add('show');
+      // タブを閉じる試行
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
       setTimeout(() => {
@@ -950,10 +1006,11 @@
       }, 500);
     }
 
-    // ★ 承認待ちもBANと同じくタブを閉じる
+    // ★ 承認待ちもBANと同じ動作
     function executePending() {
       banOverlayMsg.textContent = '承認待ちです';
       banOverlaySub.innerHTML = '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。';
+      banOverlayActions.style.display = 'flex';
       banOverlay.classList.add('show');
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
@@ -1080,15 +1137,13 @@
       }
     }
 
-    // ★ サイトルールの開閉（デフォルトは閉じた状態）
+    // サイトルールの開閉
     (function initSiteRules() {
       const rulesEl = document.getElementById('siteRules');
       const toggleBtn = document.getElementById('rulesToggleBtn');
       if (!rulesEl || !toggleBtn) return;
-      // デフォルトは「閉じた状態」
-      // 以前開いたことがあればその状態を復元
       const saved = localStorage.getItem('siteRulesOpen');
-      const isOpen = saved === 'true';   // デフォルト false（閉じる）
+      const isOpen = saved === 'true';
       if (isOpen) {
         rulesEl.classList.remove('collapsed');
       } else {
@@ -1100,8 +1155,26 @@
       });
     })();
 
+    // ★ 別のアカウントでログインボタン
+    document.getElementById('switchAccountBtn').addEventListener('click', async () => {
+      intentionalSignOut = true;
+      try { await signOut(auth); } catch (e) { console.error(e); }
+      // 黒画面を解除して、ログイン画面を表示
+      banOverlay.classList.remove('show');
+      document.body.style.background = '';
+      showLoginView();
+      hideBootOverlay();
+      // フラグをリセット（次回ログイン時に承認チェックを再実行するため）
+      setTimeout(() => {
+        intentionalSignOut = false;
+        silentSignInAttempted = false;
+      }, 500);
+    });
+
+    // ★ 通常のログインボタン
     document.getElementById('googleLoginBtn').addEventListener('click', async () => {
       try {
+        // ここでは通常のsignInWithPopup（アカウント選択画面あり）
         await signInWithPopup(auth, provider);
       } catch (err) {
         console.error("ログインエラー:", err);
@@ -1111,7 +1184,28 @@
       }
     });
 
+    // ★ 自動サイレントサインイン（ページ読み込み時）
+    async function trySilentSignIn() {
+      if (silentSignInAttempted) return;
+      silentSignInAttempted = true;
+
+      try {
+        // prompt: 'none' で既存のGoogleセッションを使い、アカウント選択画面を出さずにサインイン
+        const p = new GoogleAuthProvider();
+        p.setCustomParameters({ prompt: 'none' });
+        const result = await signInWithPopup(auth, p);
+        console.log('サイレントサインイン成功:', result.user.email);
+        // onAuthStateChanged が呼ばれるので、ここでは何もしない
+      } catch (err) {
+        console.warn('サイレントサインイン失敗:', err.code || err.message);
+        // サイレントサインインが失敗した場合は、通常のログイン画面を表示
+        hideBootOverlay();
+        showLoginView();
+      }
+    }
+
     window.doLogout = async function() {
+      intentionalSignOut = true;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
       if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
@@ -1122,6 +1216,12 @@
       if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
       if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
+      banOverlay.classList.remove('show');
+      document.body.style.background = '';
+      setTimeout(() => {
+        intentionalSignOut = false;
+        silentSignInAttempted = false;
+      }, 500);
     };
 
     function roleFromEmail(email) {
@@ -1194,7 +1294,6 @@
       });
     }
 
-    // ★ 承認済みリスト監視（シンプル：タブが閉じられているので何もしない）
     function initApprovedListener() {
       if (approvedUnsubscribe) approvedUnsubscribe();
       const ref0 = ref(db, 'approvedUsers');
@@ -1265,10 +1364,18 @@
     }
 
     onAuthStateChanged(auth, async (user) => {
+      // 意図的なログアウトの場合は何もしない
+      if (intentionalSignOut) {
+        currentUser = null;
+        userRole = null;
+        return;
+      }
+
       currentUser = user;
 
       if (!user) {
         userRole = null;
+        hideBootOverlay();
         showLoginView();
         return;
       }
@@ -1279,12 +1386,10 @@
 
       if (checkSelfBan()) return;
 
-      // 監視をセットアップ
       initBansListener();
       initDeviceBansListener();
       initApprovedListener();
 
-      // 承認済みリストを取得
       try {
         const approvedSnap = await get(ref(db, 'approvedUsers'));
         approvedCache = approvedSnap.exists() ? approvedSnap.val() : {};
@@ -1292,18 +1397,15 @@
         console.warn('承認済みリスト取得スキップ:', e.message);
       }
 
-      // 承認チェック
       const isApproved = checkSelfApproval();
 
       if (!isApproved) {
-        // 承認待ち申請を送信
         await requestApproval();
-        // ★ 承認待ち → BANと同じくタブを閉じる
         executePending();
         return;
       }
 
-      // ===== 以下、承認済みユーザーの処理 =====
+      // ===== 承認済みユーザーの処理 =====
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1336,7 +1438,6 @@
         backupControls.classList.add('hidden');
       }
 
-      // 自分の承認がリアルタイムで取り消されたらキック
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
@@ -1346,6 +1447,7 @@
         }
       });
 
+      hideBootOverlay();
       showMainView();
       setConnection(navigator.onLine);
 
@@ -1356,6 +1458,12 @@
       initPendingListener();
       registerMyFingerprint();
     });
+
+    // ★ ページ読み込み時にサイレントサインインを試す
+    // Firebaseの初期化が終わってから実行
+    setTimeout(() => {
+      trySilentSignIn();
+    }, 100);
 
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
