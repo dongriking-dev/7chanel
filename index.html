@@ -111,6 +111,21 @@
       border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
     }
     .userlist-btn:hover { background: #075985; }
+    /* ★ 承認待ち通知ボタン */
+    .pending-btn {
+      background: #b45309; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
+      position: relative;
+    }
+    .pending-btn:hover { background: #92400e; }
+    .pending-btn.has-pending {
+      background: #dc2626;
+      animation: pulseRed 1.5s infinite;
+    }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
+      50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+    }
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -290,7 +305,6 @@
     }
     .ban-list-row .unban-btn:hover { background: #15803d; }
 
-    /* ★ ユーザー一覧用 */
     .user-row {
       display: flex; align-items: center; gap: 8px;
       padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;
@@ -335,24 +349,128 @@
       box-shadow: 0 0 0 2px rgba(3,105,161,0.15);
     }
 
+    /* ★ 承認待ちリスト */
+    .pending-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px; border: 1px solid #fcd34d; border-radius: 6px;
+      background: #fffbeb; margin-bottom: 6px; font-size: 12px;
+    }
+    .pending-row .info { flex: 1; min-width: 0; }
+    .pending-row .email-line {
+      font-family: monospace; font-size: 12px;
+      color: #92400e; word-break: break-all; font-weight: 700;
+    }
+    .pending-row .meta-line {
+      font-size: 10px; color: #6b7280; margin-top: 2px;
+      word-break: break-all;
+    }
+    .pending-row .approve-btn {
+      background: #16a34a; color: #fff; font-size: 11px;
+      padding: 4px 10px; border-radius: 4px; border: none;
+      cursor: pointer; white-space: nowrap; font-weight: 700;
+    }
+    .pending-row .approve-btn:hover { background: #15803d; }
+    .pending-row .reject-btn {
+      background: #dc2626; color: #fff; font-size: 11px;
+      padding: 4px 10px; border-radius: 4px; border: none;
+      cursor: pointer; white-space: nowrap; font-weight: 700;
+    }
+    .pending-row .reject-btn:hover { background: #b91c1c; }
+
+    /* ★ BAN画面を「承認待ち」でも使う */
     #banOverlay {
       position: fixed; inset: 0; background: #000;
       z-index: 99999; display: none;
       align-items: center; justify-content: center;
       color: #fff; text-align: center; font-family: sans-serif;
+      flex-direction: column; padding: 20px;
     }
     #banOverlay.show { display: flex; }
     #banOverlay .ban-msg {
       font-size: 24px; font-weight: bold;
       letter-spacing: 0.1em;
     }
+    #banOverlay .ban-sub {
+      font-size: 14px; margin-top: 16px; color: #fca5a5;
+      line-height: 1.6; max-width: 400px;
+    }
+
+    /* ★ サイトルール */
+    #siteRules { transition: box-shadow 0.2s; }
+    #siteRules.collapsed #rulesContent { display: none; }
+    #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
+    #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- BAN画面 -->
+  <!-- ★ サイトルール（全員に表示） -->
+  <div id="siteRules" class="bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
+    <button id="rulesToggleBtn"
+      class="w-full bg-red-900 hover:bg-red-800 text-white text-left px-4 py-3 flex items-center justify-between transition">
+      <span class="font-bold text-base flex items-center gap-2">
+        📜 69ちゃんねる 利用ルール
+      </span>
+      <span id="rulesToggleIcon" class="text-xl">▼</span>
+    </button>
+    <div id="rulesContent" class="px-4 py-4 text-sm text-gray-800 leading-relaxed">
+      <ol class="list-decimal list-inside space-y-2">
+        <li>
+          <strong class="text-red-900">Googleログイン必須</strong><br>
+          当サイトのご利用にはGoogleアカウントでのログインが必要です。投稿は匿名で表示されますが、運営は内部的にメールアドレスを記録しています。
+        </li>
+        <li>
+          <strong class="text-red-900">初回ログインは承認制</strong><br>
+          初めて当サイトを利用する場合、管理者または主による承認が必要です。承認されるまでサイトをご利用いただけません。
+        </li>
+        <li>
+          <strong class="text-red-900">禁止事項</strong>
+          <ul class="list-disc list-inside ml-4 mt-1 space-y-1 text-gray-700">
+            <li>他の利用者への誹謗中傷・脅迫・嫌がらせ</li>
+            <li>個人情報（本名・住所・電話番号・学校名など）の無断投稿</li>
+            <li>違法行為、犯罪予告、薬物・武器等の取引に関する投稿</li>
+            <li>著作権・肖像権を侵害する画像の投稿</li>
+            <li>スパム・宣伝・勧誘目的の投稿</li>
+            <li>荒らし行為（連投・意味のない投稿の繰り返し）</li>
+            <li>他の利用者になりすます行為</li>
+          </ul>
+        </li>
+        <li>
+          <strong class="text-red-900">投稿内容の責任</strong><br>
+          投稿内容は投稿者自身の責任です。運営は投稿内容について一切の責任を負いません。
+        </li>
+        <li>
+          <strong class="text-red-900">運営による削除・BAN</strong><br>
+          ルール違反と判断された場合、予告なく投稿の削除・アカウントのBAN（利用停止）を行うことがあります。BANされた場合、当サイトへのアクセスが拒否されます。
+        </li>
+        <li>
+          <strong class="text-red-900">記録される情報</strong><br>
+          運営は以下の情報を記録しています。これらの情報は管理者・主のみが閲覧でき、一般利用者には公開されません。
+          <ul class="list-disc list-inside ml-4 mt-1 space-y-1 text-gray-700">
+            <li>Googleアカウントのメールアドレス</li>
+            <li>ログイン日時</li>
+            <li>デバイス情報（ブラウザ・OS等を組み合わせた識別子）</li>
+          </ul>
+        </li>
+        <li>
+          <strong class="text-red-900">免責事項</strong><br>
+          当サイトの利用によって生じたいかなる損害についても、運営は責任を負いません。予告なくサービスを変更・終了する場合があります。
+        </li>
+        <li>
+          <strong class="text-red-900">ルールの変更</strong><br>
+          本ルールは予告なく変更されることがあります。変更後も利用を継続した場合、変更内容に同意したものとみなします。
+        </li>
+      </ol>
+      <p class="mt-4 text-xs text-gray-500 text-right">
+        最終更新: 2026年9月
+      </p>
+    </div>
+  </div>
+
+  <!-- BAN/承認待ち画面 -->
   <div id="banOverlay">
-    <div class="ban-msg">アクセスが拒否されました</div>
+    <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
+    <div class="ban-sub" id="banOverlaySub"></div>
   </div>
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
@@ -364,40 +482,32 @@
       <p class="text-xs text-gray-500 mb-4">
         対象: <span id="badgeTargetEmail" class="admin-email"></span>
       </p>
-
       <div class="mb-3">
         <p class="text-xs font-bold text-gray-600 mb-2">現在のバッジ:</p>
         <div id="badgeListContainer">
           <p class="text-xs text-gray-400">（なし）</p>
         </div>
       </div>
-
       <button id="addBadgeBtn" class="add-badge-btn w-full mb-3">＋ 新しいバッジを追加</button>
-
       <div id="badgeEditor" class="editor-box hidden">
         <p class="text-xs font-bold text-gray-700 mb-2" id="badgeEditorTitle">新しいバッジ</p>
-
         <label class="block text-xs text-gray-600 mb-1">バッジ名（最大12文字）:</label>
         <input type="text" id="badgeLabelInput" maxlength="12" placeholder="例: 常連 / 荒らし / 神" class="w-full border p-2 rounded text-sm mb-3">
-
         <label class="block text-xs text-gray-600 mb-1">バッジ色:</label>
         <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
         <div class="flex items-center gap-2 mb-3">
           <input type="color" id="badgeColorPicker" value="#ef4444" class="w-10 h-8 border rounded cursor-pointer">
           <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
         </div>
-
         <div class="mb-3">
           <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
           <span id="badgePreviewChip" class="custom-badge" style="background:#ef4444;">バッジ</span>
         </div>
-
         <div class="flex justify-end gap-2">
           <button id="badgeEditorCancelBtn" class="reply-cancel-btn">キャンセル</button>
           <button id="badgeSaveBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded font-bold">保存</button>
         </div>
       </div>
-
       <div class="flex justify-end mt-4">
         <button id="badgeCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
@@ -411,50 +521,42 @@
       <p class="text-xs text-gray-500 mb-4">
         メールアドレスを指定してBANできます（未投稿でも可）。BANはUID・メール・デバイスの3つに紐づきます。
       </p>
-
       <div class="p-3 border border-red-200 bg-red-50 rounded mb-4">
         <p class="text-xs font-bold text-red-700 mb-2">新規BAN</p>
         <label class="block text-xs text-gray-600 mb-1">メールアドレス（必須）:</label>
         <input type="email" id="banEmailInput" placeholder="例: spammer@gmail.com"
           class="w-full border p-2 rounded text-sm mb-2 font-mono">
-
         <label class="block text-xs text-gray-600 mb-1">理由（任意）:</label>
         <input type="text" id="banReasonInput" placeholder="例: 荒らし"
           class="w-full border p-2 rounded text-sm mb-2" maxlength="100">
-
         <label class="flex items-center gap-2 text-xs text-gray-600 mb-3 cursor-pointer">
           <input type="checkbox" id="banDeviceCheck" checked>
           <span>このメールに紐づくデバイスもBANする（フィンガープリント登録）</span>
         </label>
-
         <button id="banAddBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-2 px-4 rounded font-bold w-full">
           このメールアドレスをBANする
         </button>
       </div>
-
       <div>
         <p class="text-xs font-bold text-gray-600 mb-2">現在BANされているユーザー:</p>
         <div id="banListContainer">
           <p class="text-xs text-gray-400">（読み込み中...）</p>
         </div>
       </div>
-
       <div class="flex justify-end mt-4">
         <button id="banCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
 
-  <!-- ★ ユーザー一覧モーダル -->
+  <!-- ユーザー一覧モーダル -->
   <div id="userModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 640px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">👥 サイトを開いたユーザー一覧</h3>
       <p class="text-xs text-gray-500 mb-3">
         ログインしたことがある全ユーザーの一覧です（新しい順）。
       </p>
-
       <input type="text" id="userSearchInput" class="user-search-input" placeholder="🔍 メールアドレスで検索...">
-
       <div class="flex items-center justify-between mb-2">
         <p class="text-xs text-gray-600">
           合計: <span id="userCountLabel" class="font-bold">0</span> 人
@@ -464,13 +566,32 @@
           <span>BANされていない人のみ</span>
         </label>
       </div>
-
       <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;">
         <p class="text-xs text-gray-400">（読み込み中...）</p>
       </div>
-
       <div class="flex justify-end mt-4">
         <button id="userCloseBtn" class="reply-cancel-btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 承認待ちリストモーダル -->
+  <div id="pendingModal" class="modal-backdrop hidden">
+    <div class="modal-content" style="max-width: 640px;">
+      <h3 class="text-lg font-bold text-gray-800 mb-1">🔔 承認待ちユーザー</h3>
+      <p class="text-xs text-gray-500 mb-3">
+        初めてログインしたユーザーです。承認すると利用可能になります。
+      </p>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-gray-600">
+          承認待ち: <span id="pendingCountLabel" class="font-bold text-red-700">0</span> 人
+        </p>
+      </div>
+      <div id="pendingListContainer" style="max-height: 55vh; overflow-y: auto;">
+        <p class="text-xs text-gray-400">（読み込み中...）</p>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button id="pendingCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
@@ -492,6 +613,9 @@
         Googleでログイン
       </button>
       <p class="text-xs text-gray-400 mt-4">※ 投稿は匿名で表示されます</p>
+      <p class="text-xs text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded p-2">
+        ⚠️ 初回ログイン時は管理者の承認が必要です
+      </p>
     </div>
   </div>
 
@@ -512,6 +636,7 @@
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <div id="backupControls" class="hidden flex gap-2 flex-wrap">
+          <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
@@ -647,6 +772,9 @@
     let bansUnsubscribe = null;
     let deviceBansUnsubscribe = null;
     let knownUsersUnsubscribe = null;
+    let pendingUnsubscribe = null;
+    let approvedUnsubscribe = null;
+    let selfApprovalUnsubscribe = null;
 
     let activeReplyParentId = null;
     let allPostsCache = [];
@@ -656,12 +784,15 @@
     let bansCache = {};
     let deviceBansCache = {};
     let knownUsersCache = {};
+    let pendingCache = {};
+    let approvedCache = {};
     let myFingerprint = null;
 
     let badgeEditingTarget = null;
     let badgeEditingBadgeId = null;
 
     let myBadgePublic = true;
+    let myApprovalUnsubscribe = null;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -679,6 +810,8 @@
     const badgeToggleWrap = document.getElementById('badgeToggleWrap');
     const badgeToggle = document.getElementById('badgeToggle');
     const banOverlay = document.getElementById('banOverlay');
+    const banOverlayMsg = document.getElementById('banOverlayMsg');
+    const banOverlaySub = document.getElementById('banOverlaySub');
     let bannerTimer = null;
 
     function canDelete() {
@@ -694,6 +827,9 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canBan() {
+      return userRole === 'admin' || userRole === 'owner';
+    }
+    function canApprove() {
       return userRole === 'admin' || userRole === 'owner';
     }
 
@@ -801,7 +937,10 @@
       mainView.classList.add('hidden');
     }
 
+    // ★ BAN実行
     function executeBan() {
+      banOverlayMsg.textContent = 'アクセスが拒否されました';
+      banOverlaySub.textContent = '';
       banOverlay.classList.add('show');
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
@@ -818,6 +957,15 @@
       }, 500);
     }
 
+    // ★ 承認待ち画面
+    function executePending() {
+      banOverlayMsg.textContent = '承認待ちです';
+      banOverlaySub.innerHTML = '管理者または主による承認をお待ちください。<br>承認されると、次回ログイン時から利用できます。';
+      banOverlay.classList.add('show');
+      // 承認待ちの場合はタブを閉じず、画面だけ覆う（承認後にリロードできるように）
+      document.body.style.background = '#000';
+    }
+
     function checkSelfBan() {
       if (!currentUser) return false;
       if (bansCache && bansCache[currentUser.uid]) { executeBan(); return true; }
@@ -826,6 +974,19 @@
       if (myFingerprint && deviceBansCache && deviceBansCache[myFingerprint]) {
         executeBan(); return true;
       }
+      return false;
+    }
+
+    // ★ 承認状態チェック
+    function checkSelfApproval() {
+      if (!currentUser) return false;
+      // 管理者・主・VIPは無条件でOK
+      if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') return true;
+      // 承認済みならOK
+      if (approvedCache[currentUser.uid]) return true;
+      // 既存ユーザー（knownUsers に記録がある人）も自動承認扱い
+      // → ただし、承認制機能追加「以後」の初回ログインは knownUsers には入っていないので、ここで登録される前にチェックされる
+      // → 最初のログイン時は knownUsers にまだ入っていないので、pending に追加する
       return false;
     }
 
@@ -921,6 +1082,23 @@
       }
     }
 
+    (function initSiteRules() {
+      const rulesEl = document.getElementById('siteRules');
+      const toggleBtn = document.getElementById('rulesToggleBtn');
+      if (!rulesEl || !toggleBtn) return;
+      const saved = localStorage.getItem('siteRulesOpen');
+      const isOpen = saved === null ? true : saved === 'true';
+      if (isOpen) {
+        rulesEl.classList.remove('collapsed');
+      } else {
+        rulesEl.classList.add('collapsed');
+      }
+      toggleBtn.addEventListener('click', () => {
+        const nowCollapsed = rulesEl.classList.toggle('collapsed');
+        localStorage.setItem('siteRulesOpen', nowCollapsed ? 'false' : 'true');
+      });
+    })();
+
     document.getElementById('googleLoginBtn').addEventListener('click', async () => {
       try {
         await signInWithPopup(auth, provider);
@@ -939,6 +1117,9 @@
       if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
       if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
       if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
+      if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
+      if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
+      if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
     };
 
@@ -997,6 +1178,79 @@
       });
     }
 
+    // ★ 承認待ちリスト監視
+    function initPendingListener() {
+      if (pendingUnsubscribe) pendingUnsubscribe();
+      const ref0 = ref(db, 'pendingUsers');
+      pendingUnsubscribe = onValue(ref0, (snap) => {
+        pendingCache = snap.exists() ? snap.val() : {};
+        updatePendingBadge();
+        const pm = document.getElementById('pendingModal');
+        if (pm && !pm.classList.contains('hidden')) {
+          renderPendingList();
+        }
+      }, (err) => {
+        console.error('承認待ちリスト監視エラー:', err);
+      });
+    }
+
+    // ★ 承認済みリスト監視
+    function initApprovedListener() {
+      if (approvedUnsubscribe) approvedUnsubscribe();
+      const ref0 = ref(db, 'approvedUsers');
+      approvedUnsubscribe = onValue(ref0, (snap) => {
+        approvedCache = snap.exists() ? snap.val() : {};
+        // 自分が承認されたかチェック
+        if (currentUser && approvedCache[currentUser.uid]) {
+          // 承認済み画面が表示されていたら解除
+          if (banOverlay.classList.contains('show') && banOverlayMsg.textContent === '承認待ちです') {
+            banOverlay.classList.remove('show');
+            document.body.style.background = '';
+            showBanner('承認されました！ようこそ！', false);
+            // 再読み込みを促す
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          }
+        }
+      }, (err) => {
+        console.error('承認済みリスト監視エラー:', err);
+      });
+    }
+
+    // ★ 自分の承認待ちステータスを監視
+    function initSelfPendingListener() {
+      if (!currentUser) return;
+      if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
+      // 自分の pendingUsers エントリを監視
+      const selfPendingRef = ref(db, `pendingUsers/${currentUser.uid}`);
+      selfApprovalUnsubscribe = onValue(selfPendingRef, (snap) => {
+        if (!snap.exists() && banOverlay.classList.contains('show') && banOverlayMsg.textContent === '承認待ちです') {
+          // pendingから消えた＝承認されたか拒否された
+          // approvedUsers を確認
+          if (approvedCache[currentUser.uid]) {
+            banOverlay.classList.remove('show');
+            document.body.style.background = '';
+            showBanner('承認されました！', false);
+            setTimeout(() => window.location.reload(), 1000);
+          }
+        }
+      }, (err) => {
+        console.error('自分の承認状態監視エラー:', err);
+      });
+    }
+
+    function updatePendingBadge() {
+      const cnt = Object.keys(pendingCache || {}).length;
+      const badgeEl = document.getElementById('pendingBadgeCount');
+      const btnEl = document.getElementById('pendingBtn');
+      if (badgeEl) badgeEl.textContent = cnt;
+      if (btnEl) {
+        if (cnt > 0) btnEl.classList.add('has-pending');
+        else btnEl.classList.remove('has-pending');
+      }
+    }
+
     async function registerMyFingerprint() {
       if (!currentUser || !myFingerprint) return;
       const now = Date.now();
@@ -1028,7 +1282,29 @@
       }
     }
 
-    onAuthStateChanged(auth, (user) => {
+    // ★ 承認申請を送信
+    async function requestApproval() {
+      if (!currentUser) return;
+      try {
+        // 既に approvedUsers にいれば何もしない
+        const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
+        if (approvedSnap.exists()) {
+          return; // 既に承認済み
+        }
+
+        // pendingUsers に登録
+        await set(ref(db, `pendingUsers/${currentUser.uid}`), {
+          email: currentUser.email || '',
+          displayName: currentUser.displayName || '',
+          requestedAt: Date.now(),
+          fingerprint: myFingerprint || ''
+        });
+      } catch (e) {
+        console.warn('承認申請スキップ:', e.message);
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
       currentUser = user;
 
       if (!user) {
@@ -1042,6 +1318,35 @@
       myFingerprint = generateFingerprint();
 
       if (checkSelfBan()) return;
+
+      // ★ 承認チェック
+      // 監視を先にセットアップ（リアルタイム性のため）
+      initBansListener();
+      initDeviceBansListener();
+      initApprovedListener();
+
+      // 承認済みリストを取得
+      try {
+        const approvedSnap = await get(ref(db, 'approvedUsers'));
+        approvedCache = approvedSnap.exists() ? approvedSnap.val() : {};
+      } catch (e) {
+        console.warn('承認済みリスト取得スキップ:', e.message);
+      }
+
+      // 承認チェック
+      const isApproved = checkSelfApproval();
+
+      if (!isApproved) {
+        // 承認待ち申請を送信
+        await requestApproval();
+        // 承認待ち画面を表示
+        executePending();
+        // 自分の承認状態を監視
+        initSelfPendingListener();
+        return;
+      }
+
+      // ===== 以下、承認済みユーザーの処理 =====
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1074,15 +1379,25 @@
         backupControls.classList.add('hidden');
       }
 
+      // 自分の承認が取り消されていないか監視
+      if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
+      selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
+        if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
+          // 承認が取り消された
+          approvedCache = {};
+          executePending();
+          requestApproval();
+        }
+      });
+
       showMainView();
       setConnection(navigator.onLine);
 
       showThreadList();
       initThreadsListener();
       initCustomBadgesListener();
-      initBansListener();
-      initDeviceBansListener();
       initKnownUsersListener();
+      initPendingListener();
       registerMyFingerprint();
     });
 
@@ -1714,24 +2029,6 @@
         const ops = [];
         if (ek) ops.push(set(ref(db, `bans/${ek}`), data));
 
-        if (banDeviceCheck.checked) {
-          try {
-            const usersSnap = await get(ref(db, 'userDevices'));
-            if (usersSnap.exists()) {
-              const allBansSnap = await get(ref(db, 'bans'));
-              if (allBansSnap.exists()) {
-                allBansSnap.forEach((child) => {
-                  const v = child.val();
-                  if (v && v.email && v.email.toLowerCase() === email && v.uid) {
-                  }
-                });
-              }
-            }
-          } catch (e) {
-            console.warn('デバイス紐づけスキップ:', e.message);
-          }
-        }
-
         await Promise.all(ops);
 
         banEmailInput.value = '';
@@ -1746,7 +2043,7 @@
     });
 
     // ============================================================
-    // ★ ユーザー一覧モーダル
+    // ユーザー一覧モーダル
     // ============================================================
     const userModal = document.getElementById('userModal');
     const userListContainer = document.getElementById('userListContainer');
@@ -1868,6 +2165,110 @@
 
         userListContainer.appendChild(row);
       });
+    }
+
+    // ============================================================
+    // ★ 承認待ちリストモーダル
+    // ============================================================
+    const pendingModal = document.getElementById('pendingModal');
+    const pendingListContainer = document.getElementById('pendingListContainer');
+    const pendingCountLabel = document.getElementById('pendingCountLabel');
+
+    window.openPendingModal = function() {
+      if (!canApprove()) { alert('承認権限がありません。'); return; }
+      pendingModal.classList.remove('hidden');
+      renderPendingList();
+    };
+
+    function closePendingModal() {
+      pendingModal.classList.add('hidden');
+    }
+
+    document.getElementById('pendingCloseBtn').addEventListener('click', closePendingModal);
+    pendingModal.addEventListener('click', (e) => {
+      if (e.target.id === 'pendingModal') closePendingModal();
+    });
+
+    function renderPendingList() {
+      pendingListContainer.innerHTML = '';
+      const entries = Object.entries(pendingCache || {});
+      pendingCountLabel.textContent = entries.length;
+
+      if (entries.length === 0) {
+        pendingListContainer.innerHTML = '<p class="text-xs text-gray-400">承認待ちのユーザーはいません。</p>';
+        return;
+      }
+
+      entries.sort((a, b) => (a[1].requestedAt || 0) - (b[1].requestedAt || 0));
+
+      entries.forEach(([uid, p]) => {
+        const date = p.requestedAt ? new Date(p.requestedAt).toLocaleString('ja-JP') : '不明';
+        const row = document.createElement('div');
+        row.className = 'pending-row';
+        row.innerHTML = `
+          <div class="info">
+            <div class="email-line">${escapeHtml(p.email || '（メール不明）')}</div>
+            <div class="meta-line">UID: ${escapeHtml(uid)}</div>
+            <div class="meta-line">申請日時: ${escapeHtml(date)}</div>
+          </div>
+          <div class="action-btns">
+            <button class="approve-btn">承認</button>
+            <button class="reject-btn">拒否</button>
+          </div>
+        `;
+        row.querySelector('.approve-btn').addEventListener('click', () => approveUser(uid, p));
+        row.querySelector('.reject-btn').addEventListener('click', () => rejectUser(uid, p));
+        pendingListContainer.appendChild(row);
+      });
+    }
+
+    async function approveUser(uid, p) {
+      if (!canApprove()) { alert('承認権限がありません。'); return; }
+      if (!confirm(`${p.email || 'このユーザー'} を承認しますか？`)) return;
+      try {
+        const now = Date.now();
+        // approvedUsers に追加
+        await set(ref(db, `approvedUsers/${uid}`), {
+          email: p.email || '',
+          displayName: p.displayName || '',
+          approvedAt: now,
+          approvedBy: currentUser.email
+        });
+        // pendingUsers から削除
+        await remove(ref(db, `pendingUsers/${uid}`));
+        showBanner('承認しました', false);
+      } catch (err) {
+        console.error('承認エラー:', err);
+        showBanner('承認失敗: ' + (err.code || err.message), true);
+        alert('承認に失敗しました。');
+      }
+    }
+
+    async function rejectUser(uid, p) {
+      if (!canApprove()) { alert('承認権限がありません。'); return; }
+      if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？\n\n拒否すると、その人は今後もサイトを利用できません。`)) return;
+      try {
+        // pendingUsers から削除し、BANリストに追加
+        const now = Date.now();
+        const data = {
+          bannedAt: now,
+          bannedBy: currentUser.email,
+          email: p.email || '',
+          uid: uid,
+          reason: '承認拒否'
+        };
+        await set(ref(db, `bans/${uid}`), data);
+        if (p.email) {
+          const ek = emailToKey(p.email);
+          if (ek) await set(ref(db, `bans/${ek}`), data);
+        }
+        await remove(ref(db, `pendingUsers/${uid}`));
+        showBanner('拒否しました', false);
+      } catch (err) {
+        console.error('拒否エラー:', err);
+        showBanner('拒否失敗: ' + (err.code || err.message), true);
+        alert('拒否に失敗しました。');
+      }
     }
 
     // ============================================================
@@ -2057,7 +2458,6 @@
 
     buildColorRow();
 
-    // 返信
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (checkSelfBan()) return;
@@ -2334,6 +2734,8 @@
         const snapBans = await get(ref(db, 'bans'));
         const snapDevBans = await get(ref(db, 'deviceBans'));
         const snapKnown = await get(ref(db, 'knownUsers'));
+        const snapApproved = await get(ref(db, 'approvedUsers'));
+        const snapPending = await get(ref(db, 'pendingUsers'));
         const payload = {
           _meta: {
             exportedAt: new Date().toISOString(),
@@ -2344,7 +2746,9 @@
           customBadges: snapBadges.exists() ? snapBadges.val() : {},
           bans: snapBans.exists() ? snapBans.val() : {},
           deviceBans: snapDevBans.exists() ? snapDevBans.val() : {},
-          knownUsers: snapKnown.exists() ? snapKnown.val() : {}
+          knownUsers: snapKnown.exists() ? snapKnown.val() : {},
+          approvedUsers: snapApproved.exists() ? snapApproved.val() : {},
+          pendingUsers: snapPending.exists() ? snapPending.val() : {}
         };
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
@@ -2373,7 +2777,7 @@
 
       if (!confirm(
         '【警告】\n' +
-        '選択したバックアップファイルで、現在のすべてのスレッド・バッジ・BANリスト・ユーザー一覧を上書きします。\n' +
+        '選択したバックアップファイルで、現在のすべてのデータを上書きします。\n' +
         '現在のデータは完全に失われます（バックアップを取っていない場合）。\n\n' +
         '本当に復元しますか？'
       )) return;
@@ -2394,6 +2798,8 @@
         let bansData = {};
         let devBansData = {};
         let knownUsersData = {};
+        let approvedData = {};
+        let pendingData = {};
 
         if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
           threadsData = parsed.threads;
@@ -2401,6 +2807,8 @@
           if (parsed.bans && typeof parsed.bans === 'object') bansData = parsed.bans;
           if (parsed.deviceBans && typeof parsed.deviceBans === 'object') devBansData = parsed.deviceBans;
           if (parsed.knownUsers && typeof parsed.knownUsers === 'object') knownUsersData = parsed.knownUsers;
+          if (parsed.approvedUsers && typeof parsed.approvedUsers === 'object') approvedData = parsed.approvedUsers;
+          if (parsed.pendingUsers && typeof parsed.pendingUsers === 'object') pendingData = parsed.pendingUsers;
         } else if (parsed && typeof parsed === 'object') {
           threadsData = parsed;
         } else {
@@ -2412,6 +2820,8 @@
         await set(ref(db, 'bans'), bansData);
         await set(ref(db, 'deviceBans'), devBansData);
         await set(ref(db, 'knownUsers'), knownUsersData);
+        await set(ref(db, 'approvedUsers'), approvedData);
+        await set(ref(db, 'pendingUsers'), pendingData);
 
         showBanner('復元が完了しました', false);
         alert('復元が完了しました。');
@@ -2430,6 +2840,9 @@
       if (bansUnsubscribe) bansUnsubscribe();
       if (deviceBansUnsubscribe) deviceBansUnsubscribe();
       if (knownUsersUnsubscribe) knownUsersUnsubscribe();
+      if (pendingUnsubscribe) pendingUnsubscribe();
+      if (approvedUnsubscribe) approvedUnsubscribe();
+      if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
     });
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
