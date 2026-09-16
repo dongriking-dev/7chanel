@@ -52,7 +52,6 @@
     .role-post-badge.admin { background: #7c2d12; }
     .role-post-badge.owner { background: #1e40af; }
     .role-post-badge.vip   { background: #7c3aed; }
-    /* ★ カスタムバッジ */
     .custom-badge {
       color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
@@ -73,7 +72,6 @@
       border-radius: 4px; cursor: pointer; border: none;
     }
     .reply-btn:hover { background: #1d4ed8; }
-    /* ★ バッジ管理ボタン */
     .badge-manage-btn {
       background: #a16207; color: #fff; font-size: 11px; padding: 3px 10px;
       border-radius: 4px; cursor: pointer; border: none;
@@ -199,7 +197,7 @@
     }
     .badge-toggle-wrap input { cursor: pointer; }
 
-    /* ★ モーダル */
+    /* モーダル */
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(0,0,0,0.55);
       display: flex; align-items: center; justify-content: center;
@@ -208,7 +206,7 @@
     .modal-backdrop.hidden { display: none; }
     .modal-content {
       background: #fff; border-radius: 8px; padding: 20px;
-      max-width: 420px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      max-width: 480px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
       max-height: 90vh; overflow-y: auto;
     }
     .color-swatch-row {
@@ -222,6 +220,34 @@
       border-color: #111827;
       box-shadow: 0 0 0 2px #fff inset;
     }
+    /* ★ バッジ一覧アイテム */
+    .badge-list-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;
+      background: #f9fafb; margin-bottom: 6px;
+    }
+    .badge-list-item .badge-chip-wrap {
+      flex: 1; min-width: 0;
+    }
+    .badge-list-item .btn-mini {
+      font-size: 11px; padding: 3px 8px; border-radius: 4px;
+      border: none; cursor: pointer; color: #fff;
+    }
+    .badge-list-item .btn-edit { background: #2563eb; }
+    .badge-list-item .btn-edit:hover { background: #1d4ed8; }
+    .badge-list-item .btn-del { background: #dc2626; }
+    .badge-list-item .btn-del:hover { background: #b91c1c; }
+    .add-badge-btn {
+      background: #16a34a; color: #fff; font-size: 12px;
+      padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer;
+      font-weight: 600;
+    }
+    .add-badge-btn:hover { background: #15803d; }
+    .editor-box {
+      border: 1px solid #fbbf24; background: #fffbeb;
+      border-radius: 6px; padding: 12px; margin-top: 10px;
+    }
+    .editor-box.hidden { display: none; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -231,42 +257,49 @@
   <!-- バッジ管理モーダル -->
   <div id="badgeModal" class="modal-backdrop hidden">
     <div class="modal-content">
-      <h3 class="text-lg font-bold text-gray-800 mb-3">バッジ管理</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        対象ユーザー: <span id="badgeTargetEmail" class="admin-email"></span><br>
-        UID: <span id="badgeTargetUid" class="font-mono text-[10px]"></span>
+      <h3 class="text-lg font-bold text-gray-800 mb-1">バッジ管理</h3>
+      <p class="text-xs text-gray-500 mb-4">
+        対象: <span id="badgeTargetEmail" class="admin-email"></span>
       </p>
 
-      <!-- 現在のバッジ表示 -->
-      <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded">
-        <p class="text-xs text-gray-600 mb-1">現在のカスタムバッジ:</p>
-        <div id="badgeCurrentPreview" class="text-sm text-gray-500">（なし）</div>
+      <!-- 現在のバッジ一覧 -->
+      <div class="mb-3">
+        <p class="text-xs font-bold text-gray-600 mb-2">現在のバッジ:</p>
+        <div id="badgeListContainer">
+          <p class="text-xs text-gray-400">（なし）</p>
+        </div>
       </div>
 
-      <!-- バッジ名 -->
-      <label class="block text-xs text-gray-600 mb-1">バッジ名（最大12文字）:</label>
-      <input type="text" id="badgeLabelInput" maxlength="12" placeholder="例: 常連 / 荒らし / 神" class="w-full border p-2 rounded text-sm mb-3">
+      <!-- 新規追加ボタン -->
+      <button id="addBadgeBtn" class="add-badge-btn w-full mb-3">＋ 新しいバッジを追加</button>
 
-      <!-- バッジ色 -->
-      <label class="block text-xs text-gray-600 mb-1">バッジ色:</label>
-      <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
-      <div class="flex items-center gap-2 mb-4">
-        <input type="color" id="badgeColorPicker" value="#ef4444" class="w-10 h-8 border rounded cursor-pointer">
-        <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
-      </div>
+      <!-- 編集エディタ（初期は非表示） -->
+      <div id="badgeEditor" class="editor-box hidden">
+        <p class="text-xs font-bold text-gray-700 mb-2" id="badgeEditorTitle">新しいバッジ</p>
 
-      <!-- プレビュー -->
-      <div class="mb-4">
-        <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
-        <span id="badgePreviewChip" class="custom-badge" style="background:#ef4444;">常連</span>
-      </div>
+        <label class="block text-xs text-gray-600 mb-1">バッジ名（最大12文字）:</label>
+        <input type="text" id="badgeLabelInput" maxlength="12" placeholder="例: 常連 / 荒らし / 神" class="w-full border p-2 rounded text-sm mb-3">
 
-      <div class="flex justify-between gap-2 flex-wrap">
-        <button id="badgeRemoveBtn" class="delete-btn">バッジを剥奪</button>
-        <div class="flex gap-2 ml-auto">
-          <button id="badgeCancelBtn" class="reply-cancel-btn">キャンセル</button>
+        <label class="block text-xs text-gray-600 mb-1">バッジ色:</label>
+        <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
+        <div class="flex items-center gap-2 mb-3">
+          <input type="color" id="badgeColorPicker" value="#ef4444" class="w-10 h-8 border rounded cursor-pointer">
+          <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
+        </div>
+
+        <div class="mb-3">
+          <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
+          <span id="badgePreviewChip" class="custom-badge" style="background:#ef4444;">バッジ</span>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button id="badgeEditorCancelBtn" class="reply-cancel-btn">キャンセル</button>
           <button id="badgeSaveBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded font-bold">保存</button>
         </div>
+      </div>
+
+      <div class="flex justify-end mt-4">
+        <button id="badgeCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
@@ -419,7 +452,6 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ロール定義
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
     const ROLE_VIP_EMAILS = [
@@ -438,17 +470,18 @@
     let currentThreadOwnerUid = null;
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
-    let badgesUnsubscribe = null;   // ★ カスタムバッジ監視用
+    let badgesUnsubscribe = null;
 
     let activeReplyParentId = null;
     let allPostsCache = [];
     let postNumberMap = new Map();
 
-    // ★ カスタムバッジのキャッシュ（uid -> { label, color }）
+    // ★ カスタムバッジのキャッシュ（uid -> { badgeId: { label, color } }）
     let customBadgesCache = {};
 
-    // ★ 現在バッジ管理モーダルで編集中の対象
+    // ★ モーダル状態
     let badgeEditingTarget = null;   // { uid, email }
+    let badgeEditingBadgeId = null;  // 編集中のバッジID（新規なら null）
 
     let myBadgePublic = true;
 
@@ -479,7 +512,6 @@
     function canViewEmail() {
       return userRole === 'admin' || userRole === 'owner';
     }
-    // ★ バッジを管理できるか：管理者・主のみ
     function canManageBadge() {
       return userRole === 'admin' || userRole === 'owner';
     }
@@ -550,7 +582,6 @@
       mainView.classList.add('hidden');
     }
 
-    // 画像
     function fileToBase64Image(file) {
       return new Promise((resolve, reject) => {
         if (!file) { resolve(null); return; }
@@ -669,13 +700,12 @@
       return null;
     }
 
-    // ★ カスタムバッジ監視
+    // カスタムバッジ監視
     function initCustomBadgesListener() {
       if (badgesUnsubscribe) badgesUnsubscribe();
       const badgesRef = ref(db, 'customBadges');
       badgesUnsubscribe = onValue(badgesRef, (snap) => {
         customBadgesCache = snap.exists() ? snap.val() : {};
-        // 再描画（スレッド詳細を開いている場合のみ）
         if (currentThreadKey) {
           renderPostsFromCache();
         }
@@ -732,10 +762,9 @@
 
       showThreadList();
       initThreadsListener();
-      initCustomBadgesListener();   // ★
+      initCustomBadgesListener();
     });
 
-    // バッジ表示トグル
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
       const visible = badgeToggle.checked;
@@ -986,7 +1015,6 @@
       });
     }
 
-    // ★ キャッシュから再描画（カスタムバッジ更新時にも呼ぶ）
     function renderPostsFromCache() {
       postsContainer.innerHTML = '';
 
@@ -1022,7 +1050,6 @@
       }
     }
 
-    // 投稿のロールバッジ
     function buildPostRoleBadge(post) {
       if (!post) return '';
       if (post.badgeVisible === false) return '';
@@ -1033,15 +1060,23 @@
       return '';
     }
 
-    // ★ 投稿のカスタムバッジ
+    // ★ 複数カスタムバッジを全部描画
     function buildPostCustomBadge(post) {
       if (!post) return '';
       if (post.badgeVisible === false) return '';
       const uid = post.authorUid;
       if (!uid) return '';
-      const b = customBadgesCache[uid];
-      if (!b || !b.label || !b.color) return '';
-      return `<span class="custom-badge" style="background:${escapeHtml(b.color)};">${escapeHtml(b.label)}</span>`;
+      const badges = customBadgesCache[uid];
+      if (!badges) return '';
+
+      // badges は { badgeId: { label, color } } の形式
+      let html = '';
+      Object.values(badges).forEach((b) => {
+        if (b && b.label && b.color) {
+          html += `<span class="custom-badge" style="background:${escapeHtml(b.color)};">${escapeHtml(b.label)}</span>`;
+        }
+      });
+      return html;
     }
 
     function renderPostTree(post, childrenMap) {
@@ -1062,7 +1097,7 @@
       }
 
       const roleBadgeHtml = buildPostRoleBadge(post);
-      const customBadgeHtml = buildPostCustomBadge(post);   // ★
+      const customBadgeHtml = buildPostCustomBadge(post);
 
       let adminInfo = '';
       if (canViewEmail()) {
@@ -1077,7 +1112,6 @@
 
       const fileHtml = post.file ? buildFileHtml(post.file) : '';
 
-      // ★ バッジ管理ボタン（管理者・主のみ、かつ authorUid があるとき）
       let badgeManageBtn = '';
       if (canManageBadge() && post.authorUid) {
         badgeManageBtn = `<button class="badge-manage-btn" data-badge-uid="${post.authorUid}" data-badge-email="${escapeHtml(post.authorEmail || '')}">バッジ管理</button>`;
@@ -1113,7 +1147,6 @@
         const dbtn = postDiv.querySelector('.delete-btn');
         if (dbtn) dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
       }
-      // ★ バッジ管理ボタン
       const bbtn = postDiv.querySelector('.badge-manage-btn');
       if (bbtn) {
         bbtn.addEventListener('click', () => {
@@ -1135,7 +1168,7 @@
     }
 
     // ============================================================
-    // ★ バッジ管理モーダル
+    // バッジ管理モーダル（複数対応）
     // ============================================================
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
@@ -1170,42 +1203,99 @@
       chip.style.background = color;
     }
 
+    // ★ モーダルを開く
     function openBadgeModal(uid, email) {
       if (!canManageBadge()) { alert('バッジ管理権限がありません。'); return; }
       badgeEditingTarget = { uid, email };
       document.getElementById('badgeTargetEmail').textContent = email || '（メール不明）';
-      document.getElementById('badgeTargetUid').textContent = uid;
-
-      const existing = customBadgesCache[uid];
-      const curPreview = document.getElementById('badgeCurrentPreview');
-      if (existing && existing.label && existing.color) {
-        curPreview.innerHTML = `<span class="custom-badge" style="background:${escapeHtml(existing.color)};">${escapeHtml(existing.label)}</span>`;
-        document.getElementById('badgeLabelInput').value = existing.label;
-        document.getElementById('badgeColorPicker').value = existing.color;
-        document.getElementById('badgeColorText').value = existing.color;
-      } else {
-        curPreview.textContent = '（なし）';
-        document.getElementById('badgeLabelInput').value = '';
-        document.getElementById('badgeColorPicker').value = '#ef4444';
-        document.getElementById('badgeColorText').value = '#ef4444';
-      }
-
-      // プリセットの選択状態を更新
-      const cur = document.getElementById('badgeColorText').value;
-      document.querySelectorAll('.color-swatch').forEach(el => {
-        el.classList.toggle('selected', el.dataset.color.toLowerCase() === cur.toLowerCase());
-      });
-
-      updateBadgePreview();
+      renderBadgeList();
+      closeBadgeEditor();
       document.getElementById('badgeModal').classList.remove('hidden');
     }
 
     function closeBadgeModal() {
       badgeEditingTarget = null;
+      badgeEditingBadgeId = null;
       document.getElementById('badgeModal').classList.add('hidden');
     }
 
-    document.getElementById('badgeCancelBtn').addEventListener('click', closeBadgeModal);
+    // ★ 既存バッジ一覧を描画
+    function renderBadgeList() {
+      const container = document.getElementById('badgeListContainer');
+      container.innerHTML = '';
+      if (!badgeEditingTarget) return;
+      const badges = customBadgesCache[badgeEditingTarget.uid];
+      if (!badges || Object.keys(badges).length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400">（なし）</p>';
+        return;
+      }
+      Object.entries(badges).forEach(([bid, b]) => {
+        if (!b || !b.label) return;
+        const row = document.createElement('div');
+        row.className = 'badge-list-item';
+        row.innerHTML = `
+          <div class="badge-chip-wrap">
+            <span class="custom-badge" style="background:${escapeHtml(b.color || '#666')};">${escapeHtml(b.label)}</span>
+          </div>
+          <button class="btn-mini btn-edit" data-bid="${bid}">編集</button>
+          <button class="btn-mini btn-del" data-bid="${bid}">削除</button>
+        `;
+        row.querySelector('.btn-edit').addEventListener('click', () => {
+          openBadgeEditor(bid);
+        });
+        row.querySelector('.btn-del').addEventListener('click', async () => {
+          if (!confirm(`バッジ「${b.label}」を削除しますか？`)) return;
+          try {
+            await remove(ref(db, `customBadges/${badgeEditingTarget.uid}/${bid}`));
+            showBanner('バッジを削除しました', false);
+          } catch (err) {
+            console.error('削除エラー:', err);
+            showBanner('削除失敗: ' + (err.code || err.message), true);
+          }
+        });
+        container.appendChild(row);
+      });
+    }
+
+    // ★ エディタを開く（badgeId が null なら新規）
+    function openBadgeEditor(badgeId) {
+      badgeEditingBadgeId = badgeId || null;
+      const title = document.getElementById('badgeEditorTitle');
+      const labelInput = document.getElementById('badgeLabelInput');
+      const colorPicker = document.getElementById('badgeColorPicker');
+      const colorText = document.getElementById('badgeColorText');
+
+      if (badgeId && customBadgesCache[badgeEditingTarget.uid]?.[badgeId]) {
+        const b = customBadgesCache[badgeEditingTarget.uid][badgeId];
+        title.textContent = 'バッジを編集';
+        labelInput.value = b.label || '';
+        colorPicker.value = b.color || '#ef4444';
+        colorText.value = b.color || '#ef4444';
+      } else {
+        title.textContent = '新しいバッジ';
+        labelInput.value = '';
+        colorPicker.value = '#ef4444';
+        colorText.value = '#ef4444';
+      }
+
+      // スウォッチ選択状態
+      const cur = colorText.value.toLowerCase();
+      document.querySelectorAll('.color-swatch').forEach(el => {
+        el.classList.toggle('selected', el.dataset.color.toLowerCase() === cur);
+      });
+
+      updateBadgePreview();
+      document.getElementById('badgeEditor').classList.remove('hidden');
+    }
+
+    function closeBadgeEditor() {
+      badgeEditingBadgeId = null;
+      document.getElementById('badgeEditor').classList.add('hidden');
+    }
+
+    document.getElementById('badgeCloseBtn').addEventListener('click', closeBadgeModal);
+    document.getElementById('badgeEditorCancelBtn').addEventListener('click', closeBadgeEditor);
+    document.getElementById('addBadgeBtn').addEventListener('click', () => openBadgeEditor(null));
     document.getElementById('badgeModal').addEventListener('click', (e) => {
       if (e.target.id === 'badgeModal') closeBadgeModal();
     });
@@ -1233,7 +1323,7 @@
       }
     });
 
-    // 保存
+    // ★ 保存（既存は更新、新規はpushで追加）
     document.getElementById('badgeSaveBtn').addEventListener('click', async () => {
       if (!badgeEditingTarget) return;
       if (!canManageBadge()) { alert('バッジ管理権限がありません。'); return; }
@@ -1244,36 +1334,30 @@
       if (!label) { alert('バッジ名を入力してください。'); return; }
       if (!/^#[0-9a-fA-F]{6}$/.test(color)) { alert('色は #RRGGBB の形式で入力してください。'); return; }
 
+      const uid = badgeEditingTarget.uid;
+      const data = {
+        label: label,
+        color: color,
+        grantedBy: currentUser.email,
+        grantedAt: Date.now()
+      };
+
       try {
-        await set(ref(db, `customBadges/${badgeEditingTarget.uid}`), {
-          label: label,
-          color: color,
-          grantedBy: currentUser.email,
-          grantedAt: Date.now()
-        });
-        showBanner('バッジを付与しました', false);
-        closeBadgeModal();
+        if (badgeEditingBadgeId) {
+          // 既存を更新
+          await update(ref(db, `customBadges/${uid}/${badgeEditingBadgeId}`), data);
+          showBanner('バッジを更新しました', false);
+        } else {
+          // 新規追加（push で一意なキーを生成）
+          const newRef = push(ref(db, `customBadges/${uid}`));
+          await set(newRef, data);
+          showBanner('バッジを追加しました', false);
+        }
+        closeBadgeEditor();
       } catch (err) {
         console.error('バッジ保存エラー:', err);
         showBanner('保存失敗: ' + (err.code || err.message), true);
-        alert('バッジの保存に失敗しました。');
-      }
-    });
-
-    // 剥奪
-    document.getElementById('badgeRemoveBtn').addEventListener('click', async () => {
-      if (!badgeEditingTarget) return;
-      if (!canManageBadge()) { alert('バッジ管理権限がありません。'); return; }
-      if (!confirm('このユーザーのバッジを剥奪しますか？')) return;
-
-      try {
-        await remove(ref(db, `customBadges/${badgeEditingTarget.uid}`));
-        showBanner('バッジを剥奪しました', false);
-        closeBadgeModal();
-      } catch (err) {
-        console.error('バッジ剥奪エラー:', err);
-        showBanner('剥奪失敗: ' + (err.code || err.message), true);
-        alert('剥奪に失敗しました。');
+        alert('バッジの保存に失敗しました。\n' + (err.message || ''));
       }
     });
 
@@ -1431,9 +1515,12 @@
         else if (userRole === 'vip') optimisticRoleBadge = `<span class="role-post-badge vip">VIP</span>`;
       }
       let optimisticCustomBadge = '';
-      const myCustom = customBadgesCache[currentUser.uid];
-      if (myBadgePublic && myCustom && myCustom.label && myCustom.color) {
-        optimisticCustomBadge = `<span class="custom-badge" style="background:${escapeHtml(myCustom.color)};">${escapeHtml(myCustom.label)}</span>`;
+      if (myBadgePublic && customBadgesCache[currentUser.uid]) {
+        Object.values(customBadgesCache[currentUser.uid]).forEach((b) => {
+          if (b && b.label && b.color) {
+            optimisticCustomBadge += `<span class="custom-badge" style="background:${escapeHtml(b.color)};">${escapeHtml(b.label)}</span>`;
+          }
+        });
       }
       tempPost.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
