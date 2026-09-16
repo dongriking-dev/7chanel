@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>69ch</title>
+  <title>69ちゃんねる</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -82,12 +82,31 @@
       border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
     }
     .restore-btn:hover { background: #0e7490; }
+    /* ★ 猫召喚ボタン */
+    .cat-summon-btn {
+      background: #f59e0b; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
+    }
+    .cat-summon-btn:hover { background: #d97706; }
+
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
       border-radius: 6px;
       padding: 12px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      position: relative;
+    }
+    /* ★ 猫が重なったときのハイライト */
+    .post-card.cat-hover {
+      outline: 3px solid #f59e0b;
+      outline-offset: 2px;
+      background: #fffbeb;
+    }
+    /* ★ 猫が入っている状態 */
+    .post-card.cat-inside {
+      background: #fef3c7;
+      box-shadow: 0 0 0 3px #f59e0b, 0 4px 12px rgba(245,158,11,0.4);
     }
     .post-children {
       margin-left: 20px;
@@ -188,6 +207,138 @@
     .badge-toggle-wrap input {
       cursor: pointer;
     }
+
+    /* ============================================================
+       ★ 猫召喚オーバーレイ
+       ============================================================ */
+    #catOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      pointer-events: none;
+      display: none;
+    }
+    #catOverlay.active { display: block; }
+
+    #catCanvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #catHint {
+      position: fixed;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fbbf24;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 9001;
+      display: none;
+      border: 1px solid #f59e0b;
+      box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #catHint.active { display: block; }
+
+    #catHint .key {
+      background: #1f2937;
+      border: 1px solid #4b5563;
+      padding: 2px 8px;
+      border-radius: 5px;
+      color: #e5e7eb;
+      font-family: monospace;
+      margin: 0 3px;
+    }
+
+    #catCloseBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9002;
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(220,38,38,0.5);
+      display: none;
+    }
+    #catCloseBtn.active { display: block; }
+    #catCloseBtn:hover { background: #b91c1c; }
+
+    /* ★ 猫がレスに入った状態の編集プロンプト */
+    #catEditPrompt {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border: 3px solid #f59e0b;
+      border-radius: 12px;
+      padding: 24px;
+      z-index: 9003;
+      max-width: 560px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      display: none;
+    }
+    #catEditPrompt.active { display: block; }
+    #catEditPrompt h3 {
+      font-size: 18px;
+      color: #92400e;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    #catEditPrompt textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 120px;
+      font-family: inherit;
+    }
+    #catEditPrompt textarea:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
+    }
+    .cat-edit-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+    .cat-edit-actions button {
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .cat-edit-save {
+      background: #059669;
+      color: #fff;
+    }
+    .cat-edit-save:hover { background: #047857; }
+    .cat-edit-cancel {
+      background: #6b7280;
+      color: #fff;
+    }
+    .cat-edit-cancel:hover { background: #4b5563; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -197,7 +348,7 @@
   <!-- ログイン画面 -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
-      <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃんねる</h1>
+      <h1 class="text-3xl font-bold text-red-900 mb-2">69ちゃんねる</h1>
       <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
       <p class="text-sm text-gray-600 mb-6">安全のためです。</p>
       <button id="googleLoginBtn"
@@ -218,7 +369,7 @@
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">69ちゃんねる</h1>
         <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
@@ -230,6 +381,8 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <!-- ★ 猫を召喚ボタン（管理者・主のみ） -->
+        <button id="catSummonBtn" class="cat-summon-btn hidden" onclick="summonCat()">🐾 猫を召喚</button>
         <div id="backupControls" class="hidden flex gap-2">
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
@@ -314,6 +467,29 @@
     </div>
   </div>
 
+  <!-- ★ 猫召喚オーバーレイ -->
+  <div id="catOverlay">
+    <canvas id="catCanvas"></canvas>
+  </div>
+  <div id="catHint">
+    <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 移動 ｜
+    <span class="key">SPACE</span> ジャンプ ｜
+    <span class="key">ENTER</span> レスに入って編集 ｜
+    <span class="key">ESC</span> 終了
+  </div>
+  <button id="catCloseBtn" onclick="dismissCat()">✕ 猫を帰す</button>
+
+  <!-- ★ 編集プロンプト -->
+  <div id="catEditPrompt">
+    <h3>📝 レスを編集</h3>
+    <p id="catEditTarget" class="text-xs text-gray-500 mb-2"></p>
+    <textarea id="catEditTextarea" maxlength="2000"></textarea>
+    <div class="cat-edit-actions">
+      <button class="cat-edit-cancel" onclick="closeCatEdit()">キャンセル</button>
+      <button class="cat-edit-save" onclick="saveCatEdit()">保存</button>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
@@ -345,7 +521,6 @@
     // ★ ロール定義
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
-    // ★ VIPは複数人を配列で管理
     const ROLE_VIP_EMAILS = [
       "18104@v.nakijin.ed.jp",
       "setsu.setsuna1229@gmail.com",
@@ -384,25 +559,24 @@
     const backupControls = document.getElementById('backupControls');
     const badgeToggleWrap = document.getElementById('badgeToggleWrap');
     const badgeToggle = document.getElementById('badgeToggle');
+    const catSummonBtn = document.getElementById('catSummonBtn');
     let bannerTimer = null;
 
-    // ============================================================
-    // ★ 権限ヘルパー（3種類）
-    // ============================================================
-    // 削除できるか：管理者・主・VIP
+    // ★ 権限ヘルパー
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
-    // バックアップできるか：管理者・主のみ
     function canBackup() {
       return userRole === 'admin' || userRole === 'owner';
     }
-    // ★ メール閲覧できるか：管理者・主のみ（VIPは不可）
     function canViewEmail() {
       return userRole === 'admin' || userRole === 'owner';
     }
+    // ★ 猫召喚できるか（管理者・主のみ。VIPは不可）
+    function canSummonCat() {
+      return userRole === 'admin' || userRole === 'owner';
+    }
 
-    // バッジ表示設定（localStorage）
     function badgeStorageKey(email) {
       return 'badgeVisible_' + (email || 'anonymous');
     }
@@ -414,7 +588,6 @@
       localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
     }
 
-    // ヘッダーのロールバッジ
     function renderRoleBadge(role) {
       roleBadgeContainer.innerHTML = '';
       if (role === 'admin') {
@@ -561,7 +734,6 @@
       }
     }
 
-    // 認証
     document.getElementById('googleLoginBtn').addEventListener('click', async () => {
       try {
         await signInWithPopup(auth, provider);
@@ -574,6 +746,7 @@
     });
 
     window.doLogout = async function() {
+      dismissCat();
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
@@ -607,7 +780,6 @@
 
       renderRoleBadge(userRole);
 
-      // ヘッダー右上のメール表示（自分のメール）
       userEmailSpan.classList.add('hidden');
       userEmailSpan.textContent = '';
       if (userRole === 'admin') {
@@ -630,6 +802,13 @@
         backupControls.classList.add('hidden');
       }
 
+      // ★ 猫召喚ボタンの表示制御
+      if (canSummonCat()) {
+        catSummonBtn.classList.remove('hidden');
+      } else {
+        catSummonBtn.classList.add('hidden');
+      }
+
       showMainView();
       setConnection(navigator.onLine);
 
@@ -637,7 +816,6 @@
       initThreadsListener();
     });
 
-    // バッジ表示トグル
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
       const visible = badgeToggle.checked;
@@ -683,6 +861,7 @@
     });
 
     window.showThreadList = function() {
+      dismissCat();
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
@@ -700,7 +879,6 @@
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
-      // ★ 作成者メールは canViewEmail() の人だけが見られる
       const authorEl = document.getElementById('currentThreadAuthor');
       const delBtn = document.getElementById('deleteThreadBtn');
       if (canViewEmail()) {
@@ -709,7 +887,6 @@
       } else {
         authorEl.textContent = '';
       }
-      // スレッド削除ボタンは canDelete() の人
       if (canDelete()) {
         delBtn.classList.remove('hidden');
       } else {
@@ -723,7 +900,6 @@
       loadPosts(threadKey);
     }
 
-    // 1. スレッド作成
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) { alert('ログインが必要です。'); return; }
@@ -803,7 +979,6 @@
       }
     });
 
-    // 2. スレッド一覧
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
 
@@ -853,7 +1028,6 @@
       });
     }
 
-    // 3. レス読み込み
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
@@ -914,7 +1088,6 @@
       });
     }
 
-    // 投稿のロールバッジ（全員に見える）
     function buildPostRoleBadge(post) {
       if (!post) return '';
       if (post.badgeVisible === false) return '';
@@ -944,7 +1117,6 @@
 
       const roleBadgeHtml = buildPostRoleBadge(post);
 
-      // ★ 投稿者のメールは canViewEmail() の人だけに見える
       let adminInfo = '';
       if (canViewEmail()) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
@@ -960,6 +1132,7 @@
 
       const postDiv = document.createElement('div');
       postDiv.className = 'post-card';
+      postDiv.dataset.postKey = post.key;
       postDiv.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
           <span class="post-number">${number}</span>
@@ -975,7 +1148,7 @@
             ${canDelete() ? `<button class="delete-btn" data-post-key="${post.key}">削除</button>` : ''}
           </span>
         </div>
-        ${post.content ? `<div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${formatContent(post.content)}</div>` : ''}
+        <div class="post-content-text text-gray-900 whitespace-pre-wrap mb-1 break-words" data-post-text-key="${post.key}">${post.content ? formatContent(post.content) : ''}</div>
         ${fileHtml}
         ${replyLabel ? `<div class="mt-1">${replyLabel}</div>` : ''}
       `;
@@ -1118,7 +1291,6 @@
       showBanner('返信を保存しました', false);
     }
 
-    // 4. レス投稿
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) { alert('ログインが必要です。'); return; }
@@ -1201,7 +1373,6 @@
       }
     });
 
-    // 5. 削除
     window.deletePost = async function(threadKey, postKey, index) {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
 
@@ -1257,7 +1428,6 @@
       }
     };
 
-    // 6. バックアップ / 復元
     window.doBackup = async function() {
       if (!canBackup()) { alert('バックアップ権限がありません。'); return; }
       try {
@@ -1336,9 +1506,819 @@
       }
     });
 
+    // ============================================================
+    // ★★★ 猫召喚機能 ★★★
+    // ============================================================
+    const catOverlay = document.getElementById('catOverlay');
+    const catCanvas = document.getElementById('catCanvas');
+    const catCtx = catCanvas.getContext('2d');
+    const catHint = document.getElementById('catHint');
+    const catCloseBtn = document.getElementById('catCloseBtn');
+
+    // 猫の状態
+    let catActive = false;
+    let catRaf = null;
+    const catState = {
+      x: 0, y: 0,           // ワールド座標（スクリーン座標と同じ）
+      z: 0, vz: 0,
+      speed: 5.0,
+      gravity: 0.85,
+      jumpPower: 15,
+      isGrounded: true,
+      facingRight: true,
+      facingScale: 1,
+      walkCycle: 0,
+      isMoving: false,
+      idleTime: 0,
+      tailPhase: 0,
+      tailSwingV: 0,
+      blinkTimer: 0,
+      eyeBlink: false,
+      earTwitch: 0,
+      breathPhase: 0,
+      headBob: 0,
+      jumpPhase: 'none',
+      jumpAnimT: 0,
+      crouchAmount: 0,
+      // レスに重なっている時のキー
+      hoveringPostKey: null,
+      // レスに入っている時のキー
+      insidePostKey: null,
+      // 接地Y座標（viewport 下端基準）
+      groundY: 0,
+    };
+    const catKeys = { w: false, a: false, s: false, d: false, space: false };
+    let catJumpCooldown = false;
+
+    // 猫キー入力
+    function onCatKeyDown(e) {
+      if (!catActive) return;
+      switch (e.code) {
+        case 'KeyA': case 'ArrowLeft': catKeys.a = true; break;
+        case 'KeyD': case 'ArrowRight': catKeys.d = true; break;
+        case 'KeyW': case 'ArrowUp': catKeys.w = true; break;
+        case 'KeyS': case 'ArrowDown': catKeys.s = true; break;
+        case 'Space': catKeys.space = true; e.preventDefault(); break;
+        case 'Enter':
+          e.preventDefault();
+          handleCatEnter();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          dismissCat();
+          break;
+      }
+    }
+    function onCatKeyUp(e) {
+      if (!catActive) return;
+      switch (e.code) {
+        case 'KeyA': case 'ArrowLeft': catKeys.a = false; break;
+        case 'KeyD': case 'ArrowRight': catKeys.d = false; break;
+        case 'KeyW': case 'ArrowUp': catKeys.w = false; break;
+        case 'KeyS': case 'ArrowDown': catKeys.s = false; break;
+        case 'Space': catKeys.space = false; e.preventDefault(); break;
+      }
+    }
+
+    window.summonCat = function() {
+      if (!canSummonCat()) { alert('猫を召喚できるのは管理者と主だけです。'); return; }
+      if (catActive) return;
+
+      // スレッド詳細を開いていない場合は召喚できない
+      if (!currentThreadKey) {
+        alert('スレッドを開いてから猫を召喚してください。');
+        return;
+      }
+
+      catActive = true;
+      catOverlay.classList.add('active');
+      catHint.classList.add('active');
+      catCloseBtn.classList.add('active');
+
+      // キャンバスサイズを画面に合わせる
+      resizeCatCanvas();
+      window.addEventListener('resize', resizeCatCanvas);
+      window.addEventListener('keydown', onCatKeyDown, true);
+      window.addEventListener('keyup', onCatKeyUp, true);
+
+      // 猫の初期位置：画面中央やや下
+      catState.groundY = window.innerHeight - 130;
+      catState.x = window.innerWidth / 2;
+      catState.y = catState.groundY;
+      catState.z = 0;
+      catState.vz = 0;
+      catState.isGrounded = true;
+      catState.jumpPhase = 'none';
+      catState.facingRight = true;
+      catState.facingScale = 1;
+      catState.hoveringPostKey = null;
+      catState.insidePostKey = null;
+
+      // ポスト側のハイライトをクリア
+      clearPostHighlights();
+
+      catRaf = requestAnimationFrame(catLoop);
+      showBanner('猫を召喚しました！ WASD で移動、SPACEでジャンプ', false);
+    };
+
+    window.dismissCat = function() {
+      if (!catActive) return;
+      catActive = false;
+      catOverlay.classList.remove('active');
+      catHint.classList.remove('active');
+      catCloseBtn.classList.remove('active');
+      window.removeEventListener('resize', resizeCatCanvas);
+      window.removeEventListener('keydown', onCatKeyDown, true);
+      window.removeEventListener('keyup', onCatKeyUp, true);
+      if (catRaf) cancelAnimationFrame(catRaf);
+      catRaf = null;
+      catKeys.w = catKeys.a = catKeys.s = catKeys.d = catKeys.space = false;
+      clearPostHighlights();
+      closeCatEdit();
+    };
+
+    function resizeCatCanvas() {
+      catCanvas.width = window.innerWidth;
+      catCanvas.height = window.innerHeight;
+      catState.groundY = window.innerHeight - 130;
+      if (catState.y > catState.groundY) catState.y = catState.groundY;
+    }
+
+    function clearPostHighlights() {
+      document.querySelectorAll('.post-card.cat-hover').forEach(el => el.classList.remove('cat-hover'));
+      document.querySelectorAll('.post-card.cat-inside').forEach(el => el.classList.remove('cat-inside'));
+    }
+
+    // ============================================================
+    // 猫の更新
+    // ============================================================
+    function updateCat() {
+      const c = catState;
+      let moveX = 0, moveY = 0;
+      c.isMoving = false;
+
+      if (catKeys.a) { moveX -= 1; c.facingRight = false; c.isMoving = true; }
+      if (catKeys.d) { moveX += 1; c.facingRight = true; c.isMoving = true; }
+      if (catKeys.w) { moveY -= 1; c.isMoving = true; }
+      if (catKeys.s) { moveY += 1; c.isMoving = true; }
+
+      // 水平移動（画面内に制限）
+      c.x += moveX * c.speed;
+      c.x = Math.max(40, Math.min(window.innerWidth - 40, c.x));
+
+      // 垂直移動（接地時のみ）
+      if (moveY !== 0 && c.isGrounded) {
+        c.y += moveY * c.speed * 0.7;
+      }
+      c.y = Math.max(120, Math.min(window.innerHeight - 40, c.y));
+
+      // ジャンプ
+      if (catKeys.space && c.isGrounded && !catJumpCooldown && c.jumpPhase === 'none') {
+        c.jumpPhase = 'crouch';
+        c.jumpAnimT = 0;
+        catJumpCooldown = true;
+      }
+      if (!catKeys.space) catJumpCooldown = false;
+
+      if (c.jumpPhase === 'crouch') {
+        c.jumpAnimT++;
+        c.crouchAmount = Math.min(1, c.jumpAnimT / 6);
+        if (c.jumpAnimT >= 6) {
+          c.vz = c.jumpPower;
+          c.isGrounded = false;
+          c.jumpPhase = 'launch';
+          c.jumpAnimT = 0;
+        }
+      } else if (c.jumpPhase === 'launch') {
+        c.jumpAnimT++;
+        c.crouchAmount = Math.max(0, 1 - c.jumpAnimT / 5);
+        if (c.jumpAnimT >= 5) {
+          c.jumpPhase = 'air';
+          c.crouchAmount = 0;
+        }
+      }
+
+      if (!c.isGrounded) {
+        c.z += c.vz;
+        c.vz -= c.gravity;
+        if (c.z <= 0) {
+          c.z = 0;
+          c.vz = 0;
+          c.isGrounded = true;
+          if (c.jumpPhase === 'air') {
+            c.jumpPhase = 'land';
+            c.jumpAnimT = 0;
+          }
+        }
+      }
+
+      if (c.jumpPhase === 'land') {
+        c.jumpAnimT++;
+        c.crouchAmount = Math.sin(c.jumpAnimT * 0.4) * 0.6;
+        if (c.jumpAnimT >= 10) {
+          c.jumpPhase = 'none';
+          c.crouchAmount = 0;
+        }
+      }
+
+      // 歩行アニメ
+      if (c.isGrounded && c.isMoving) {
+        c.walkCycle += 0.36;
+        c.idleTime = 0;
+      } else if (c.isGrounded) {
+        c.walkCycle += 0.02;
+        c.idleTime++;
+      }
+      c.walkCycle %= Math.PI * 2;
+
+      if (c.isGrounded && c.isMoving) {
+        c.headBob = Math.sin(c.walkCycle * 2) * 2.5;
+      } else {
+        c.headBob *= 0.9;
+      }
+
+      c.breathPhase += 0.045;
+      c.breathPhase %= Math.PI * 2;
+
+      // 尻尾
+      let tailTarget;
+      if (c.isMoving) {
+        tailTarget = Math.sin(c.walkCycle * 0.9) * 0.55 + 0.1;
+      } else {
+        tailTarget = Math.sin(c.idleTime * 0.04) * 0.25;
+      }
+      c.tailSwingV += (tailTarget - c.tailPhase) * 0.08;
+      c.tailSwingV *= 0.85;
+      c.tailPhase += c.tailSwingV;
+
+      // 向き補間
+      const targetFacing = c.facingRight ? 1 : -1;
+      c.facingScale += (targetFacing - c.facingScale) * 0.25;
+      if (Math.abs(c.facingScale - targetFacing) < 0.01) c.facingScale = targetFacing;
+
+      // まばたき
+      c.blinkTimer++;
+      if (c.blinkTimer > 200) c.eyeBlink = true;
+      if (c.blinkTimer > 215) { c.eyeBlink = false; c.blinkTimer = 0; }
+
+      c.earTwitch = Math.sin(Date.now() * 0.0022) * 0.09
+                  + Math.sin(Date.now() * 0.008) * 0.03;
+    }
+
+    // ============================================================
+    // レスとの重なり判定
+    // ============================================================
+    function updateHoveringPost() {
+      const c = catState;
+      // 猫の中心ワールド座標
+      const catCenterX = c.x;
+      const catCenterY = c.y - c.z - 90;   // 猫の胴体中心あたり
+
+      let hoveredKey = null;
+
+      // postsContainer 内の全 post-card を走査
+      const cards = document.querySelectorAll('#postsContainer .post-card[data-post-key]');
+      cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        // 猫の中心がカードの矩形内にあるか
+        if (catCenterX >= rect.left && catCenterX <= rect.right &&
+            catCenterY >= rect.top && catCenterY <= rect.bottom) {
+          hoveredKey = card.dataset.postKey;
+        }
+      });
+
+      // 前フレームの hover をクリア
+      if (c.hoveringPostKey && c.hoveringPostKey !== hoveredKey) {
+        const prev = document.querySelector(`.post-card[data-post-key="${c.hoveringPostKey}"]`);
+        if (prev && !prev.classList.contains('cat-inside')) prev.classList.remove('cat-hover');
+      }
+
+      // 新しい hover を反映
+      c.hoveringPostKey = hoveredKey;
+      if (hoveredKey) {
+        const el = document.querySelector(`.post-card[data-post-key="${hoveredKey}"]`);
+        if (el && !el.classList.contains('cat-inside')) el.classList.add('cat-hover');
+      }
+    }
+
+    // Enter キー処理
+    async function handleCatEnter() {
+      const c = catState;
+      // 既に中に入っている場合は編集
+      if (c.insidePostKey) {
+        openCatEdit(c.insidePostKey);
+        return;
+      }
+      // 重なっているレスがあれば入る
+      if (c.hoveringPostKey) {
+        const key = c.hoveringPostKey;
+        c.insidePostKey = key;
+        // ハイライト更新
+        document.querySelectorAll('.post-card.cat-hover').forEach(el => el.classList.remove('cat-hover'));
+        document.querySelectorAll('.post-card.cat-inside').forEach(el => el.classList.remove('cat-inside'));
+        const el = document.querySelector(`.post-card[data-post-key="${key}"]`);
+        if (el) {
+          el.classList.add('cat-inside');
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        // 猫をレスの中に見えるよう位置を合わせる
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          c.x = rect.left + rect.width / 2;
+          c.y = rect.top + rect.height - 40;
+          c.z = 0;
+          c.vz = 0;
+          c.isGrounded = true;
+        }
+        showBanner('レスに入りました。もう一度 Enter で編集できます', false);
+      } else {
+        showBanner('レスに重ねてから Enter を押してください', true);
+      }
+    }
+
+    // ============================================================
+    // 編集プロンプト
+    // ============================================================
+    const catEditPrompt = document.getElementById('catEditPrompt');
+    const catEditTextarea = document.getElementById('catEditTextarea');
+    const catEditTarget = document.getElementById('catEditTarget');
+    let catEditingKey = null;
+
+    function openCatEdit(postKey) {
+      if (!canSummonCat()) { alert('編集権限がありません。'); return; }
+      const post = allPostsCache.find(p => p.key === postKey);
+      if (!post) return;
+
+      catEditingKey = postKey;
+      catEditTarget.textContent = `レス #${postNumberMap.get(postKey) || '?'} を編集`;
+      catEditTextarea.value = post.content || '';
+      catEditPrompt.classList.add('active');
+      catEditTextarea.focus();
+    }
+
+    window.closeCatEdit = function() {
+      catEditPrompt.classList.remove('active');
+      catEditingKey = null;
+    };
+
+    window.saveCatEdit = async function() {
+      if (!catEditingKey || !currentThreadKey) return;
+      if (!canSummonCat()) { alert('編集権限がありません。'); return; }
+
+      const newContent = catEditTextarea.value.trim();
+      const key = catEditingKey;
+
+      try {
+        await update(ref(db, `threads/${currentThreadKey}/posts/${key}`), {
+          content: newContent
+        });
+        showBanner('レスを編集しました', false);
+        closeCatEdit();
+      } catch (err) {
+        console.error('編集エラー:', err);
+        showBanner('編集失敗: ' + (err.code || err.message), true);
+        alert('編集に失敗しました。');
+      }
+    };
+
+    // Enterで保存、Escでキャンセル
+    catEditTextarea.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        saveCatEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCatEdit();
+      }
+    });
+
+    // ============================================================
+    // 猫の描画（ゲーム版と同じロジックを流用）
+    // ============================================================
+    function drawCatOnCanvas() {
+      const c = catState;
+      const ctx = catCtx;
+      ctx.clearRect(0, 0, catCanvas.width, catCanvas.height);
+
+      const baseX = c.x;
+      const baseY = c.y - c.z;
+
+      let bodyStretch = 1, bodySquash = 1, airRotation = 0;
+      if (c.jumpPhase === 'crouch') {
+        bodyStretch = 1 - c.crouchAmount * 0.18;
+        bodySquash = 1 + c.crouchAmount * 0.12;
+      } else if (c.jumpPhase === 'launch') {
+        bodyStretch = 1 + (1 - c.crouchAmount) * 0.14;
+        bodySquash = 1 - (1 - c.crouchAmount) * 0.08;
+      } else if (!c.isGrounded) {
+        const airT = Math.min(1, c.z / 120);
+        bodyStretch = 1 + airT * 0.08;
+        bodySquash = 1 - airT * 0.05;
+        airRotation = c.vz > 0 ? -0.04 : 0.04;
+      } else if (c.jumpPhase === 'land') {
+        bodyStretch = 1 - c.crouchAmount * 0.14;
+        bodySquash = 1 + c.crouchAmount * 0.10;
+      }
+
+      let walkBob = 0;
+      if (c.isGrounded && c.isMoving) {
+        walkBob = Math.abs(Math.sin(c.walkCycle)) * 4;
+      }
+      const drawY = baseY - walkBob;
+
+      // 影（接地しているY座標に対して）
+      const shadowScale = Math.max(0.3, 1 - c.z / 240);
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(baseX, c.y + 4, 58 * shadowScale, 13 * shadowScale, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,0,0,${0.35 * shadowScale})`;
+      ctx.filter = 'blur(6px)';
+      ctx.fill();
+      ctx.restore();
+
+      // 本体
+      ctx.save();
+      ctx.translate(baseX, drawY);
+      ctx.rotate(airRotation);
+      ctx.scale(c.facingScale, 1);
+      const breathScale = 1 + Math.sin(c.breathPhase) * 0.015;
+      ctx.scale(bodySquash * (2 - breathScale), bodyStretch * breathScale);
+
+      const phaseFL = c.walkCycle;
+      const phaseFR = c.walkCycle + Math.PI;
+      const phaseBL = c.walkCycle + Math.PI / 2;
+      const phaseBR = c.walkCycle + Math.PI * 1.5;
+      const isGroundedWalk = c.isGrounded && c.isMoving;
+
+      function legMotion(phase) {
+        if (!isGroundedWalk) return { swing: 0, lift: 0 };
+        const swing = Math.sin(phase) * 14;
+        const lift = Math.max(0, Math.sin(phase)) * 10;
+        return { swing, lift };
+      }
+
+      let airLegPose = { front: 0, back: 0 };
+      if (!c.isGrounded) {
+        const t = Math.min(1, c.z / 100);
+        if (c.vz > 0) airLegPose = { front: 15 * t, back: -20 * t };
+        else airLegPose = { front: -8 * t, back: 12 * t };
+      }
+
+      const mBL = legMotion(phaseBL);
+      drawCatLeg(-45, -105, -55 + mBL.swing * 0.6 + airLegPose.back * 0.7, 0 - mBL.lift * 0.7, 13, '#a8875c', '#7a6040');
+
+      const mFL = legMotion(phaseFL);
+      drawCatLeg(45, -130, 50 + mFL.swing * 0.6 + airLegPose.front * 0.7, 0 - mFL.lift * 0.7, 11, '#b39268', '#7a6040');
+
+      drawCatTail(-70, -130);
+      drawCatBody();
+
+      const mBR = legMotion(phaseBR);
+      drawCatLeg(-45, -105, -55 + mBR.swing * 0.7 + airLegPose.back, 0 - mBR.lift, 14, '#c9a87c', '#8a6d4b');
+
+      const mFR = legMotion(phaseFR);
+      drawCatLeg(45, -130, 50 + mFR.swing * 0.7 + airLegPose.front, 0 - mFR.lift, 12, '#dbb98a', '#8a6d4b');
+
+      const headYOffset = c.headBob;
+      const headXOffset = c.isMoving ? 3 : 0;
+      drawCatHead(25 + headXOffset, -190 + headYOffset);
+
+      ctx.restore();
+    }
+
+    function drawCatBody() {
+      const ctx = catCtx;
+      const c = catState;
+      const breath = Math.sin(c.breathPhase) * 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -170);
+      ctx.bezierCurveTo(-25, -175, -50, -168, -70, -148);
+      ctx.bezierCurveTo(-85, -130, -88, -100, -78, -78);
+      ctx.bezierCurveTo(-68, -58, -50, -50, -30, -52);
+      ctx.bezierCurveTo(-5, -55, 25, -60, 45, -75);
+      ctx.bezierCurveTo(65, -90, 72, -115, 65, -140);
+      ctx.bezierCurveTo(60, -155, 40, -168, 20, -172);
+      ctx.closePath();
+
+      const bodyGrad = ctx.createLinearGradient(-70, -170, 60, -50);
+      bodyGrad.addColorStop(0, '#b89366');
+      bodyGrad.addColorStop(0.4, '#d4b184');
+      bodyGrad.addColorStop(0.75, '#e0c094');
+      bodyGrad.addColorStop(1, '#c9a87c');
+      ctx.fillStyle = bodyGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#7a6040';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = '#5a3f22';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      const stripes = [
+        [-35, -172, -45, -160],
+        [-50, -165, -58, -148],
+        [-62, -152, -68, -132],
+        [-70, -138, -74, -118],
+      ];
+      stripes.forEach(([x1,y1,x2,y2]) => {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.quadraticCurveTo((x1+x2)/2 - 5, (y1+y2)/2 - 3, x2, y2);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.moveTo(-25, -58);
+      ctx.bezierCurveTo(-5, -62 - breath, 25, -68 - breath, 42, -82);
+      ctx.bezierCurveTo(50, -92, 40, -108, 20, -110);
+      ctx.bezierCurveTo(-10, -112, -35, -92, -40, -75);
+      ctx.bezierCurveTo(-42, -68, -35, -60, -25, -58);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(248, 240, 225, 0.9)';
+      ctx.fill();
+    }
+
+    function drawCatLeg(jointX, jointY, footX, footY, width, fillColor, strokeColor) {
+      const ctx = catCtx;
+      ctx.beginPath();
+      ctx.arc(jointX, jointY, width * 0.9, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+
+      const midX = (jointX + footX) / 2 + 5;
+      const midY = (jointY + footY) / 2;
+
+      ctx.beginPath();
+      ctx.moveTo(jointX, jointY);
+      ctx.quadraticCurveTo(midX - 8, midY, footX, footY - width * 0.4);
+      ctx.lineTo(footX + width * 0.7, footY - 2);
+      ctx.quadraticCurveTo(footX + width * 0.4, footY + 2, footX - width * 0.5, footY - 1);
+      ctx.quadraticCurveTo(midX - 18, midY, jointX - width * 0.5, jointY + width * 0.2);
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(footX + 2, footY - 3, width * 0.55, width * 0.38, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#f0d5c0';
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+
+    function drawCatTail(rootX, rootY) {
+      const ctx = catCtx;
+      const c = catState;
+      const swing = c.tailPhase;
+      const lift = Math.sin(c.tailPhase * 1.3) * 8;
+
+      ctx.save();
+      ctx.translate(rootX, rootY);
+      ctx.rotate(-0.3 + swing);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-35, -15 + lift * 0.5, -65, -45 + lift);
+      ctx.quadraticCurveTo(-85, -70 + lift * 1.2, -75, -95 + lift * 1.5);
+      ctx.lineWidth = 15;
+      ctx.strokeStyle = '#8a6d4b';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(-72, -78 + lift * 1.3);
+      ctx.quadraticCurveTo(-80, -88 + lift * 1.5, -75, -98 + lift * 1.6);
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = '#e8ddcf';
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawCatHead(headX, headY) {
+      const ctx = catCtx;
+      const c = catState;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -168);
+      ctx.bezierCurveTo(5, -180, 15, -188, 22, -192);
+      ctx.lineTo(38, -190);
+      ctx.bezierCurveTo(45, -180, 48, -168, 45, -158);
+      ctx.lineTo(10, -160);
+      ctx.closePath();
+      ctx.fillStyle = '#d4b184';
+      ctx.fill();
+      ctx.strokeStyle = '#7a6040';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(headX, headY, 42, 38, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#e0c094';
+      ctx.fill();
+      ctx.strokeStyle = '#7a6040';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(headX - 20, headY + 12, 20, 16, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#e0c094';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(headX + 20, headY + 12, 20, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = '#5a3f22';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(headX - 20, headY - 28);
+      ctx.lineTo(headX - 12, headY - 36);
+      ctx.lineTo(headX - 4, headY - 28);
+      ctx.lineTo(headX + 4, headY - 36);
+      ctx.lineTo(headX + 12, headY - 28);
+      ctx.lineTo(headX + 20, headY - 36);
+      ctx.stroke();
+      ctx.restore();
+
+      const twitch = c.earTwitch;
+
+      ctx.beginPath();
+      ctx.moveTo(headX - 30, headY - 22);
+      ctx.lineTo(headX - 48, headY - 60 + twitch * 12);
+      ctx.lineTo(headX - 8, headY - 38);
+      ctx.closePath();
+      ctx.fillStyle = '#d4b184';
+      ctx.fill();
+      ctx.strokeStyle = '#7a6040';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(headX - 28, headY - 26);
+      ctx.lineTo(headX - 40, headY - 50 + twitch * 10);
+      ctx.lineTo(headX - 16, headY - 34);
+      ctx.closePath();
+      ctx.fillStyle = '#e8b0a8';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(headX + 8, headY - 38);
+      ctx.lineTo(headX + 48, headY - 60 - twitch * 12);
+      ctx.lineTo(headX + 30, headY - 22);
+      ctx.closePath();
+      ctx.fillStyle = '#d4b184';
+      ctx.fill();
+      ctx.strokeStyle = '#7a6040';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(headX + 16, headY - 34);
+      ctx.lineTo(headX + 40, headY - 50 - twitch * 10);
+      ctx.lineTo(headX + 28, headY - 26);
+      ctx.closePath();
+      ctx.fillStyle = '#e8b0a8';
+      ctx.fill();
+
+      const eyeY = headY - 2;
+      const eyeSpacing = 18;
+
+      if (!c.eyeBlink) {
+        ctx.beginPath();
+        ctx.ellipse(headX - eyeSpacing, eyeY, 9, 11, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#f8f4ec';
+        ctx.fill();
+        ctx.strokeStyle = '#3d2e1f';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(headX - eyeSpacing + 1, eyeY + 1, 5, 8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#7ea860';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(headX - eyeSpacing + 1, eyeY + 1, 2.2, 6.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1208';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(headX - eyeSpacing - 2, eyeY - 4, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(headX + eyeSpacing, eyeY, 9, 11, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#f8f4ec';
+        ctx.fill();
+        ctx.strokeStyle = '#3d2e1f';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(headX + eyeSpacing + 1, eyeY + 1, 5, 8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#7ea860';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(headX + eyeSpacing + 1, eyeY + 1, 2.2, 6.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1208';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(headX + eyeSpacing - 2, eyeY - 4, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = '#3d2e1f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(headX - eyeSpacing - 8, eyeY);
+        ctx.quadraticCurveTo(headX - eyeSpacing, eyeY + 4, headX - eyeSpacing + 8, eyeY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(headX + eyeSpacing - 8, eyeY);
+        ctx.quadraticCurveTo(headX + eyeSpacing, eyeY + 4, headX + eyeSpacing + 8, eyeY);
+        ctx.stroke();
+      }
+
+      const noseY = headY + 12;
+      ctx.beginPath();
+      ctx.moveTo(headX - 5, noseY);
+      ctx.lineTo(headX + 5, noseY);
+      ctx.lineTo(headX, noseY + 6);
+      ctx.closePath();
+      ctx.fillStyle = '#e08a80';
+      ctx.fill();
+      ctx.strokeStyle = '#a05a50';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#5a4030';
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(headX, noseY + 6);
+      ctx.quadraticCurveTo(headX - 7, noseY + 13, headX - 14, noseY + 9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(headX, noseY + 6);
+      ctx.quadraticCurveTo(headX + 7, noseY + 13, headX + 14, noseY + 9);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(240, 235, 225, 0.85)';
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 3; i++) {
+        const yOff = i * 4;
+        ctx.beginPath();
+        ctx.moveTo(headX - 22, noseY + 2 + yOff);
+        ctx.quadraticCurveTo(headX - 45, noseY - 4 + yOff * 1.4, headX - 62, noseY + yOff * 1.6);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 3; i++) {
+        const yOff = i * 4;
+        ctx.beginPath();
+        ctx.moveTo(headX + 22, noseY + 2 + yOff);
+        ctx.quadraticCurveTo(headX + 45, noseY - 4 + yOff * 1.4, headX + 62, noseY + yOff * 1.6);
+        ctx.stroke();
+      }
+    }
+
+    function catLoop() {
+      if (!catActive) return;
+
+      updateCat();
+      updateHoveringPost();
+
+      // レスの中にいる間は、猫をそのレスの位置に固定
+      if (catState.insidePostKey) {
+        const el = document.querySelector(`.post-card[data-post-key="${catState.insidePostKey}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          catState.x = rect.left + rect.width / 2;
+          catState.y = rect.top + rect.height - 40;
+        } else {
+          // レスが消えたら外に出す
+          catState.insidePostKey = null;
+          clearPostHighlights();
+        }
+      }
+
+      drawCatOnCanvas();
+
+      catRaf = requestAnimationFrame(catLoop);
+    }
+
+    // ============================================================
+    // クリーンアップ
+    // ============================================================
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
+      dismissCat();
     });
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
