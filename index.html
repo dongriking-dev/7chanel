@@ -677,7 +677,6 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- ★ 管理者・主のみ表示される管理系ボタン -->
         <div id="adminControls" class="hidden flex gap-2 flex-wrap">
           <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
@@ -685,7 +684,6 @@
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
-        <!-- ★ ユーザー一覧は全員に表示 -->
         <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
         <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
@@ -774,7 +772,8 @@
       query, orderByChild, get, update
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+      setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -794,6 +793,11 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
+    // ★ ログイン状態をローカルに永続化（デフォルトだが明示）
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn('永続化設定失敗:', err);
+    });
+
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
     const ROLE_VIP_EMAILS = [
@@ -805,8 +809,6 @@
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
-
-    const INITIAL_TIMEOUT_MS = 3000;
 
     let currentUser = null;
     let userRole = null;
@@ -839,10 +841,11 @@
 
     let myBadgePublic = true;
 
-    let silentSignInAttempted = false;
     let intentionalSignOut = false;
     let userApproved = false;
-    let initialTimeoutId = null;
+
+    // ★ 初回認証チェック完了フラグ
+    let initialAuthCheckDone = false;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -873,7 +876,6 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canViewEmail() {
-      // ★ メール閲覧（投稿者のメール表示）は管理者・主のみ
       return userRole === 'admin' || userRole === 'owner';
     }
     function canManageBadge() {
@@ -886,13 +888,11 @@
       return userRole === 'admin' || userRole === 'owner';
     }
 
-    // ★ 対象が保護対象（管理者・主）かどうか判定
     function isProtectedEmail(email) {
       if (!email) return false;
       const e = email.toLowerCase().trim();
       return e === ROLE_ADMIN_EMAIL.toLowerCase() || e === ROLE_OWNER_EMAIL.toLowerCase();
     }
-    // ★ UIDからロールを判定（knownUsers / approvedUsers から）
     function getRoleByUid(uid) {
       if (knownUsersCache[uid] && knownUsersCache[uid].role) return knownUsersCache[uid].role;
       if (approvedCache[uid] && approvedCache[uid].email) {
@@ -900,7 +900,6 @@
       }
       return null;
     }
-    // ★ UIDが保護対象かどうか
     function isProtectedUid(uid) {
       const r = getRoleByUid(uid);
       return r === 'admin' || r === 'owner';
@@ -1053,19 +1052,6 @@
         '<small style="color:#9ca3af;">このウィンドウは自動的に閉じられます。</small>',
         true
       );
-    }
-
-    function startInitialTimeout() {
-      clearTimeout(initialTimeoutId);
-      initialTimeoutId = setTimeout(() => {
-        if (!userApproved && !currentUser) {
-          forceExit(
-            'タイムアウト',
-            '3秒以内にログインが確認できませんでした。<br>もう一度サイトを開いてログインしてください。',
-            true
-          );
-        }
-      }, INITIAL_TIMEOUT_MS);
     }
 
     function checkSelfBan() {
@@ -1230,10 +1216,9 @@
       document.body.style.background = '';
       showLoginView();
       hideBootOverlay();
-      clearTimeout(initialTimeoutId);
       setTimeout(() => {
         intentionalSignOut = false;
-        silentSignInAttempted = false;
+        initialAuthCheckDone = false;
       }, 500);
     });
 
@@ -1248,10 +1233,8 @@
       }
     });
 
+    // ★ サイレントサインイン（前回ログインしていた場合のセッション復帰）
     async function trySilentSignIn() {
-      if (silentSignInAttempted) return;
-      silentSignInAttempted = true;
-
       try {
         const p = new GoogleAuthProvider();
         p.setCustomParameters({ prompt: 'none' });
@@ -1259,8 +1242,11 @@
         console.log('サイレントサインイン成功:', result.user.email);
       } catch (err) {
         console.warn('サイレントサインイン失敗:', err.code || err.message);
+        // 失敗時はログイン画面を表示
         hideBootOverlay();
         showLoginView();
+      } finally {
+        initialAuthCheckDone = true;
       }
     }
 
@@ -1278,9 +1264,11 @@
       try { await signOut(auth); } catch (e) { console.error(e); }
       banOverlay.classList.remove('show');
       document.body.style.background = '';
+      showLoginView();
+      hideBootOverlay();
       setTimeout(() => {
         intentionalSignOut = false;
-        silentSignInAttempted = false;
+        initialAuthCheckDone = false;
       }, 500);
     };
 
@@ -1438,9 +1426,15 @@
 
       if (!user) {
         userRole = null;
+        // ★ 未ログイン時、初回はサイレントサインインを試みる
+        // （前回ログインしていれば自動で復帰）
+        if (!initialAuthCheckDone) {
+          trySilentSignIn();
+          return;
+        }
+        // サイレントサインインも失敗した場合、ログイン画面を表示
         hideBootOverlay();
         showLoginView();
-        startInitialTimeout();
         return;
       }
 
@@ -1470,7 +1464,6 @@
       }
 
       userApproved = true;
-      clearTimeout(initialTimeoutId);
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1497,15 +1490,11 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
-      // ★ 管理系ボタンは管理者・主のみ表示
       if (canBackup()) {
         adminControls.classList.remove('hidden');
       } else {
         adminControls.classList.add('hidden');
       }
-
-      // ★ ユーザー一覧は全員に表示
-      // （HTML側で常時表示に変更済み）
 
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
@@ -1528,10 +1517,6 @@
       initPendingListener();
       registerMyFingerprint();
     });
-
-    setTimeout(() => {
-      trySilentSignIn();
-    }, 100);
 
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
@@ -1874,7 +1859,6 @@
 
       const isBanned = isPostBanned(post);
       const bannedMark = isBanned ? `<span class="banned-mark">BAN中</span>` : '';
-      // ★ 保護対象マーク（管理者・主の投稿）
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
       const protectedMark = isProtected ? `<span class="protected-mark">保護</span>` : '';
 
@@ -1895,7 +1879,6 @@
       if (canManageBadge() && post.authorUid) {
         badgeManageBtn = `<button class="badge-manage-btn" data-badge-uid="${post.authorUid}" data-badge-email="${escapeHtml(post.authorEmail || '')}">バッジ管理</button>`;
       }
-      // ★ BANボタンは管理者・主が、保護対象以外に対してのみ表示
       let banBtn = '';
       if (canBan() && post.authorUid && !isProtected) {
         if (isBanned) {
@@ -1968,7 +1951,6 @@
       if (!canBan()) { alert('BAN権限がありません。'); return; }
       if (!uid && !email) return;
 
-      // ★ 保護対象（管理者・主）はBAN不可
       if (isProtectedEmail(email) || (uid && isProtectedUid(uid))) {
         alert('管理者および主はBANできません。');
         return;
@@ -2154,7 +2136,6 @@
         return;
       }
 
-      // ★ 保護対象（管理者・主）はBAN不可
       if (isProtectedEmail(email)) {
         alert('管理者および主はBANできません。');
         return;
@@ -2188,7 +2169,6 @@
       }
     });
 
-    // ★ ユーザー一覧モーダル（全員閲覧可能、BAN操作は管理者・主のみ）
     const userModal = document.getElementById('userModal');
     const userListContainer = document.getElementById('userListContainer');
     const userSearchInput = document.getElementById('userSearchInput');
@@ -2196,7 +2176,6 @@
     const userShowOnlyNotBanned = document.getElementById('userShowOnlyNotBanned');
 
     window.openUserModal = function() {
-      // ★ 全員開ける
       userModal.classList.remove('hidden');
       renderUserList();
     };
@@ -2261,7 +2240,6 @@
         const isBannedByEmail = ek ? !!bansCache[ek] : false;
         const isBanned = isBannedByUid || isBannedByEmail;
 
-        // ★ 保護対象判定
         const isProtected = (u.role === 'admin') || (u.role === 'owner') ||
                             isProtectedEmail(u.email);
 
