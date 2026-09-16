@@ -413,7 +413,6 @@
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
     #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
 
-    /* ★ 起動時ローディング画面 */
     #bootOverlay {
       position: fixed; inset: 0; background: #111827;
       z-index: 99998; display: flex;
@@ -800,6 +799,9 @@
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
+    // ★ 初回訪問時のタイムリミット（ミリ秒）
+    const INITIAL_TIMEOUT_MS = 3000;
+
     let currentUser = null;
     let userRole = null;
     let currentThreadKey = null;
@@ -831,10 +833,11 @@
 
     let myBadgePublic = true;
 
-    // ★ 自動サインイン試行済みフラグ
     let silentSignInAttempted = false;
-    // ★ 意図的なログアウト後かどうか
     let intentionalSignOut = false;
+    let userApproved = false;   // ★ 承認済みなら true
+    // ★ 初回タイムアウト用
+    let initialTimeoutId = null;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -984,47 +987,63 @@
       bootOverlay.classList.add('hidden');
     }
 
-    // ★ BAN実行
-    function executeBan() {
-      banOverlayMsg.textContent = 'アクセスが拒否されました';
-      banOverlaySub.textContent = 'このアカウントはBANされています。';
-      banOverlayActions.style.display = 'flex';
+    // ★ 強制退場（タブを閉じる）
+    function forceExit(msg, sub, showSwitchButton) {
+      banOverlayMsg.textContent = msg || 'アクセスが拒否されました';
+      banOverlaySub.innerHTML = sub || '';
+      if (showSwitchButton) {
+        banOverlayActions.style.display = 'flex';
+      } else {
+        banOverlayActions.style.display = 'none';
+      }
       banOverlay.classList.add('show');
+      document.body.style.background = '#000';
       // タブを閉じる試行
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
       setTimeout(() => {
         try { window.location.replace('about:blank'); } catch (e) {}
-      }, 300);
+      }, 200);
       setInterval(() => {
         try { window.open('', '_self').close(); } catch (e) {}
         try { window.close(); } catch (e) {}
-      }, 1000);
+      }, 800);
       setInterval(() => {
         banOverlay.classList.add('show');
         document.body.style.background = '#000';
-      }, 500);
+      }, 300);
     }
 
-    // ★ 承認待ちもBANと同じ動作
+    function executeBan() {
+      forceExit(
+        'アクセスが拒否されました',
+        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
+        true
+      );
+    }
+
     function executePending() {
-      banOverlayMsg.textContent = '承認待ちです';
-      banOverlaySub.innerHTML = '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。';
-      banOverlayActions.style.display = 'flex';
-      banOverlay.classList.add('show');
-      try { window.open('', '_self').close(); } catch (e) {}
-      try { window.close(); } catch (e) {}
-      setTimeout(() => {
-        try { window.location.replace('about:blank'); } catch (e) {}
-      }, 300);
-      setInterval(() => {
-        try { window.open('', '_self').close(); } catch (e) {}
-        try { window.close(); } catch (e) {}
-      }, 1000);
-      setInterval(() => {
-        banOverlay.classList.add('show');
-        document.body.style.background = '#000';
-      }, 500);
+      forceExit(
+        '承認待ちです',
+        '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。<br><br>' +
+        '<small style="color:#9ca3af;">このウィンドウは自動的に閉じられます。</small>',
+        true
+      );
+    }
+
+    // ★ 新規訪問者タイムアウト（3秒以内にログインしないと強制退場）
+    function startInitialTimeout() {
+      clearTimeout(initialTimeoutId);
+      initialTimeoutId = setTimeout(() => {
+        // 3秒たっても承認済みでなければ退場
+        if (!userApproved && !currentUser) {
+          forceExit(
+            'タイムアウト',
+            '3秒以内にログインが確認できませんでした。<br>もう一度サイトを開いてログインしてください。',
+            true
+          );
+        }
+      }, INITIAL_TIMEOUT_MS);
     }
 
     function checkSelfBan() {
@@ -1155,26 +1174,74 @@
       });
     })();
 
+    // ★ 右クリック禁止
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    // ★ F12 / Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+U 検知
+    document.addEventListener('keydown', (e) => {
+      // F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        forceExit(
+          '警告',
+          '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。',
+          false
+        );
+        return false;
+      }
+      // Ctrl+Shift+I / Ctrl+Shift+J
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        forceExit(
+          '警告',
+          '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。',
+          false
+        );
+        return false;
+      }
+      // Ctrl+U
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        forceExit(
+          '警告',
+          'ソースコードの表示は禁止されています。<br>このセッションは終了されました。',
+          false
+        );
+        return false;
+      }
+      // Cmd+Option+I / Cmd+Option+U (Mac)
+      if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        forceExit(
+          '警告',
+          '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。',
+          false
+        );
+        return false;
+      }
+    });
+
     // ★ 別のアカウントでログインボタン
     document.getElementById('switchAccountBtn').addEventListener('click', async () => {
       intentionalSignOut = true;
       try { await signOut(auth); } catch (e) { console.error(e); }
-      // 黒画面を解除して、ログイン画面を表示
       banOverlay.classList.remove('show');
       document.body.style.background = '';
       showLoginView();
       hideBootOverlay();
-      // フラグをリセット（次回ログイン時に承認チェックを再実行するため）
+      // タイムアウトをリセット（もう一度ログインを試すため）
+      clearTimeout(initialTimeoutId);
       setTimeout(() => {
         intentionalSignOut = false;
         silentSignInAttempted = false;
       }, 500);
     });
 
-    // ★ 通常のログインボタン
     document.getElementById('googleLoginBtn').addEventListener('click', async () => {
       try {
-        // ここでは通常のsignInWithPopup（アカウント選択画面あり）
         await signInWithPopup(auth, provider);
       } catch (err) {
         console.error("ログインエラー:", err);
@@ -1184,21 +1251,18 @@
       }
     });
 
-    // ★ 自動サイレントサインイン（ページ読み込み時）
+    // ★ サイレントサインイン
     async function trySilentSignIn() {
       if (silentSignInAttempted) return;
       silentSignInAttempted = true;
 
       try {
-        // prompt: 'none' で既存のGoogleセッションを使い、アカウント選択画面を出さずにサインイン
         const p = new GoogleAuthProvider();
         p.setCustomParameters({ prompt: 'none' });
         const result = await signInWithPopup(auth, p);
         console.log('サイレントサインイン成功:', result.user.email);
-        // onAuthStateChanged が呼ばれるので、ここでは何もしない
       } catch (err) {
         console.warn('サイレントサインイン失敗:', err.code || err.message);
-        // サイレントサインインが失敗した場合は、通常のログイン画面を表示
         hideBootOverlay();
         showLoginView();
       }
@@ -1364,7 +1428,6 @@
     }
 
     onAuthStateChanged(auth, async (user) => {
-      // 意図的なログアウトの場合は何もしない
       if (intentionalSignOut) {
         currentUser = null;
         userRole = null;
@@ -1377,6 +1440,8 @@
         userRole = null;
         hideBootOverlay();
         showLoginView();
+        // タイムアウトをスタート（ログインがないまま長居させない）
+        startInitialTimeout();
         return;
       }
 
@@ -1405,7 +1470,11 @@
         return;
       }
 
-      // ===== 承認済みユーザーの処理 =====
+      // ★ 承認済みフラグを立てる（タイムアウトを無効化）
+      userApproved = true;
+      clearTimeout(initialTimeoutId);
+
+      // ===== 以下、承認済みユーザーの処理 =====
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1442,6 +1511,7 @@
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
+          userApproved = false;
           requestApproval();
           executePending();
         }
@@ -1459,8 +1529,7 @@
       registerMyFingerprint();
     });
 
-    // ★ ページ読み込み時にサイレントサインインを試す
-    // Firebaseの初期化が終わってから実行
+    // ★ サイレントサインイン試行
     setTimeout(() => {
       trySilentSignIn();
     }, 100);
