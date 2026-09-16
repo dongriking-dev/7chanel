@@ -206,9 +206,7 @@
       cursor: pointer;
       user-select: none;
     }
-    .badge-toggle-wrap input {
-      cursor: pointer;
-    }
+    .badge-toggle-wrap input { cursor: pointer; }
 
     /* ★ 猫オーバーレイ */
     #catOverlay {
@@ -324,15 +322,9 @@
       cursor: pointer;
       border: none;
     }
-    .cat-edit-save {
-      background: #059669;
-      color: #fff;
-    }
+    .cat-edit-save { background: #059669; color: #fff; }
     .cat-edit-save:hover { background: #047857; }
-    .cat-edit-cancel {
-      background: #6b7280;
-      color: #fff;
-    }
+    .cat-edit-cancel { background: #6b7280; color: #fff; }
     .cat-edit-cancel:hover { background: #4b5563; }
   </style>
 </head>
@@ -340,6 +332,7 @@
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
 
+  <!-- ログイン画面 -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
       <h1 class="text-3xl font-bold text-red-900 mb-2">69ちゃんねる</h1>
@@ -498,7 +491,7 @@
       databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
-      appId: "1:538510918184:web:58232aa80922ff00b92b1d",
+      appId: "1:538510918184:web:58232aa80922ff00b92b1b",
       measurementId: "G-QF3LDMNQYQ"
     };
 
@@ -520,9 +513,7 @@
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
-    // ★ 猫のサイズ（1.0 = 元の大きさ、0.55 = 55%に縮小）
     const CAT_SCALE = 0.55;
-    // ★ 位置送信の間引き（ミリ秒）
     const CAT_SYNC_INTERVAL = 80;
 
     let currentUser = null;
@@ -566,7 +557,6 @@
     function canViewEmail() {
       return userRole === 'admin' || userRole === 'owner';
     }
-    // ★ 猫を操作できるか（管理者・主のみ）
     function canControlCat() {
       return userRole === 'admin' || userRole === 'owner';
     }
@@ -759,6 +749,7 @@
       if (!user) {
         userRole = null;
         showLoginView();
+        // ★ 猫の購読はログイン状態にかかわらず継続
         return;
       }
 
@@ -796,7 +787,6 @@
         backupControls.classList.add('hidden');
       }
 
-      // ★ 猫召喚ボタン（管理者・主のみ）
       if (canControlCat()) {
         catSummonBtn.classList.remove('hidden');
       } else {
@@ -808,9 +798,6 @@
 
       showThreadList();
       initThreadsListener();
-
-      // ★ 猫の同期を開始（全員）
-      initCatSyncListener();
     });
 
     badgeToggle.addEventListener('change', async () => {
@@ -857,6 +844,7 @@
       updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
+    // ★ スレッド一覧に戻っても猫は消さない
     window.showThreadList = function() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
@@ -866,6 +854,7 @@
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
+      // ★ dismissCat() は呼ばない
     };
 
     function openThread(threadKey, title, createdAt, authorEmail, authorUid) {
@@ -1503,7 +1492,7 @@
     });
 
     // ============================================================
-    // ★★★ 猫召喚（全員に見える版） ★★★
+    // ★★★ 猫召喚（みんなに見える版） ★★★
     // ============================================================
     const catOverlay = document.getElementById('catOverlay');
     const catCanvas = document.getElementById('catCanvas');
@@ -1511,12 +1500,9 @@
     const catHint = document.getElementById('catHint');
     const catCloseBtn = document.getElementById('catCloseBtn');
 
-    // ★ 猫の共有状態（全員が同じデータを見る）
-    // 位置は「画面に対する割合 0〜1」で保存する
-    let catRemote = null;          // Firebase から受け取った最新の猫データ
-    let catUnsubscribe = null;     // 猫データの購読解除用
+    let catRemote = null;
+    let catUnsubscribe = null;
 
-    // ★ ローカル操作中の猫の状態（管理者/主のみが更新）
     let catLocal = {
       xRatio: 0.5,
       yRatio: 0.85,
@@ -1542,22 +1528,19 @@
       insidePostKey: null,
     };
 
-    // ★ 猫の制御権を持っているか（管理者/主で、スレッドを開いている時）
     let catIsControlling = false;
     let catRaf = null;
     let catLastSyncTime = 0;
 
-    // キー入力
     const catKeys = { w: false, a: false, s: false, d: false, space: false };
     let catJumpCooldown = false;
 
-    // ★ 猫の位置を画面割合 → 実座標に変換
     function ratioToPixelX(r) { return r * window.innerWidth; }
     function ratioToPixelY(r) { return r * window.innerHeight; }
     function pixelToRatioX(px) { return px / window.innerWidth; }
     function pixelToRatioY(py) { return py / window.innerHeight; }
 
-    // ★ 猫データ監視（全員）
+    // ★ 猫データ監視（ログイン状態にかかわらず、ページ表示直後から開始）
     function initCatSyncListener() {
       if (catUnsubscribe) catUnsubscribe();
 
@@ -1565,48 +1548,38 @@
       catUnsubscribe = onValue(catRef, (snap) => {
         if (!snap.exists()) {
           catRemote = null;
-          // 自分の画面からも消す
           if (!catIsControlling) hideCatLocally();
           return;
         }
         const data = snap.val();
         catRemote = data;
 
-        // 自分のスレッドでなければ猫は表示しない
-        if (data.threadKey !== currentThreadKey) {
-          if (!catIsControlling) hideCatLocally();
-          return;
-        }
-
-        // 自分が操作中なら、自分のローカル状態を優先（上書きしない）
+        // ★ threadKey チェックを削除：猫が存在すれば誰でも見える
         if (!catIsControlling) {
           showCatFromRemote(data);
+        }
+
+        // ★ 操作権限のある人に「猫を帰す」ボタンを表示
+        if (canControlCat() && !catIsControlling) {
+          catDismissBtn.classList.remove('hidden');
+          catSummonBtn.classList.add('hidden');
         }
       });
     }
 
-    // ★ リモートデータを元に猫を表示
     function showCatFromRemote(data) {
-      // オーバーレイを表示
       catOverlay.classList.add('active');
-      catCloseBtn.classList.add('active');
 
-      // ローカル状態をリモートに同期
       catLocal.xRatio = data.xRatio ?? 0.5;
       catLocal.yRatio = data.yRatio ?? 0.85;
       catLocal.z = data.z ?? 0;
       catLocal.facingRight = data.facingRight ?? true;
       catLocal.jumpPhase = data.jumpPhase ?? 'none';
-      catLocal.insidePostKey = data.insidePostKey ?? null;
       catLocal.isMoving = data.isMoving ?? false;
+      catLocal.insidePostKey = data.insidePostKey ?? null;
 
-      if (data.facingRight === false) {
-        catLocal.facingScale = -1;
-      } else {
-        catLocal.facingScale = 1;
-      }
+      catLocal.facingScale = data.facingRight === false ? -1 : 1;
 
-      // 描画ループが回っていなければ開始
       resizeCatCanvas();
       if (!catRaf) {
         catRaf = requestAnimationFrame(catViewLoop);
@@ -1615,17 +1588,21 @@
 
     function hideCatLocally() {
       catOverlay.classList.remove('active');
-      catCloseBtn.classList.remove('active');
       catHint.classList.remove('active');
       if (catRaf) cancelAnimationFrame(catRaf);
       catRaf = null;
       clearPostHighlights();
+      // ★ 猫がいなければ「帰す」ボタンも非表示
+      if (!catIsControlling) {
+        catDismissBtn.classList.add('hidden');
+        if (canControlCat()) catSummonBtn.classList.remove('hidden');
+      }
     }
 
-    // ★ 召喚（管理者・主のみ）
+    // ★ 召喚
     window.summonCat = function() {
       if (!canControlCat()) { alert('猫を召喚できるのは管理者と主だけです。'); return; }
-      if (!currentThreadKey) { alert('スレッドを開いてから猫を召喚してください。'); return; }
+      if (catIsControlling) return;
 
       catIsControlling = true;
       catOverlay.classList.add('active');
@@ -1639,7 +1616,6 @@
       window.addEventListener('keydown', onCatKeyDown, true);
       window.addEventListener('keyup', onCatKeyUp, true);
 
-      // 初期位置
       catLocal.xRatio = 0.5;
       catLocal.yRatio = 0.85;
       catLocal.z = 0;
@@ -1653,7 +1629,6 @@
 
       clearPostHighlights();
 
-      // Firebase に猫の存在を登録
       syncCatToFirebase(true);
 
       if (!catRaf) catRaf = requestAnimationFrame(catControlLoop);
@@ -1661,10 +1636,9 @@
       showBanner('猫を召喚しました！ WASD で移動、SPACEでジャンプ', false);
     };
 
-    // ★ 猫を帰す（管理者・主のみ）
+    // ★ 帰す
     window.dismissCat = function() {
       if (!catIsControlling) {
-        // 操作していない人は画面から消すだけ
         hideCatLocally();
         return;
       }
@@ -1684,11 +1658,9 @@
       clearPostHighlights();
       closeCatEdit();
 
-      // Firebase から猫を削除
       remove(ref(db, 'cat')).catch(() => {});
     };
 
-    // ★ 猫を Firebase に同期
     async function syncCatToFirebase(force = false) {
       if (!catIsControlling) return;
       const now = Date.now();
@@ -1703,7 +1675,8 @@
         isMoving: catLocal.isMoving,
         jumpPhase: catLocal.jumpPhase,
         insidePostKey: catLocal.insidePostKey,
-        threadKey: currentThreadKey,
+        // ★ threadKey は保存するが、閲覧のフィルタには使わない
+        threadKey: currentThreadKey || null,
         updatedAt: now,
         updatedBy: currentUser ? currentUser.email : null,
       };
@@ -1724,7 +1697,6 @@
       document.querySelectorAll('.post-card.cat-inside').forEach(el => el.classList.remove('cat-inside'));
     }
 
-    // ★ キー入力
     function onCatKeyDown(e) {
       if (!catIsControlling) return;
       switch (e.code) {
@@ -1748,12 +1720,10 @@
       }
     }
 
-    // ★ 操作中の猫更新
     function updateLocalCat() {
       const c = catLocal;
 
-      // レスの中にいる時は移動不可
-      if (c.insidePostKey) {
+      if (c.insidePostKey && currentThreadKey) {
         const el = document.querySelector(`.post-card[data-post-key="${c.insidePostKey}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
@@ -1764,7 +1734,6 @@
           clearPostHighlights();
         }
         c.isMoving = false;
-        // 歩行アニメ停止、呼吸のみ
         c.walkCycle += 0.02;
         c.breathPhase += 0.045;
         c.breathPhase %= Math.PI * 2;
@@ -1779,20 +1748,17 @@
       if (catKeys.w) { moveY -= 1; c.isMoving = true; }
       if (catKeys.s) { moveY += 1; c.isMoving = true; }
 
-      // 水平移動（画面割合で）
       const speed = 5.0;
       const px = ratioToPixelX(c.xRatio) + moveX * speed;
       const clampedPx = Math.max(40, Math.min(window.innerWidth - 40, px));
       c.xRatio = pixelToRatioX(clampedPx);
 
-      // 垂直（接地中）
       if (moveY !== 0 && c.isGrounded) {
         const py = ratioToPixelY(c.yRatio) + moveY * speed * 0.7;
         const clampedPy = Math.max(120, Math.min(window.innerHeight - 40, py));
         c.yRatio = pixelToRatioY(clampedPy);
       }
 
-      // ジャンプ
       if (catKeys.space && c.isGrounded && !catJumpCooldown && c.jumpPhase === 'none') {
         c.jumpPhase = 'crouch';
         c.jumpAnimT = 0;
@@ -1832,7 +1798,6 @@
         if (c.jumpAnimT >= 10) { c.jumpPhase = 'none'; c.crouchAmount = 0; }
       }
 
-      // 歩行アニメ
       if (c.isGrounded && c.isMoving) {
         c.walkCycle += 0.36;
         c.idleTime = 0;
@@ -1868,9 +1833,17 @@
                   + Math.sin(Date.now() * 0.008) * 0.03;
     }
 
-    // ★ レスとの重なり判定（操作者のみ）
     function updateCatHovering() {
       if (catLocal.insidePostKey) return;
+      // ★ スレッド詳細を開いていない時はホバー判定しない
+      if (!currentThreadKey) {
+        if (catLocal.hoveringPostKey) {
+          const prev = document.querySelector(`.post-card[data-post-key="${catLocal.hoveringPostKey}"]`);
+          if (prev) prev.classList.remove('cat-hover');
+          catLocal.hoveringPostKey = null;
+        }
+        return;
+      }
 
       const catCenterX = ratioToPixelX(catLocal.xRatio);
       const catCenterY = ratioToPixelY(catLocal.yRatio) - catLocal.z - 90 * CAT_SCALE;
@@ -1897,6 +1870,10 @@
     }
 
     async function handleCatEnter() {
+      if (!currentThreadKey) {
+        showBanner('レスに入るには、スレッドを開いてください', true);
+        return;
+      }
       const c = catLocal;
       if (c.insidePostKey) {
         openCatEdit(c.insidePostKey);
@@ -1919,7 +1896,6 @@
       }
     }
 
-    // 編集プロンプト
     const catEditPrompt = document.getElementById('catEditPrompt');
     const catEditTextarea = document.getElementById('catEditTextarea');
     const catEditTarget = document.getElementById('catEditTarget');
@@ -1972,27 +1948,20 @@
       }
     });
 
-    // ★ 操作者ループ
     function catControlLoop() {
       if (!catIsControlling) { catRaf = null; return; }
       updateLocalCat();
       updateCatHovering();
       drawCat(catLocal);
-      // 定期的に Firebase に同期
       syncCatToFirebase(false);
       catRaf = requestAnimationFrame(catControlLoop);
     }
 
-    // ★ 視聴者ループ（他ユーザー）
+    // ★ 視聴者ループ（猫が存在する限り全員が動かす）
     function catViewLoop() {
-      // 自分が操作中になったら中止
       if (catIsControlling) { catRaf = null; return; }
-      if (!catRemote || catRemote.threadKey !== currentThreadKey) {
-        hideCatLocally();
-        return;
-      }
+      if (!catRemote) { hideCatLocally(); return; }
 
-      // 少し補間しながら表示（なめらか）
       const target = catRemote;
       const lerp = 0.25;
       catLocal.xRatio += ((target.xRatio ?? catLocal.xRatio) - catLocal.xRatio) * lerp;
@@ -2002,11 +1971,9 @@
       catLocal.isMoving = target.isMoving ?? false;
       catLocal.jumpPhase = target.jumpPhase ?? 'none';
 
-      // 向き補間
       const tf = catLocal.facingRight ? 1 : -1;
       catLocal.facingScale += (tf - catLocal.facingScale) * 0.25;
 
-      // アニメ進行
       if (catLocal.isMoving) {
         catLocal.walkCycle += 0.36;
       } else {
@@ -2030,8 +1997,8 @@
       catLocal.earTwitch = Math.sin(Date.now() * 0.0022) * 0.09
                          + Math.sin(Date.now() * 0.008) * 0.03;
 
-      // レスの中にいる場合、位置を強制追従
-      if (target.insidePostKey) {
+      // レスの中にいる場合、その位置に合わせる（同じスレッドを開いている人だけ）
+      if (target.insidePostKey && currentThreadKey === target.threadKey) {
         const el = document.querySelector(`.post-card[data-post-key="${target.insidePostKey}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
@@ -2040,9 +2007,8 @@
         }
       }
 
-      // 視聴者側でもハイライトを反映
       document.querySelectorAll('.post-card.cat-inside').forEach(el => el.classList.remove('cat-inside'));
-      if (target.insidePostKey) {
+      if (target.insidePostKey && currentThreadKey === target.threadKey) {
         const el = document.querySelector(`.post-card[data-post-key="${target.insidePostKey}"]`);
         if (el) el.classList.add('cat-inside');
       }
@@ -2051,9 +2017,6 @@
       catRaf = requestAnimationFrame(catViewLoop);
     }
 
-    // ============================================================
-    // ★ 猫の描画（共通・スケール対応）
-    // ============================================================
     function drawCat(c) {
       const ctx = catCtx;
       ctx.clearRect(0, 0, catCanvas.width, catCanvas.height);
@@ -2086,7 +2049,6 @@
       }
       const drawY = baseY - walkBob;
 
-      // 影
       const shadowScale = Math.max(0.3, 1 - c.z / 240);
       ctx.save();
       ctx.beginPath();
@@ -2096,10 +2058,9 @@
       ctx.fill();
       ctx.restore();
 
-      // 本体
       ctx.save();
       ctx.translate(baseX, drawY);
-      ctx.scale(CAT_SCALE, CAT_SCALE);      // ★ 縮小
+      ctx.scale(CAT_SCALE, CAT_SCALE);
       ctx.rotate(airRotation);
       ctx.scale(c.facingScale, 1);
       const breathScale = 1 + Math.sin(c.breathPhase) * 0.015;
@@ -2426,8 +2387,12 @@
     }
 
     // ============================================================
-    // クリーンアップ
+    // ★ ページ読み込み直後から猫を購読開始（ログイン前でも見える）
     // ============================================================
+    initCatSyncListener();
+    resizeCatCanvas();
+    window.addEventListener('resize', resizeCatCanvas);
+
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
