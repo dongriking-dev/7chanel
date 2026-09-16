@@ -101,12 +101,16 @@
       border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
     }
     .restore-btn:hover { background: #0e7490; }
-    /* ★ BAN管理ボタン */
     .banlist-btn {
       background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 12px;
       border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
     }
     .banlist-btn:hover { background: #991b1b; }
+    .userlist-btn {
+      background: #0369a1; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
+    }
+    .userlist-btn:hover { background: #075985; }
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -264,7 +268,6 @@
     }
     .editor-box.hidden { display: none; }
 
-    /* ★ BANユーザー一覧の行 */
     .ban-list-row {
       display: flex; align-items: center; gap: 8px;
       padding: 10px; border: 1px solid #fecaca; border-radius: 6px;
@@ -287,7 +290,51 @@
     }
     .ban-list-row .unban-btn:hover { background: #15803d; }
 
-    /* ★ BAN画面 */
+    /* ★ ユーザー一覧用 */
+    .user-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+      background: #f9fafb; margin-bottom: 6px; font-size: 12px;
+    }
+    .user-row .info { flex: 1; min-width: 0; }
+    .user-row .email-line {
+      font-family: monospace; font-size: 12px;
+      color: #1e40af; word-break: break-all; font-weight: 600;
+    }
+    .user-row .meta-line {
+      font-size: 10px; color: #6b7280; margin-top: 2px;
+      word-break: break-all;
+    }
+    .user-row .role-tag {
+      font-size: 10px; padding: 2px 6px; border-radius: 4px;
+      color: #fff; font-weight: 700;
+    }
+    .user-row .role-tag.admin { background: #7c2d12; }
+    .user-row .role-tag.owner { background: #1e40af; }
+    .user-row .role-tag.vip   { background: #7c3aed; }
+    .user-row .role-tag.none  { background: #6b7280; }
+    .user-row .role-tag.banned { background: #991b1b; }
+    .user-row .action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+    .user-row .btn-mini {
+      font-size: 10px; padding: 3px 8px; border-radius: 4px;
+      border: none; cursor: pointer; color: #fff; white-space: nowrap;
+    }
+    .user-row .btn-ban { background: #111827; }
+    .user-row .btn-ban:hover { background: #374151; }
+    .user-row .btn-unban { background: #16a34a; }
+    .user-row .btn-unban:hover { background: #15803d; }
+    .user-row .btn-copy { background: #6b7280; }
+    .user-row .btn-copy:hover { background: #4b5563; }
+    .user-search-input {
+      width: 100%; border: 1px solid #d1d5db; padding: 8px;
+      border-radius: 6px; font-size: 13px; margin-bottom: 10px;
+      outline: none;
+    }
+    .user-search-input:focus {
+      border-color: #0369a1;
+      box-shadow: 0 0 0 2px rgba(3,105,161,0.15);
+    }
+
     #banOverlay {
       position: fixed; inset: 0; background: #000;
       z-index: 99999; display: none;
@@ -357,7 +404,7 @@
     </div>
   </div>
 
-  <!-- ★ BAN管理モーダル -->
+  <!-- BAN管理モーダル -->
   <div id="banModal" class="modal-backdrop hidden">
     <div class="modal-content">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🚫 BANユーザー管理</h3>
@@ -365,7 +412,6 @@
         メールアドレスを指定してBANできます（未投稿でも可）。BANはUID・メール・デバイスの3つに紐づきます。
       </p>
 
-      <!-- 新規BAN追加 -->
       <div class="p-3 border border-red-200 bg-red-50 rounded mb-4">
         <p class="text-xs font-bold text-red-700 mb-2">新規BAN</p>
         <label class="block text-xs text-gray-600 mb-1">メールアドレス（必須）:</label>
@@ -386,7 +432,6 @@
         </button>
       </div>
 
-      <!-- BANユーザー一覧 -->
       <div>
         <p class="text-xs font-bold text-gray-600 mb-2">現在BANされているユーザー:</p>
         <div id="banListContainer">
@@ -396,6 +441,36 @@
 
       <div class="flex justify-end mt-4">
         <button id="banCloseBtn" class="reply-cancel-btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ ユーザー一覧モーダル -->
+  <div id="userModal" class="modal-backdrop hidden">
+    <div class="modal-content" style="max-width: 640px;">
+      <h3 class="text-lg font-bold text-gray-800 mb-1">👥 サイトを開いたユーザー一覧</h3>
+      <p class="text-xs text-gray-500 mb-3">
+        ログインしたことがある全ユーザーの一覧です（新しい順）。
+      </p>
+
+      <input type="text" id="userSearchInput" class="user-search-input" placeholder="🔍 メールアドレスで検索...">
+
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-gray-600">
+          合計: <span id="userCountLabel" class="font-bold">0</span> 人
+        </p>
+        <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+          <input type="checkbox" id="userShowOnlyNotBanned">
+          <span>BANされていない人のみ</span>
+        </label>
+      </div>
+
+      <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;">
+        <p class="text-xs text-gray-400">（読み込み中...）</p>
+      </div>
+
+      <div class="flex justify-end mt-4">
+        <button id="userCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
@@ -436,10 +511,11 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <div id="backupControls" class="hidden flex gap-2">
+        <div id="backupControls" class="hidden flex gap-2 flex-wrap">
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
+          <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
@@ -570,6 +646,7 @@
     let badgesUnsubscribe = null;
     let bansUnsubscribe = null;
     let deviceBansUnsubscribe = null;
+    let knownUsersUnsubscribe = null;
 
     let activeReplyParentId = null;
     let allPostsCache = [];
@@ -578,6 +655,7 @@
     let customBadgesCache = {};
     let bansCache = {};
     let deviceBansCache = {};
+    let knownUsersCache = {};
     let myFingerprint = null;
 
     let badgeEditingTarget = null;
@@ -619,9 +697,6 @@
       return userRole === 'admin' || userRole === 'owner';
     }
 
-    // ============================================================
-    // ★ デバイスフィンガープリント生成
-    // ============================================================
     function generateFingerprint() {
       const parts = [
         navigator.userAgent,
@@ -636,7 +711,6 @@
         navigator.maxTouchPoints || 0
       ];
       const raw = parts.join('|');
-      // 簡易ハッシュ（FNV-1a 32bit × 2回で64bit相当）
       function hash(str) {
         let h1 = 0x811c9dc5;
         let h2 = 0xcbf29ce4;
@@ -651,9 +725,6 @@
       return 'fp_' + hash(raw);
     }
 
-    // ============================================================
-    // ★ メールアドレス → Firebaseキー用ハッシュ
-    // ============================================================
     function emailToKey(email) {
       if (!email) return '';
       const lower = email.toLowerCase().trim();
@@ -747,15 +818,11 @@
       }, 500);
     }
 
-    // ★ BANチェック（UID・メール・フィンガープリント）
     function checkSelfBan() {
       if (!currentUser) return false;
-      // 1. UID
       if (bansCache && bansCache[currentUser.uid]) { executeBan(); return true; }
-      // 2. メール
       const emailKey = emailToKey(currentUser.email);
       if (emailKey && bansCache && bansCache[emailKey]) { executeBan(); return true; }
-      // 3. フィンガープリント
       if (myFingerprint && deviceBansCache && deviceBansCache[myFingerprint]) {
         executeBan(); return true;
       }
@@ -871,6 +938,7 @@
       if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
       if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
       if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
+      if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
     };
 
@@ -904,7 +972,6 @@
       });
     }
 
-    // ★ デバイスBANリスト監視
     function initDeviceBansListener() {
       if (deviceBansUnsubscribe) deviceBansUnsubscribe();
       const ref0 = ref(db, 'deviceBans');
@@ -916,16 +983,48 @@
       });
     }
 
-    // ★ ログイン時に自分のフィンガープリントを登録（統計用）
+    function initKnownUsersListener() {
+      if (knownUsersUnsubscribe) knownUsersUnsubscribe();
+      const ref0 = ref(db, 'knownUsers');
+      knownUsersUnsubscribe = onValue(ref0, (snap) => {
+        knownUsersCache = snap.exists() ? snap.val() : {};
+        const um = document.getElementById('userModal');
+        if (um && !um.classList.contains('hidden')) {
+          renderUserList();
+        }
+      }, (err) => {
+        console.error('既知ユーザー監視エラー:', err);
+      });
+    }
+
     async function registerMyFingerprint() {
       if (!currentUser || !myFingerprint) return;
+      const now = Date.now();
+
       try {
         await update(ref(db, `userDevices/${currentUser.uid}`), {
-          [myFingerprint]: Date.now()
+          [myFingerprint]: now
         });
       } catch (e) {
-        // 失敗しても無視（権限がない場合等）
         console.warn('フィンガープリント登録スキップ:', e.message);
+      }
+
+      try {
+        const userRef = ref(db, `knownUsers/${currentUser.uid}`);
+        const existingSnap = await get(userRef);
+        const existing = existingSnap.exists() ? existingSnap.val() : null;
+
+        const data = {
+          email: currentUser.email || '',
+          displayName: currentUser.displayName || '',
+          lastSeen: now,
+          firstSeen: existing && existing.firstSeen ? existing.firstSeen : now,
+          role: userRole || null,
+          lastFingerprint: myFingerprint
+        };
+        await update(userRef, data);
+      } catch (e) {
+        console.warn('knownUsers 登録スキップ:', e.message);
       }
     }
 
@@ -942,7 +1041,6 @@
       myBadgePublic = loadBadgeVisibility(user.email);
       myFingerprint = generateFingerprint();
 
-      // BANチェック（3種）
       if (checkSelfBan()) return;
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
@@ -984,6 +1082,7 @@
       initCustomBadgesListener();
       initBansListener();
       initDeviceBansListener();
+      initKnownUsersListener();
       registerMyFingerprint();
     });
 
@@ -1413,7 +1512,6 @@
       return wrap;
     }
 
-    // ★ BANアクション（UID・メール・デバイス全部）
     async function handleBanAction(action, uid, email) {
       if (!canBan()) { alert('BAN権限がありません。'); return; }
       if (!uid && !email) return;
@@ -1441,7 +1539,6 @@
           }
           await Promise.all(ops);
 
-          // デバイスBAN登録：そのユーザーの既知のデバイスを全部BAN
           if (uid) {
             try {
               const devSnap = await get(ref(db, `userDevices/${uid}`));
@@ -1480,7 +1577,6 @@
           }
           await Promise.all(ops);
 
-          // デバイスBANも解除
           if (uid) {
             try {
               const devSnap = await get(ref(db, `userDevices/${uid}`));
@@ -1529,14 +1625,10 @@
       if (e.target.id === 'banModal') closeBanModal();
     });
 
-    // ★ BANユーザー一覧描画
     function renderBanList() {
       banListContainer.innerHTML = '';
 
-      // bansCache を走査（キーがUIDまたはメールハッシュ）
       const entries = Object.entries(bansCache || {});
-      // UID形式とメールハッシュ形式をまとめて表示。メールハッシュは別行として表示する
-      // 同じ uid でまとまっているものは1行に
       const byUid = {};
       const byEmailKey = {};
       entries.forEach(([key, val]) => {
@@ -1548,7 +1640,6 @@
         }
       });
 
-      // UIDベース表示
       Object.entries(byUid).forEach(([uid, b]) => {
         const row = document.createElement('div');
         row.className = 'ban-list-row';
@@ -1567,9 +1658,7 @@
         banListContainer.appendChild(row);
       });
 
-      // メールのみでBANされたものを表示（UID未紐づき）
       Object.entries(byEmailKey).forEach(([ek, b]) => {
-        // 既にUIDの行で同じメールが出ていればスキップ
         const alreadyShown = Object.values(byUid).some(u => u.email && b.email && u.email.toLowerCase() === b.email.toLowerCase());
         if (alreadyShown) return;
         const row = document.createElement('div');
@@ -1594,7 +1683,6 @@
       }
     }
 
-    // ★ メールだけでBAN追加
     document.getElementById('banAddBtn').addEventListener('click', async () => {
       if (!canBan()) { alert('BAN管理権限がありません。'); return; }
       const email = banEmailInput.value.trim().toLowerCase();
@@ -1606,7 +1694,6 @@
         return;
       }
 
-      // 自分自身はBANできないようにする
       if (currentUser && currentUser.email && currentUser.email.toLowerCase() === email) {
         alert('自分自身はBANできません。');
         return;
@@ -1627,21 +1714,15 @@
         const ops = [];
         if (ek) ops.push(set(ref(db, `bans/${ek}`), data));
 
-        // もしこのメールが既にログインしたことがあれば、そのデバイスもBAN
         if (banDeviceCheck.checked) {
           try {
             const usersSnap = await get(ref(db, 'userDevices'));
             if (usersSnap.exists()) {
-              // 同じメールで過去にログインしたユーザーのUIDを見つけるのは難しい
-              // （userDevices は uid で管理されているため）
-              // 代わりに bans の全UIDの中で該当メールのものを探す
               const allBansSnap = await get(ref(db, 'bans'));
               if (allBansSnap.exists()) {
                 allBansSnap.forEach((child) => {
                   const v = child.val();
                   if (v && v.email && v.email.toLowerCase() === email && v.uid) {
-                    // その UID のデバイスを全部BAN
-                    // （既に BAN されている可能性もあるので上書き）
                   }
                 });
               }
@@ -1656,7 +1737,6 @@
         banEmailInput.value = '';
         banReasonInput.value = '';
         showBanner('メールアドレスをBANしました', false);
-        // 一覧を再描画（bansCacheの監視で自動更新されるが、即時反映のため）
         renderBanList();
       } catch (err) {
         console.error('BANエラー:', err);
@@ -1664,6 +1744,131 @@
         alert('BANに失敗しました。');
       }
     });
+
+    // ============================================================
+    // ★ ユーザー一覧モーダル
+    // ============================================================
+    const userModal = document.getElementById('userModal');
+    const userListContainer = document.getElementById('userListContainer');
+    const userSearchInput = document.getElementById('userSearchInput');
+    const userCountLabel = document.getElementById('userCountLabel');
+    const userShowOnlyNotBanned = document.getElementById('userShowOnlyNotBanned');
+
+    window.openUserModal = function() {
+      if (!canBan()) { alert('ユーザー一覧の閲覧権限がありません。'); return; }
+      userModal.classList.remove('hidden');
+      renderUserList();
+    };
+
+    function closeUserModal() {
+      userModal.classList.add('hidden');
+    }
+
+    document.getElementById('userCloseBtn').addEventListener('click', closeUserModal);
+    userModal.addEventListener('click', (e) => {
+      if (e.target.id === 'userModal') closeUserModal();
+    });
+    userSearchInput.addEventListener('input', renderUserList);
+    userShowOnlyNotBanned.addEventListener('change', renderUserList);
+
+    function renderUserList() {
+      userListContainer.innerHTML = '';
+      const keyword = (userSearchInput.value || '').trim().toLowerCase();
+      const onlyNotBanned = userShowOnlyNotBanned.checked;
+
+      const list = Object.entries(knownUsersCache || {}).map(([uid, u]) => ({
+        uid,
+        email: (u && u.email) || '',
+        displayName: (u && u.displayName) || '',
+        lastSeen: (u && u.lastSeen) || 0,
+        firstSeen: (u && u.firstSeen) || 0,
+        role: (u && u.role) || null,
+        lastFingerprint: (u && u.lastFingerprint) || ''
+      }));
+
+      let filtered = list;
+      if (keyword) {
+        filtered = filtered.filter(u =>
+          u.email.toLowerCase().includes(keyword) ||
+          u.uid.toLowerCase().includes(keyword)
+        );
+      }
+      if (onlyNotBanned) {
+        filtered = filtered.filter(u => {
+          if (bansCache[u.uid]) return false;
+          const ek = emailToKey(u.email);
+          if (ek && bansCache[ek]) return false;
+          return true;
+        });
+      }
+
+      filtered.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+
+      userCountLabel.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        userListContainer.innerHTML = '<p class="text-xs text-gray-400">該当するユーザーがいません。</p>';
+        return;
+      }
+
+      filtered.forEach((u) => {
+        const lastSeenDate = u.lastSeen ? new Date(u.lastSeen).toLocaleString('ja-JP') : '不明';
+        const firstSeenDate = u.firstSeen ? new Date(u.firstSeen).toLocaleString('ja-JP') : '不明';
+
+        const isBannedByUid = !!bansCache[u.uid];
+        const ek = emailToKey(u.email);
+        const isBannedByEmail = ek ? !!bansCache[ek] : false;
+        const isBanned = isBannedByUid || isBannedByEmail;
+
+        let roleTag = '<span class="role-tag none">一般</span>';
+        if (u.role === 'admin') roleTag = '<span class="role-tag admin">管理者</span>';
+        else if (u.role === 'owner') roleTag = '<span class="role-tag owner">主</span>';
+        else if (u.role === 'vip') roleTag = '<span class="role-tag vip">VIP</span>';
+        if (isBanned) roleTag += ' <span class="role-tag banned">BAN中</span>';
+
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        row.innerHTML = `
+          <div class="info">
+            <div class="email-line">${escapeHtml(u.email || '（メール不明）')}</div>
+            <div class="meta-line">UID: ${escapeHtml(u.uid)}</div>
+            <div class="meta-line">初回: ${escapeHtml(firstSeenDate)} ／ 最終: ${escapeHtml(lastSeenDate)}</div>
+            <div class="meta-line">${roleTag}</div>
+          </div>
+          <div class="action-btns">
+            <button class="btn-mini btn-copy" data-copy="${escapeHtml(u.email)}">📋 コピー</button>
+            ${canBan() ? (
+              isBanned
+                ? `<button class="btn-mini btn-unban" data-unban-uid="${escapeHtml(u.uid)}" data-unban-email="${escapeHtml(u.email)}">解除</button>`
+                : `<button class="btn-mini btn-ban" data-ban-uid="${escapeHtml(u.uid)}" data-ban-email="${escapeHtml(u.email)}">BAN</button>`
+            ) : ''}
+          </div>
+        `;
+
+        row.querySelector('.btn-copy').addEventListener('click', () => {
+          navigator.clipboard.writeText(u.email).then(() => {
+            showBanner('メールアドレスをコピーしました', false);
+          }).catch(() => {
+            alert('コピーに失敗しました');
+          });
+        });
+
+        const banBtn = row.querySelector('.btn-ban');
+        if (banBtn) {
+          banBtn.addEventListener('click', () => {
+            handleBanAction('ban', banBtn.dataset.banUid, banBtn.dataset.banEmail);
+          });
+        }
+        const unbanBtn = row.querySelector('.btn-unban');
+        if (unbanBtn) {
+          unbanBtn.addEventListener('click', () => {
+            handleBanAction('unban', unbanBtn.dataset.unbanUid, unbanBtn.dataset.unbanEmail);
+          });
+        }
+
+        userListContainer.appendChild(row);
+      });
+    }
 
     // ============================================================
     // バッジ管理モーダル
@@ -2128,6 +2333,7 @@
         const snapBadges = await get(ref(db, 'customBadges'));
         const snapBans = await get(ref(db, 'bans'));
         const snapDevBans = await get(ref(db, 'deviceBans'));
+        const snapKnown = await get(ref(db, 'knownUsers'));
         const payload = {
           _meta: {
             exportedAt: new Date().toISOString(),
@@ -2137,7 +2343,8 @@
           threads: snapThreads.exists() ? snapThreads.val() : {},
           customBadges: snapBadges.exists() ? snapBadges.val() : {},
           bans: snapBans.exists() ? snapBans.val() : {},
-          deviceBans: snapDevBans.exists() ? snapDevBans.val() : {}
+          deviceBans: snapDevBans.exists() ? snapDevBans.val() : {},
+          knownUsers: snapKnown.exists() ? snapKnown.val() : {}
         };
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
@@ -2166,7 +2373,7 @@
 
       if (!confirm(
         '【警告】\n' +
-        '選択したバックアップファイルで、現在のすべてのスレッド・バッジ・BANリストを上書きします。\n' +
+        '選択したバックアップファイルで、現在のすべてのスレッド・バッジ・BANリスト・ユーザー一覧を上書きします。\n' +
         '現在のデータは完全に失われます（バックアップを取っていない場合）。\n\n' +
         '本当に復元しますか？'
       )) return;
@@ -2186,12 +2393,14 @@
         let badgesData = {};
         let bansData = {};
         let devBansData = {};
+        let knownUsersData = {};
 
         if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
           threadsData = parsed.threads;
           if (parsed.customBadges && typeof parsed.customBadges === 'object') badgesData = parsed.customBadges;
           if (parsed.bans && typeof parsed.bans === 'object') bansData = parsed.bans;
           if (parsed.deviceBans && typeof parsed.deviceBans === 'object') devBansData = parsed.deviceBans;
+          if (parsed.knownUsers && typeof parsed.knownUsers === 'object') knownUsersData = parsed.knownUsers;
         } else if (parsed && typeof parsed === 'object') {
           threadsData = parsed;
         } else {
@@ -2202,6 +2411,7 @@
         await set(ref(db, 'customBadges'), badgesData);
         await set(ref(db, 'bans'), bansData);
         await set(ref(db, 'deviceBans'), devBansData);
+        await set(ref(db, 'knownUsers'), knownUsersData);
 
         showBanner('復元が完了しました', false);
         alert('復元が完了しました。');
@@ -2219,6 +2429,7 @@
       if (badgesUnsubscribe) badgesUnsubscribe();
       if (bansUnsubscribe) bansUnsubscribe();
       if (deviceBansUnsubscribe) deviceBansUnsubscribe();
+      if (knownUsersUnsubscribe) knownUsersUnsubscribe();
     });
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
