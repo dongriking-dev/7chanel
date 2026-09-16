@@ -36,7 +36,7 @@
     /* ★ スレ主バッジ */
     .op-badge {
       background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: bold;
+      border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
     .admin-email {
       background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
@@ -48,7 +48,6 @@
     }
     .delete-btn:hover { background: #b91c1c; }
     .delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-
     .reply-btn {
       background: #2563eb; color: #fff; font-size: 11px; padding: 3px 10px;
       border-radius: 4px; cursor: pointer; border: none;
@@ -106,15 +105,43 @@
       display: inline-block;
       margin-bottom: 6px;
     }
-    /* ★ 添付画像・動画 */
-    .post-file { margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 6px; }
-    .post-file img { max-width: 100%; max-height: 320px; border-radius: 4px; display: block; object-fit: contain; }
-    .post-file video { max-width: 100%; max-height: 320px; border-radius: 4px; display: block; }
-    .post-file a { font-size: 12px; color: #2563eb; text-decoration: underline; word-break: break-all; }
-
+    /* 添付ファイル表示 */
+    .post-file {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+    .post-file img {
+      max-height: 320px;
+      max-width: 100%;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .post-file video {
+      max-height: 320px;
+      max-width: 100%;
+      border-radius: 4px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .post-file a {
+      font-size: 12px;
+      color: #2563eb;
+      text-decoration: underline;
+      word-break: break-all;
+    }
     input[type="file"]::file-selector-button {
-      background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem;
-      padding: 0.25rem 0.75rem; font-size: 0.75rem; margin-right: 0.5rem; cursor: pointer;
+      background-color: #e5e7eb;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      margin-right: 0.5rem;
+      cursor: pointer;
     }
     input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
   </style>
@@ -172,10 +199,10 @@
         <form id="createThreadForm" class="space-y-3">
           <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
           <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
-          <!-- ★ スレッド作成時の画像添付 -->
+          <!-- ★ スレッド作成時の添付ファイル -->
           <div>
-            <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画、最大10MB、任意）:</label>
-            <input type="file" id="threadFileInput" accept="image/*,video/*" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+            <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画/PDF/テキスト、最大10MB、任意）:</label>
+            <input type="file" id="threadFileInput" class="text-xs text-gray-600 w-full">
           </div>
           <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
             スレッドを立てる
@@ -206,12 +233,11 @@
         <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
         <form id="postForm" class="space-y-3">
           <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
-          <!-- ★ レス投稿時の画像添付 -->
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画、最大10MB、任意）:</label>
-            <input type="file" id="postFileInput" accept="image/*,video/*" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
-          </div>
-          <div class="flex justify-end">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex-1 min-w-[200px]">
+              <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画/PDF/テキスト、最大10MB）:</label>
+              <input type="file" id="fileInput" class="text-xs text-gray-600 w-full">
+            </div>
             <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
               書き込む
             </button>
@@ -230,15 +256,14 @@
 
   <script type="module">
     // ============================================================
-    // Firebase SDK
+    // Firebase SDK（Storage を使うため getStorage もインポート）
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
       getDatabase, ref, push, set, remove, onValue, off,
-      query, orderByChild, get
+      query, orderByChild
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    // ★ Storage を再度 import
     import {
       getStorage, ref as storageRef, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -263,14 +288,12 @@
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
-    const storage = getStorage(app);  // ★
+    const storage = getStorage(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ============================================================
-    // 管理者設定
-    // ============================================================
     const ADMIN_EMAIL = "katou.noel114514@gmail.com";
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
     // ============================================================
     // グローバル
@@ -278,9 +301,10 @@
     let currentUser = null;
     let isAdmin = false;
     let currentThreadKey = null;
-    let currentThreadOwnerUid = null;   // ★ スレ主のUID
+    let currentThreadOwnerUid = null;   // ★ スレ主判定用
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
+
     let activeReplyParentId = null;
     let allPostsCache = [];
     let postNumberMap = new Map();
@@ -348,21 +372,24 @@
       mainView.classList.add('hidden');
     }
 
-    // ★ ファイルをStorageにアップしてメタ情報を返す
-    async function uploadFileIfAny(file) {
+    // ★ ファイルを Storage にアップロードして { url, name, type } を返す
+    async function uploadFile(file) {
       if (!file) return null;
-      const MAX_SIZE = 10 * 1024 * 1024;
-      if (file.size > MAX_SIZE) {
-        throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_FILE_SIZE / 1024 / 1024}MB）`);
       }
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const sRef = storageRef(storage, `uploads/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`);
+      const sRef = storageRef(storage, `uploads/${Date.now()}_${safeName}`);
       const snapshot = await uploadBytes(sRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      return { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
+      return {
+        url: downloadURL,
+        name: file.name,
+        type: file.type || 'application/octet-stream'
+      };
     }
 
-    // ★ ファイルHTMLを生成
+    // ★ 添付ファイルのHTMLを生成
     function buildFileHtml(file) {
       if (!file || !file.url) return '';
       const type = file.type || '';
@@ -373,6 +400,8 @@
         inner += `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="添付画像" loading="lazy"></a>`;
       } else if (type.startsWith('video/')) {
         inner += `<video controls preload="metadata"><source src="${url}" type="${type}"></video>`;
+      } else if (type.startsWith('audio/')) {
+        inner += `<audio controls preload="metadata" style="width:100%"><source src="${url}" type="${type}"></audio>`;
       }
       inner += `<a href="${url}" target="_blank" rel="noopener noreferrer" download>📎 ${escapeHtml(name)}</a>`;
       return `<div class="post-file">${inner}</div>`;
@@ -441,10 +470,9 @@
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
     };
 
-    // ★ スレ主UIDも受け取る
     function openThread(threadKey, title, createdAt, authorEmail, authorUid) {
       currentThreadKey = threadKey;
-      currentThreadOwnerUid = authorUid || null;
+      currentThreadOwnerUid = authorUid || null;   // ★ スレ主UID
       activeReplyParentId = null;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
@@ -468,7 +496,7 @@
     }
 
     // ============================================================
-    // 1. スレッド作成（★画像対応）
+    // 1. スレッド作成（★ ファイル添付対応）
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -496,14 +524,14 @@
         </div>`;
       threadsContainer.prepend(tempItem);
 
-      document.getElementById('createThreadForm').reset();
-
       try {
-        // ★ ファイルがあれば先にアップ
+        // ★ 先にファイルをアップロード
         let fileData = null;
         if (file) {
-          fileData = await uploadFileIfAny(file);
+          fileData = await uploadFile(file);
         }
+
+        document.getElementById('createThreadForm').reset();
 
         const threadsRef = ref(db, 'threads');
         const newThreadRef = push(threadsRef);
@@ -512,34 +540,23 @@
         const threadData = {
           title: title,
           createdAt: Date.now(),
-          postCount: (content || fileData) ? 1 : 0,
+          postCount: content || fileData ? 1 : 0,
           authorEmail: currentUser.email,
-          authorUid: currentUser.uid,
-          // ★ スレ主の最初の投稿をスレッド直下に持たせる（画像も含む）
-          firstPost: (content || fileData) ? {
-            author: '名無しさん',
-            content: content || '',
-            file: fileData,
-            createdAt: Date.now(),
-            authorEmail: currentUser.email,
-            authorUid: currentUser.uid
-          } : null
+          authorUid: currentUser.uid
         };
 
         const writes = [set(newThreadRef, threadData)];
 
-        // ★ 最初の投稿は posts 配下にも入れる（レス一覧で1番として表示される）
         if (content || fileData) {
           const postRef = push(ref(db, `threads/${threadKey}/posts`));
           writes.push(set(postRef, {
             author: '名無しさん',
             content: content || '',
-            file: fileData,
             createdAt: Date.now(),
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
             parentId: null,
-            isOp: true   // ★ スレ主の投稿フラグ
+            file: fileData   // ★ null または { url, name, type }
           }));
         }
 
@@ -556,12 +573,11 @@
       } finally {
         btn.disabled = false;
         btn.innerText = 'スレッドを立てる';
-        fileInput.value = '';
       }
     });
 
     // ============================================================
-    // 2. スレッド一覧 リアルタイム監視
+    // 2. スレッド一覧
     // ============================================================
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
@@ -593,7 +609,6 @@
 
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          // ★ authorUid も渡す
           item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail, thread.authorUid);
           item.innerHTML = `
             <div class="flex-1 min-w-0">
@@ -638,14 +653,11 @@
         snapshot.forEach((child) => {
           posts.push({ key: child.key, ...child.val() });
         });
-
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         allPostsCache = posts;
 
         postNumberMap = new Map();
-        posts.forEach((p, i) => {
-          postNumberMap.set(p.key, i + 1);
-        });
+        posts.forEach((p, i) => postNumberMap.set(p.key, i + 1));
 
         const childrenMap = new Map();
         const rootPosts = [];
@@ -654,7 +666,6 @@
         posts.forEach((p) => {
           let pid = p.parentId || null;
           if (pid && !keySet.has(pid)) pid = null;
-
           if (pid === null) {
             rootPosts.push(p);
           } else {
@@ -682,7 +693,7 @@
       });
     }
 
-    // ★ レス1件＋子レスを再帰描画
+    // ★ ツリー描画（スレ主バッジ対応）
     function renderPostTree(post, childrenMap) {
       const wrap = document.createElement('div');
       wrap.className = 'post-tree';
@@ -695,15 +706,15 @@
         catch (e) { date = '日時不明'; }
       }
 
+      // ★ スレ主バッジ（投稿者のUIDがスレッド作成者のUIDと一致する場合）
+      let opBadge = '';
+      if (currentThreadOwnerUid && post.authorUid === currentThreadOwnerUid) {
+        opBadge = `<span class="op-badge">スレ主</span>`;
+      }
+
       let adminInfo = '';
       if (isAdmin) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
-      }
-
-      // ★ スレ主バッジ：投稿の authorUid がスレッド作成者の UID と一致する場合
-      let opBadge = '';
-      if (currentThreadOwnerUid && post.authorUid && post.authorUid === currentThreadOwnerUid) {
-        opBadge = `<span class="op-badge">スレ主</span>`;
       }
 
       let replyLabel = '';
@@ -711,6 +722,9 @@
         const parentNum = postNumberMap.get(post.parentId);
         replyLabel = `<span class="reply-target-label">↩ >>${parentNum}</span>`;
       }
+
+      // ★ 添付ファイルHTML
+      const fileHtml = post.file ? buildFileHtml(post.file) : '';
 
       const postDiv = document.createElement('div');
       postDiv.className = 'post-card';
@@ -729,13 +743,12 @@
           </span>
         </div>
         ${post.content ? `<div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${formatContent(post.content)}</div>` : ''}
-        ${buildFileHtml(post.file)}
+        ${fileHtml}
         ${replyLabel ? `<div class="mt-1">${replyLabel}</div>` : ''}
       `;
 
       const rbtn = postDiv.querySelector('.reply-btn');
       if (rbtn) rbtn.addEventListener('click', () => onReplyClick(post.key));
-
       if (isAdmin) {
         const dbtn = postDiv.querySelector('.delete-btn');
         if (dbtn) dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
@@ -747,18 +760,14 @@
       if (children.length > 0) {
         const childWrap = document.createElement('div');
         childWrap.className = 'post-children';
-        children.forEach((c) => {
-          childWrap.appendChild(renderPostTree(c, childrenMap));
-        });
+        children.forEach((c) => childWrap.appendChild(renderPostTree(c, childrenMap)));
         wrap.appendChild(childWrap);
       }
 
       return wrap;
     }
 
-    // ============================================================
     // 返信
-    // ============================================================
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (activeReplyParentId === parentId) {
@@ -774,7 +783,6 @@
 
       const targetWrap = postsContainer.querySelector(`.post-tree[data-post-key="${parentId}"]`);
       if (!targetWrap) return;
-
       const targetCard = targetWrap.querySelector('.post-card');
       if (!targetCard) return;
 
@@ -785,6 +793,10 @@
       box.innerHTML = `
         <div class="reply-target-label">>>${parentNum} への返信</div>
         <textarea class="reply-textarea" placeholder="返信を入力（最大2000文字）" maxlength="2000"></textarea>
+        <div class="mt-2">
+          <label class="block text-xs text-gray-600 mb-1">添付ファイル（任意）:</label>
+          <input type="file" class="reply-file text-xs text-gray-600 w-full">
+        </div>
         <div class="flex justify-end gap-2 mt-2">
           <button class="reply-cancel-btn">キャンセル</button>
           <button class="reply-send-btn bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded">返信する</button>
@@ -794,6 +806,7 @@
       targetCard.insertAdjacentElement('afterend', box);
 
       const ta = box.querySelector('.reply-textarea');
+      const fileInp = box.querySelector('.reply-file');
       const cancelBtn = box.querySelector('.reply-cancel-btn');
       const sendBtn = box.querySelector('.reply-send-btn');
 
@@ -804,14 +817,16 @@
 
       sendBtn.addEventListener('click', async () => {
         const content = ta.value.trim();
-        if (!content) { alert('返信内容を入力してください。'); return; }
+        const file = fileInp.files[0];
+        if (!content && !file) { alert('返信内容またはファイルを指定してください。'); return; }
         sendBtn.disabled = true;
-        sendBtn.textContent = '送信中...';
+        sendBtn.textContent = file ? 'アップロード中...' : '送信中...';
         try {
-          await submitReply(parentId, content);
+          await submitReply(parentId, content, file);
           activeReplyParentId = null;
           box.remove();
         } catch (err) {
+          console.error(err);
           sendBtn.disabled = false;
           sendBtn.textContent = '返信する';
         }
@@ -829,25 +844,31 @@
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
     }
 
-    async function submitReply(parentId, content) {
+    async function submitReply(parentId, content, file) {
       if (!currentUser) throw new Error('ログインが必要です');
       if (!currentThreadKey) throw new Error('スレッドが選択されていません');
+
+      let fileData = null;
+      if (file) {
+        fileData = await uploadFile(file);
+      }
 
       const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
       const newPostRef = push(postsRef);
       await set(newPostRef, {
         author: '名無しさん',
-        content: content,
+        content: content || '',
         createdAt: Date.now(),
         authorEmail: currentUser.email,
         authorUid: currentUser.uid,
-        parentId: parentId
+        parentId: parentId,
+        file: fileData
       });
       showBanner('返信を保存しました', false);
     }
 
     // ============================================================
-    // 4. レス投稿（トップレベル・★画像対応）
+    // 4. レス投稿（トップレベル、★ ファイル添付対応）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -855,11 +876,11 @@
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
-      const fileInput = document.getElementById('postFileInput');
+      const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
 
-      if (!content && !file) { alert('コメントまたは画像を入力してください。'); return; }
+      if (!content && !file) { alert('コメントまたはファイルを指定してください。'); return; }
 
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
@@ -870,37 +891,42 @@
       tempPost.id = tempId;
       tempPost.className = 'post-card optimistic-post';
       const optimisticIndex = allPostsCache.length + 1;
+      let opBadge = '';
+      if (currentThreadOwnerUid && currentUser.uid === currentThreadOwnerUid) {
+        opBadge = `<span class="op-badge">スレ主</span>`;
+      }
       tempPost.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1">
           <span class="post-number">${optimisticIndex}</span>
           <span>：</span>
           <span class="post-author">名無しさん</span>
+          ${opBadge}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
-        <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>
+        ${content ? `<div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>` : ''}
         ${file ? `<div class="text-xs text-gray-400 mt-1">📎 ${escapeHtml(file.name)} (アップロード中...)</div>` : ''}`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-      document.getElementById('postForm').reset();
-
       try {
         let fileData = null;
         if (file) {
-          fileData = await uploadFileIfAny(file);
+          fileData = await uploadFile(file);
         }
+
+        document.getElementById('postForm').reset();
 
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
         await set(newPostRef, {
           author: '名無しさん',
           content: content || '',
-          file: fileData,
           createdAt: Date.now(),
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
-          parentId: null
+          parentId: null,
+          file: fileData
         });
 
         showBanner('書き込みを保存しました', false);
@@ -915,12 +941,11 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = originalText;
-        fileInput.value = '';
       }
     });
 
     // ============================================================
-    // 5. 管理者：レス削除
+    // 5. 管理者用：レス削除
     // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
@@ -963,7 +988,7 @@
     }
 
     // ============================================================
-    // 6. 管理者：スレッド削除
+    // 6. 管理者用：スレッド削除
     // ============================================================
     window.deleteCurrentThread = async function() {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
