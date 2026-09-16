@@ -677,14 +677,15 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <!-- ★ ユーザー一覧を adminControls の中に移動 -->
         <div id="adminControls" class="hidden flex gap-2 flex-wrap">
           <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
           <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
+          <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
-        <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
         <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
           ログアウト
@@ -793,7 +794,6 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ★ ログイン状態をローカルに永続化（デフォルトだが明示）
     setPersistence(auth, browserLocalPersistence).catch((err) => {
       console.warn('永続化設定失敗:', err);
     });
@@ -844,7 +844,6 @@
     let intentionalSignOut = false;
     let userApproved = false;
 
-    // ★ 初回認証チェック完了フラグ
     let initialAuthCheckDone = false;
 
     const loginView = document.getElementById('loginView');
@@ -1233,7 +1232,6 @@
       }
     });
 
-    // ★ サイレントサインイン（前回ログインしていた場合のセッション復帰）
     async function trySilentSignIn() {
       try {
         const p = new GoogleAuthProvider();
@@ -1242,7 +1240,6 @@
         console.log('サイレントサインイン成功:', result.user.email);
       } catch (err) {
         console.warn('サイレントサインイン失敗:', err.code || err.message);
-        // 失敗時はログイン画面を表示
         hideBootOverlay();
         showLoginView();
       } finally {
@@ -1426,13 +1423,10 @@
 
       if (!user) {
         userRole = null;
-        // ★ 未ログイン時、初回はサイレントサインインを試みる
-        // （前回ログインしていれば自動で復帰）
         if (!initialAuthCheckDone) {
           trySilentSignIn();
           return;
         }
-        // サイレントサインインも失敗した場合、ログイン画面を表示
         hideBootOverlay();
         showLoginView();
         return;
@@ -1490,6 +1484,7 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
+      // ★ 管理者・主のみ管理ボタン群（ユーザー一覧含む）を表示
       if (canBackup()) {
         adminControls.classList.remove('hidden');
       } else {
@@ -2175,7 +2170,9 @@
     const userCountLabel = document.getElementById('userCountLabel');
     const userShowOnlyNotBanned = document.getElementById('userShowOnlyNotBanned');
 
+    // ★ 管理者・主のみ閲覧可能に戻す
     window.openUserModal = function() {
+      if (!canBan()) { alert('ユーザー一覧の閲覧権限がありません。'); return; }
       userModal.classList.remove('hidden');
       renderUserList();
     };
