@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>69ch</title>
+  <title>7ch</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -32,6 +32,11 @@
     .admin-badge {
       background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 6px;
+    }
+    /* ★ スレ主バッジ */
+    .op-badge {
+      background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 4px; font-weight: bold;
     }
     .admin-email {
       background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
@@ -101,123 +106,27 @@
       display: inline-block;
       margin-bottom: 6px;
     }
+    /* ★ 添付画像・動画 */
+    .post-file { margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 6px; }
+    .post-file img { max-width: 100%; max-height: 320px; border-radius: 4px; display: block; object-fit: contain; }
+    .post-file video { max-width: 100%; max-height: 320px; border-radius: 4px; display: block; }
+    .post-file a { font-size: 12px; color: #2563eb; text-decoration: underline; word-break: break-all; }
 
-    /* 画像関連スタイル */
-    .image-preview-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
+    input[type="file"]::file-selector-button {
+      background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem;
+      padding: 0.25rem 0.75rem; font-size: 0.75rem; margin-right: 0.5rem; cursor: pointer;
     }
-    .image-preview-item {
-      position: relative;
-      width: 80px;
-      height: 80px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      overflow: hidden;
-      background: #f9fafb;
-    }
-    .image-preview-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .image-preview-item .remove-img {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 18px;
-      height: 18px;
-      background: rgba(220,38,38,0.9);
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      font-size: 12px;
-      line-height: 1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-    .image-preview-item .remove-img:hover {
-      background: #b91c1c;
-    }
-    .post-image {
-      max-width: 100%;
-      max-height: 400px;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
-      margin-top: 6px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    .post-image:hover {
-      opacity: 0.9;
-    }
-    .image-upload-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: #f3f4f6;
-      border: 1px dashed #9ca3af;
-      color: #4b5563;
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .image-upload-label:hover {
-      background: #e5e7eb;
-      border-color: #6b7280;
-    }
-    .image-upload-label input[type="file"] {
-      display: none;
-    }
-    .image-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      cursor: pointer;
-    }
-    .image-modal img {
-      max-width: 95%;
-      max-height: 95%;
-      object-fit: contain;
-      border-radius: 4px;
-    }
-    .image-modal .close-modal {
-      position: absolute;
-      top: 16px;
-      right: 24px;
-      color: #fff;
-      font-size: 36px;
-      font-weight: bold;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .image-modal .close-modal:hover {
-      color: #fca5a5;
-    }
+    input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
 
-  <!-- ============================================================
-       ログイン画面
-       ============================================================ -->
+  <!-- ログイン画面 -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
-      <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃん</h1>
+      <h1 class="text-3xl font-bold text-red-900 mb-2">7ちゃんねる</h1>
       <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
       <p class="text-sm text-gray-600 mb-6">安全のためです。</p>
       <button id="googleLoginBtn"
@@ -234,13 +143,11 @@
     </div>
   </div>
 
-  <!-- ============================================================
-       メイン画面
-       ============================================================ -->
+  <!-- メイン画面 -->
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">7ちゃんねる</h1>
         <p class="text-sm text-gray-600">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
@@ -265,12 +172,10 @@
         <form id="createThreadForm" class="space-y-3">
           <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
           <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
+          <!-- ★ スレッド作成時の画像添付 -->
           <div>
-            <label class="image-upload-label">
-              📷 画像を添付
-              <input type="file" id="firstPostImageInput" accept="image/*" multiple>
-            </label>
-            <div id="firstPostImagePreview" class="image-preview-container"></div>
+            <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画、最大10MB、任意）:</label>
+            <input type="file" id="threadFileInput" accept="image/*,video/*" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
           </div>
           <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
             スレッドを立てる
@@ -301,12 +206,10 @@
         <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
         <form id="postForm" class="space-y-3">
           <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required></textarea>
+          <!-- ★ レス投稿時の画像添付 -->
           <div>
-            <label class="image-upload-label">
-              📷 画像を添付
-              <input type="file" id="postImageInput" accept="image/*" multiple>
-            </label>
-            <div id="postImagePreview" class="image-preview-container"></div>
+            <label class="block text-xs text-gray-600 mb-1">添付ファイル（画像/動画、最大10MB、任意）:</label>
+            <input type="file" id="postFileInput" accept="image/*,video/*" class="text-xs text-gray-600 w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
           </div>
           <div class="flex justify-end">
             <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
@@ -330,10 +233,15 @@
     // Firebase SDK
     // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
-      getDatabase, ref, push, set, remove, onValue,
-      query, orderByChild, limitToLast
+      getDatabase, ref, push, set, remove, onValue, off,
+      query, orderByChild, get
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    // ★ Storage を再度 import
+    import {
+      getStorage, ref as storageRef, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import {
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -348,11 +256,14 @@
       databaseURL: "https://chaneler-52b95-default-rtdb.firebaseio.com",
       storageBucket: "chaneler-52b95.firebasestorage.app",
       messagingSenderId: "538510918184",
-      appId: "1:538510918184:web:58232aa80922ff00b92b1d"
+      appId: "1:538510918184:web:58232aa80922ff00b92b1d",
+      measurementId: "G-QF3LDMNQYQ"
     };
 
     const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
     const db = getDatabase(app);
+    const storage = getStorage(app);  // ★
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
@@ -362,33 +273,17 @@
     const ADMIN_EMAIL = "katou.noel114514@gmail.com";
 
     // ============================================================
-    // 画像設定
-    // ============================================================
-    const MAX_IMAGE_SIZE = 500 * 1024;       // 1枚あたり 500KB
-    const MAX_IMAGES_PER_POST = 4;           // 1レスあたり最大4枚
-    const MAX_IMAGE_DIMENSION = 800;         // 長辺 800px にリサイズ
-    const IMAGE_QUALITY = 0.7;               // JPEG品質
-
-    // ============================================================
     // グローバル
     // ============================================================
     let currentUser = null;
     let isAdmin = false;
     let currentThreadKey = null;
+    let currentThreadOwnerUid = null;   // ★ スレ主のUID
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
-
     let activeReplyParentId = null;
     let allPostsCache = [];
     let postNumberMap = new Map();
-    let postElementMap = new Map();
-
-    // 画像添付用
-    let firstPostImages = [];   // スレッド作成用
-    let postImages = [];        // レス投稿用
-    let replyImages = [];       // 返信用
-
-    const POST_FETCH_LIMIT = 200;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -453,159 +348,34 @@
       mainView.classList.add('hidden');
     }
 
-    // ============================================================
-    // 画像処理ユーティリティ
-    // ============================================================
-    function fileToDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function loadImage(dataURL) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = dataURL;
-      });
-    }
-
-    // 画像をリサイズ & 圧縮してBase64を返す
-    async function compressImage(file) {
-      const dataURL = await fileToDataURL(file);
-      const img = await loadImage(dataURL);
-
-      let { width, height } = img;
-      if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-        const ratio = Math.min(MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
+    // ★ ファイルをStorageにアップしてメタ情報を返す
+    async function uploadFileIfAny(file) {
+      if (!file) return null;
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        throw new Error(`ファイルサイズが大きすぎます（最大 ${MAX_SIZE / 1024 / 1024}MB）`);
       }
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const sRef = storageRef(storage, `uploads/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`);
+      const snapshot = await uploadBytes(sRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return { url: downloadURL, name: file.name, type: file.type || 'application/octet-stream' };
+    }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      // 透過PNGは白背景にする
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // JPEGとして圧縮
-      let quality = IMAGE_QUALITY;
-      let outDataURL = canvas.toDataURL('image/jpeg', quality);
-
-      // まだ大きければ品質を下げる
-      while (outDataURL.length > MAX_IMAGE_SIZE * 1.37 && quality > 0.2) {
-        quality -= 0.1;
-        outDataURL = canvas.toDataURL('image/jpeg', quality);
+    // ★ ファイルHTMLを生成
+    function buildFileHtml(file) {
+      if (!file || !file.url) return '';
+      const type = file.type || '';
+      const name = file.name || '添付ファイル';
+      const url = file.url;
+      let inner = '';
+      if (type.startsWith('image/')) {
+        inner += `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="添付画像" loading="lazy"></a>`;
+      } else if (type.startsWith('video/')) {
+        inner += `<video controls preload="metadata"><source src="${url}" type="${type}"></video>`;
       }
-
-      return outDataURL;
-    }
-
-    // 画像配列を安全に検証（読み込み時）
-    function sanitizeImages(images) {
-      if (!images) return [];
-      if (!Array.isArray(images)) return [];
-      return images.filter(img =>
-        typeof img === 'string' && img.startsWith('data:image/')
-      );
-    }
-
-    // 画像モーダル表示
-    window.showImageModal = function(src) {
-      const modal = document.createElement('div');
-      modal.className = 'image-modal';
-      modal.innerHTML = `
-        <span class="close-modal">&times;</span>
-        <img src="${src}" alt="拡大画像">
-      `;
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target.classList.contains('close-modal')) {
-          modal.remove();
-        }
-      });
-      document.addEventListener('keydown', function escHandler(e) {
-        if (e.key === 'Escape') {
-          modal.remove();
-          document.removeEventListener('keydown', escHandler);
-        }
-      });
-      document.body.appendChild(modal);
-    };
-
-    // 画像プレビュー描画
-    function renderImagePreview(container, images, onRemove) {
-      container.innerHTML = '';
-      images.forEach((img, idx) => {
-        const item = document.createElement('div');
-        item.className = 'image-preview-item';
-        item.innerHTML = `
-          <img src="${img}" alt="プレビュー">
-          <button class="remove-img" type="button" title="削除">×</button>
-        `;
-        item.querySelector('.remove-img').addEventListener('click', () => {
-          images.splice(idx, 1);
-          onRemove();
-        });
-        container.appendChild(item);
-      });
-    }
-
-    // 画像選択ハンドラ（汎用）
-    async function handleImageSelect(files, imagesArray, previewContainer, renderFn) {
-      const remaining = MAX_IMAGES_PER_POST - imagesArray.length;
-      if (remaining <= 0) {
-        alert(`画像は最大${MAX_IMAGES_PER_POST}枚までです。`);
-        return;
-      }
-      const selected = Array.from(files).slice(0, remaining);
-      for (const file of selected) {
-        if (!file.type.startsWith('image/')) {
-          alert('画像ファイルのみ添付できます。');
-          continue;
-        }
-        try {
-          const compressed = await compressImage(file);
-          if (compressed.length > MAX_IMAGE_SIZE * 1.37) {
-            alert(`画像「${file.name}」は圧縮しても大きすぎます。別の画像を選んでください。`);
-            continue;
-          }
-          imagesArray.push(compressed);
-        } catch (e) {
-          console.error('画像処理エラー:', e);
-          alert(`画像「${file.name}」の処理に失敗しました。`);
-        }
-      }
-      renderFn();
-    }
-
-    // ============================================================
-    // 画像入力のセットアップ
-    // ============================================================
-    function setupImageInputs() {
-      // スレッド作成用
-      const firstInput = document.getElementById('firstPostImageInput');
-      const firstPreview = document.getElementById('firstPostImagePreview');
-      const renderFirst = () => renderImagePreview(firstPreview, firstPostImages, renderFirst);
-      firstInput.addEventListener('change', async (e) => {
-        await handleImageSelect(e.target.files, firstPostImages, firstPreview, renderFirst);
-        e.target.value = '';
-      });
-
-      // レス投稿用
-      const postInput = document.getElementById('postImageInput');
-      const postPreview = document.getElementById('postImagePreview');
-      const renderPost = () => renderImagePreview(postPreview, postImages, renderPost);
-      postInput.addEventListener('change', async (e) => {
-        await handleImageSelect(e.target.files, postImages, postPreview, renderPost);
-        e.target.value = '';
-      });
+      inner += `<a href="${url}" target="_blank" rel="noopener noreferrer" download>📎 ${escapeHtml(name)}</a>`;
+      return `<div class="post-file">${inner}</div>`;
     }
 
     // ============================================================
@@ -665,16 +435,16 @@
       threadDetailView.classList.add('hidden');
       backToListBtn.classList.add('hidden');
       currentThreadKey = null;
+      currentThreadOwnerUid = null;
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
-      postElementMap = new Map();
-      allPostsCache = [];
-      postNumberMap = new Map();
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
     };
 
-    function openThread(threadKey, title, createdAt, authorEmail) {
+    // ★ スレ主UIDも受け取る
+    function openThread(threadKey, title, createdAt, authorEmail, authorUid) {
       currentThreadKey = threadKey;
+      currentThreadOwnerUid = authorUid || null;
       activeReplyParentId = null;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
@@ -698,7 +468,7 @@
     }
 
     // ============================================================
-    // 1. スレッド作成
+    // 1. スレッド作成（★画像対応）
     // ============================================================
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -706,12 +476,14 @@
 
       const title = document.getElementById('threadTitle').value.trim();
       const content = document.getElementById('firstPostContent').value.trim();
+      const fileInput = document.getElementById('threadFileInput');
+      const file = fileInput.files[0];
       const btn = document.getElementById('createThreadBtn');
 
       if (!title) { alert('スレッドタイトルを入力してください。'); return; }
 
       btn.disabled = true;
-      btn.innerText = '作成中...';
+      btn.innerText = file ? 'アップロード中...' : '作成中...';
 
       const tempKey = 'temp_' + Date.now();
       const tempItem = document.createElement('div');
@@ -725,10 +497,14 @@
       threadsContainer.prepend(tempItem);
 
       document.getElementById('createThreadForm').reset();
-      firstPostImages = [];
-      document.getElementById('firstPostImagePreview').innerHTML = '';
 
       try {
+        // ★ ファイルがあれば先にアップ
+        let fileData = null;
+        if (file) {
+          fileData = await uploadFileIfAny(file);
+        }
+
         const threadsRef = ref(db, 'threads');
         const newThreadRef = push(threadsRef);
         const threadKey = newThreadRef.key;
@@ -736,27 +512,35 @@
         const threadData = {
           title: title,
           createdAt: Date.now(),
-          postCount: content || firstPostImages.length > 0 ? 1 : 0,
+          postCount: (content || fileData) ? 1 : 0,
           authorEmail: currentUser.email,
-          authorUid: currentUser.uid
+          authorUid: currentUser.uid,
+          // ★ スレ主の最初の投稿をスレッド直下に持たせる（画像も含む）
+          firstPost: (content || fileData) ? {
+            author: '名無しさん',
+            content: content || '',
+            file: fileData,
+            createdAt: Date.now(),
+            authorEmail: currentUser.email,
+            authorUid: currentUser.uid
+          } : null
         };
 
         const writes = [set(newThreadRef, threadData)];
 
-        if (content || firstPostImages.length > 0) {
+        // ★ 最初の投稿は posts 配下にも入れる（レス一覧で1番として表示される）
+        if (content || fileData) {
           const postRef = push(ref(db, `threads/${threadKey}/posts`));
-          const postData = {
+          writes.push(set(postRef, {
             author: '名無しさん',
             content: content || '',
+            file: fileData,
             createdAt: Date.now(),
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
-            parentId: null
-          };
-          if (firstPostImages.length > 0) {
-            postData.images = firstPostImages.slice();
-          }
-          writes.push(set(postRef, postData));
+            parentId: null,
+            isOp: true   // ★ スレ主の投稿フラグ
+          }));
         }
 
         await Promise.all(writes);
@@ -772,6 +556,7 @@
       } finally {
         btn.disabled = false;
         btn.innerText = 'スレッドを立てる';
+        fileInput.value = '';
       }
     });
 
@@ -799,7 +584,6 @@
         });
         threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-        const frag = document.createDocumentFragment();
         threads.forEach((thread) => {
           let date = '日時不明';
           if (thread.createdAt) {
@@ -809,16 +593,16 @@
 
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail);
+          // ★ authorUid も渡す
+          item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail, thread.authorUid);
           item.innerHTML = `
             <div class="flex-1 min-w-0">
               <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
               <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
             </div>
             <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
-          frag.appendChild(item);
+          threadsContainer.appendChild(item);
         });
-        threadsContainer.appendChild(frag);
       }, (error) => {
         console.error("スレッド一覧の取得エラー:", error);
         setConnection(false);
@@ -830,22 +614,18 @@
     }
 
     // ============================================================
-    // 3. レス読み込み（ツリー構築・画像対応）
+    // 3. レス読み込み（ツリー）
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
 
-      postElementMap = new Map();
-
       const postsRef = ref(db, `threads/${threadKey}/posts`);
-      const q = query(postsRef, orderByChild('createdAt'), limitToLast(POST_FETCH_LIMIT));
+      const q = query(postsRef, orderByChild('createdAt'));
 
       postsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
-
         postsContainer.innerHTML = '';
-        postElementMap = new Map();
 
         if (!snapshot.exists()) {
           allPostsCache = [];
@@ -902,12 +682,11 @@
       });
     }
 
-    // ★ 再帰的に1つのレス＋その子レスたちを描画（画像対応）
+    // ★ レス1件＋子レスを再帰描画
     function renderPostTree(post, childrenMap) {
       const wrap = document.createElement('div');
       wrap.className = 'post-tree';
       wrap.dataset.postKey = post.key;
-      postElementMap.set(post.key, wrap);
 
       const number = postNumberMap.get(post.key) || '?';
       let date = '送信中...';
@@ -921,21 +700,16 @@
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
       }
 
+      // ★ スレ主バッジ：投稿の authorUid がスレッド作成者の UID と一致する場合
+      let opBadge = '';
+      if (currentThreadOwnerUid && post.authorUid && post.authorUid === currentThreadOwnerUid) {
+        opBadge = `<span class="op-badge">スレ主</span>`;
+      }
+
       let replyLabel = '';
       if (post.parentId && postNumberMap.has(post.parentId)) {
         const parentNum = postNumberMap.get(post.parentId);
-        replyLabel = `<span class="reply-target-label">↩ &gt;&gt;${parentNum}</span>`;
-      }
-
-      // 画像HTML生成
-      const images = sanitizeImages(post.images);
-      let imagesHtml = '';
-      if (images.length > 0) {
-        imagesHtml = '<div class="flex flex-wrap gap-2 mt-1">' +
-          images.map((img, i) =>
-            `<img src="${img}" class="post-image" alt="添付画像${i+1}" onclick="showImageModal('${img.replace(/'/g, "\\'")}')">`
-          ).join('') +
-          '</div>';
+        replyLabel = `<span class="reply-target-label">↩ >>${parentNum}</span>`;
       }
 
       const postDiv = document.createElement('div');
@@ -945,6 +719,7 @@
           <span class="post-number">${number}</span>
           <span>：</span>
           <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
+          ${opBadge}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">${date}</span>
           ${adminInfo}
@@ -954,19 +729,16 @@
           </span>
         </div>
         ${post.content ? `<div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${formatContent(post.content)}</div>` : ''}
-        ${imagesHtml}
+        ${buildFileHtml(post.file)}
         ${replyLabel ? `<div class="mt-1">${replyLabel}</div>` : ''}
       `;
 
       const rbtn = postDiv.querySelector('.reply-btn');
-      if (rbtn) {
-        rbtn.addEventListener('click', () => onReplyClick(post.key));
-      }
+      if (rbtn) rbtn.addEventListener('click', () => onReplyClick(post.key));
+
       if (isAdmin) {
         const dbtn = postDiv.querySelector('.delete-btn');
-        if (dbtn) {
-          dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
-        }
+        if (dbtn) dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
       }
 
       wrap.appendChild(postDiv);
@@ -984,7 +756,9 @@
       return wrap;
     }
 
-    // ★ 返信ボタン
+    // ============================================================
+    // 返信
+    // ============================================================
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (activeReplyParentId === parentId) {
@@ -992,15 +766,13 @@
         return;
       }
       activeReplyParentId = parentId;
-      replyImages = [];
       openReplyBox(parentId);
     }
 
-    // ★ 返信ボックスを開く（画像対応）
     function openReplyBox(parentId) {
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
 
-      const targetWrap = postElementMap.get(parentId);
+      const targetWrap = postsContainer.querySelector(`.post-tree[data-post-key="${parentId}"]`);
       if (!targetWrap) return;
 
       const targetCard = targetWrap.querySelector('.post-card');
@@ -1011,15 +783,8 @@
       const box = document.createElement('div');
       box.className = 'inline-reply-box';
       box.innerHTML = `
-        <div class="reply-target-label">&gt;&gt;${parentNum} への返信</div>
+        <div class="reply-target-label">>>${parentNum} への返信</div>
         <textarea class="reply-textarea" placeholder="返信を入力（最大2000文字）" maxlength="2000"></textarea>
-        <div class="mt-2">
-          <label class="image-upload-label">
-            📷 画像を添付
-            <input type="file" class="reply-image-input" accept="image/*" multiple>
-          </label>
-          <div class="reply-image-preview image-preview-container"></div>
-        </div>
         <div class="flex justify-end gap-2 mt-2">
           <button class="reply-cancel-btn">キャンセル</button>
           <button class="reply-send-btn bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded">返信する</button>
@@ -1031,34 +796,20 @@
       const ta = box.querySelector('.reply-textarea');
       const cancelBtn = box.querySelector('.reply-cancel-btn');
       const sendBtn = box.querySelector('.reply-send-btn');
-      const replyImgInput = box.querySelector('.reply-image-input');
-      const replyImgPreview = box.querySelector('.reply-image-preview');
-
-      const renderReplyPreview = () => renderImagePreview(replyImgPreview, replyImages, renderReplyPreview);
-
-      replyImgInput.addEventListener('change', async (e) => {
-        await handleImageSelect(e.target.files, replyImages, replyImgPreview, renderReplyPreview);
-        e.target.value = '';
-      });
 
       cancelBtn.addEventListener('click', () => {
         activeReplyParentId = null;
-        replyImages = [];
         box.remove();
       });
 
       sendBtn.addEventListener('click', async () => {
         const content = ta.value.trim();
-        if (!content && replyImages.length === 0) {
-          alert('返信内容または画像を入力してください。');
-          return;
-        }
+        if (!content) { alert('返信内容を入力してください。'); return; }
         sendBtn.disabled = true;
         sendBtn.textContent = '送信中...';
         try {
-          await submitReply(parentId, content, replyImages);
+          await submitReply(parentId, content);
           activeReplyParentId = null;
-          replyImages = [];
           box.remove();
         } catch (err) {
           sendBtn.disabled = false;
@@ -1067,9 +818,7 @@
       });
 
       ta.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          sendBtn.click();
-        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendBtn.click();
       });
 
       ta.focus();
@@ -1077,34 +826,28 @@
 
     function closeReplyBox() {
       activeReplyParentId = null;
-      replyImages = [];
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
     }
 
-    // ★ 返信を保存
-    async function submitReply(parentId, content, images) {
+    async function submitReply(parentId, content) {
       if (!currentUser) throw new Error('ログインが必要です');
       if (!currentThreadKey) throw new Error('スレッドが選択されていません');
 
       const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
       const newPostRef = push(postsRef);
-      const data = {
+      await set(newPostRef, {
         author: '名無しさん',
-        content: content || '',
+        content: content,
         createdAt: Date.now(),
         authorEmail: currentUser.email,
         authorUid: currentUser.uid,
         parentId: parentId
-      };
-      if (images && images.length > 0) {
-        data.images = images.slice();
-      }
-      await set(newPostRef, data);
+      });
       showBanner('返信を保存しました', false);
     }
 
     // ============================================================
-    // 4. レス投稿（トップレベル・画像対応）
+    // 4. レス投稿（トップレベル・★画像対応）
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1112,16 +855,15 @@
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
 
       const content = document.getElementById('postContent').value.trim();
+      const fileInput = document.getElementById('postFileInput');
+      const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
 
-      if (!content && postImages.length === 0) {
-        alert('コメントまたは画像を入力してください。');
-        return;
-      }
+      if (!content && !file) { alert('コメントまたは画像を入力してください。'); return; }
 
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
-      submitBtn.innerText = '送信中...';
+      submitBtn.innerText = file ? 'アップロード中...' : '送信中...';
 
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
@@ -1136,32 +878,30 @@
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
-        ${content ? `<div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>` : ''}
-        ${postImages.length > 0 ? `<div class="flex flex-wrap gap-2 mt-1">${postImages.map(img => `<img src="${img}" class="post-image" alt="添付画像">`).join('')}</div>` : ''}
-      `;
+        <div class="text-gray-900 whitespace-pre-wrap mb-2 break-words">${formatContent(content)}</div>
+        ${file ? `<div class="text-xs text-gray-400 mt-1">📎 ${escapeHtml(file.name)} (アップロード中...)</div>` : ''}`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
       document.getElementById('postForm').reset();
-      const imagesToSend = postImages.slice();
-      postImages = [];
-      document.getElementById('postImagePreview').innerHTML = '';
 
       try {
+        let fileData = null;
+        if (file) {
+          fileData = await uploadFileIfAny(file);
+        }
+
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
-        const data = {
+        await set(newPostRef, {
           author: '名無しさん',
           content: content || '',
+          file: fileData,
           createdAt: Date.now(),
           authorEmail: currentUser.email,
           authorUid: currentUser.uid,
           parentId: null
-        };
-        if (imagesToSend.length > 0) {
-          data.images = imagesToSend;
-        }
-        await set(newPostRef, data);
+        });
 
         showBanner('書き込みを保存しました', false);
         const el = document.getElementById(tempId);
@@ -1175,11 +915,12 @@
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = originalText;
+        fileInput.value = '';
       }
     });
 
     // ============================================================
-    // 5. 管理者用：レス削除
+    // 5. 管理者：レス削除
     // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
@@ -1222,7 +963,7 @@
     }
 
     // ============================================================
-    // 6. 管理者用：スレッド削除
+    // 6. 管理者：スレッド削除
     // ============================================================
     window.deleteCurrentThread = async function() {
       if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
@@ -1240,11 +981,6 @@
         alert('削除に失敗しました。');
       }
     };
-
-    // ============================================================
-    // 初期化
-    // ============================================================
-    setupImageInputs();
 
     // ============================================================
     // クリーンアップ
