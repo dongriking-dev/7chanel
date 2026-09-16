@@ -29,8 +29,17 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
+    /* ★ 4種類のバッジ */
     .admin-badge {
       background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 6px;
+    }
+    .owner-badge {
+      background: #1e40af; color: #fff; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 6px;
+    }
+    .vip-badge {
+      background: #7c3aed; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 6px;
     }
     .op-badge {
@@ -57,6 +66,16 @@
       border-radius: 4px; cursor: pointer; border: none;
     }
     .reply-cancel-btn:hover { background: #4b5563; }
+    .backup-btn {
+      background: #059669; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
+    }
+    .backup-btn:hover { background: #047857; }
+    .restore-btn {
+      background: #0891b2; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
+    }
+    .restore-btn:hover { background: #0e7490; }
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -116,13 +135,6 @@
       max-width: 100%;
       border-radius: 4px;
       border: 1px solid #e5e7eb;
-      display: block;
-      margin-bottom: 4px;
-    }
-    .post-file video {
-      max-height: 320px;
-      max-width: 100%;
-      border-radius: 4px;
       display: block;
       margin-bottom: 4px;
     }
@@ -187,10 +199,16 @@
         <p class="text-sm text-gray-600">
           <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
           <span id="connText">接続中...</span>
-          <span id="adminBadge" class="admin-badge hidden">管理者</span>
+          <span id="roleBadgeContainer"></span>
         </p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- ★ バックアップ/復元（管理者・主のみ） -->
+        <div id="backupControls" class="hidden flex gap-2">
+          <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
+          <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
+          <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
+        </div>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
         <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
           ログアウト
@@ -271,14 +289,11 @@
   </div>
 
   <script type="module">
-    // ============================================================
-    // Firebase SDK（Storage は使いません）
-    // ============================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
       getDatabase, ref, push, set, remove, onValue, off,
-      query, orderByChild
+      query, orderByChild, get, update
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
@@ -304,18 +319,23 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    const ADMIN_EMAIL = "katou.noel114514@gmail.com";
+    // ============================================================
+    // ★ ロール定義
+    // ============================================================
+    const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";   // 管理者
+    const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";        // 主
+    const ROLE_VIP_EMAIL   = "18104@v.nakijin.ed.jp";        // VIP
 
-    // ★ Base64 画像の設定
-    const IMAGE_MAX_WIDTH = 1280;       // 最大横幅（px）
-    const IMAGE_QUALITY = 0.75;         // JPEG品質（0.0〜1.0）
-    const IMAGE_MAX_BASE64_SIZE = 800 * 1024;  // Base64後の最大サイズ（約800KB）
+    // ★ 画像設定
+    const IMAGE_MAX_WIDTH = 1280;
+    const IMAGE_QUALITY = 0.75;
+    const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
     // ============================================================
     // グローバル
     // ============================================================
     let currentUser = null;
-    let isAdmin = false;
+    let userRole = null;   // 'admin' | 'owner' | 'vip' | null
     let currentThreadKey = null;
     let currentThreadOwnerUid = null;
     let postsUnsubscribe = null;
@@ -335,9 +355,20 @@
     const connDot = document.getElementById('connDot');
     const connText = document.getElementById('connText');
     const statusBanner = document.getElementById('statusBanner');
-    const adminBadge = document.getElementById('adminBadge');
+    const roleBadgeContainer = document.getElementById('roleBadgeContainer');
     const userEmailSpan = document.getElementById('userEmail');
+    const backupControls = document.getElementById('backupControls');
     let bannerTimer = null;
+
+    // ============================================================
+    // ★ 権限ヘルパー
+    // ============================================================
+    function canDelete() {
+      return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
+    }
+    function canBackup() {
+      return userRole === 'admin' || userRole === 'owner';
+    }
 
     // ============================================================
     // 接続状態 & バナー
@@ -388,9 +419,7 @@
       mainView.classList.add('hidden');
     }
 
-    // ============================================================
-    // ★ 画像 → Base64 変換（リサイズ＋圧縮付き）
-    // ============================================================
+    // ★ 画像 → Base64
     function fileToBase64Image(file) {
       return new Promise((resolve, reject) => {
         if (!file) { resolve(null); return; }
@@ -398,41 +427,32 @@
           reject(new Error('画像ファイルを選択してください'));
           return;
         }
-
         const reader = new FileReader();
         reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'));
         reader.onload = (e) => {
           const img = new Image();
           img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
           img.onload = () => {
-            // リサイズ計算
             let { width, height } = img;
             if (width > IMAGE_MAX_WIDTH) {
               height = Math.round(height * (IMAGE_MAX_WIDTH / width));
               width = IMAGE_MAX_WIDTH;
             }
-
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-
-            // 品質を段階的に下げて最大サイズに収める
             let quality = IMAGE_QUALITY;
             let dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-            // Base64部分の長さをチェック（data:image/jpeg;base64, の部分を除く）
             while (dataUrl.length > IMAGE_MAX_BASE64_SIZE && quality > 0.3) {
               quality -= 0.1;
               dataUrl = canvas.toDataURL('image/jpeg', quality);
             }
-
             if (dataUrl.length > IMAGE_MAX_BASE64_SIZE) {
               reject(new Error('画像が大きすぎます。別の画像を選んでください。'));
               return;
             }
-
             resolve({
               dataUrl: dataUrl,
               name: file.name,
@@ -448,7 +468,6 @@
       });
     }
 
-    // ★ Base64画像のHTMLを生成
     function buildFileHtml(file) {
       if (!file || !file.dataUrl) return '';
       const name = file.name || '添付画像';
@@ -461,7 +480,6 @@
           <a href="${dataUrl}" download="${escapeHtml(name)}">📎 ${escapeHtml(name)}（${formatSize(file.size)}）</a>
         </div>`;
     }
-
     function formatSize(bytes) {
       if (!bytes) return '';
       if (bytes < 1024) return bytes + ' B';
@@ -469,7 +487,6 @@
       return (bytes / 1024 / 1024).toFixed(2) + ' MB';
     }
 
-    // ★ プレビュー表示
     async function updatePreview(fileInput, boxId, imgId, infoId) {
       const file = fileInput.files[0];
       const box = document.getElementById(boxId);
@@ -519,22 +536,44 @@
       currentUser = user;
 
       if (!user) {
-        isAdmin = false;
+        userRole = null;
         showLoginView();
         return;
       }
 
-      isAdmin = (user.email === ADMIN_EMAIL);
+      // ★ ロール判定
+      if (user.email === ROLE_ADMIN_EMAIL) userRole = 'admin';
+      else if (user.email === ROLE_OWNER_EMAIL) userRole = 'owner';
+      else if (user.email === ROLE_VIP_EMAIL) userRole = 'vip';
+      else userRole = null;
 
-      if (isAdmin) {
-        adminBadge.classList.remove('hidden');
+      // ★ バッジ表示
+      roleBadgeContainer.innerHTML = '';
+      userEmailSpan.classList.add('hidden');
+      userEmailSpan.textContent = '';
+
+      if (userRole === 'admin') {
+        roleBadgeContainer.innerHTML = '<span class="admin-badge">管理者</span>';
         userEmailSpan.classList.remove('hidden');
         userEmailSpan.textContent = user.email + '（管理者）';
         userEmailSpan.className = 'text-xs text-red-700 font-bold';
+      } else if (userRole === 'owner') {
+        roleBadgeContainer.innerHTML = '<span class="owner-badge">主</span>';
+        userEmailSpan.classList.remove('hidden');
+        userEmailSpan.textContent = user.email + '（主）';
+        userEmailSpan.className = 'text-xs text-blue-700 font-bold';
+      } else if (userRole === 'vip') {
+        roleBadgeContainer.innerHTML = '<span class="vip-badge">VIP</span>';
+        userEmailSpan.classList.remove('hidden');
+        userEmailSpan.textContent = user.email + '（VIP）';
+        userEmailSpan.className = 'text-xs text-purple-700 font-bold';
+      }
+
+      // ★ バックアップボタン（admin / owner のみ）
+      if (canBackup()) {
+        backupControls.classList.remove('hidden');
       } else {
-        adminBadge.classList.add('hidden');
-        userEmailSpan.classList.add('hidden');
-        userEmailSpan.textContent = '';
+        backupControls.classList.add('hidden');
       }
 
       showMainView();
@@ -544,24 +583,12 @@
       initThreadsListener();
     });
 
-    // ============================================================
-    // 画像入力のプレビュー連携
-    // ============================================================
+    // 画像プレビュー
     document.getElementById('threadFileInput').addEventListener('change', () => {
-      updatePreview(
-        document.getElementById('threadFileInput'),
-        'threadPreviewBox',
-        'threadPreviewImg',
-        'threadPreviewInfo'
-      );
+      updatePreview(document.getElementById('threadFileInput'), 'threadPreviewBox', 'threadPreviewImg', 'threadPreviewInfo');
     });
     document.getElementById('fileInput').addEventListener('change', () => {
-      updatePreview(
-        document.getElementById('fileInput'),
-        'postPreviewBox',
-        'postPreviewImg',
-        'postPreviewInfo'
-      );
+      updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
     // ============================================================
@@ -587,7 +614,8 @@
 
       const authorEl = document.getElementById('currentThreadAuthor');
       const delBtn = document.getElementById('deleteThreadBtn');
-      if (isAdmin) {
+      // ★ 管理者・主・VIPは作成者メールを見られる、削除もできる
+      if (canDelete()) {
         authorEl.textContent = '作成者: ' + (authorEmail || '不明');
         authorEl.className = 'text-xs text-red-700 font-bold mt-1';
         delBtn.classList.remove('hidden');
@@ -634,9 +662,7 @@
 
       try {
         let fileData = null;
-        if (file) {
-          fileData = await fileToBase64Image(file);
-        }
+        if (file) fileData = await fileToBase64Image(file);
 
         document.getElementById('createThreadForm').reset();
         document.getElementById('threadPreviewBox').classList.remove('show');
@@ -664,7 +690,7 @@
             authorEmail: currentUser.email,
             authorUid: currentUser.uid,
             parentId: null,
-            file: fileData   // ★ { dataUrl, name, type, width, height, size }
+            file: fileData
           }));
         }
 
@@ -737,7 +763,7 @@
     }
 
     // ============================================================
-    // 3. レス読み込み（ツリー）
+    // 3. レス読み込み
     // ============================================================
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
@@ -783,9 +809,7 @@
         });
 
         const frag = document.createDocumentFragment();
-        rootPosts.forEach((p) => {
-          frag.appendChild(renderPostTree(p, childrenMap));
-        });
+        rootPosts.forEach((p) => frag.appendChild(renderPostTree(p, childrenMap)));
         postsContainer.appendChild(frag);
 
         if (activeReplyParentId && keySet.has(activeReplyParentId)) {
@@ -801,7 +825,6 @@
       });
     }
 
-    // ★ ツリー描画
     function renderPostTree(post, childrenMap) {
       const wrap = document.createElement('div');
       wrap.className = 'post-tree';
@@ -819,8 +842,9 @@
         opBadge = `<span class="op-badge">スレ主</span>`;
       }
 
+      // ★ 管理者・主・VIPはメールを見られる
       let adminInfo = '';
-      if (isAdmin) {
+      if (canDelete()) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
       }
 
@@ -845,7 +869,7 @@
           ${adminInfo}
           <span class="ml-auto flex gap-1">
             <button class="reply-btn" data-reply-key="${post.key}">返信</button>
-            ${isAdmin ? `<button class="delete-btn" data-post-key="${post.key}">削除</button>` : ''}
+            ${canDelete() ? `<button class="delete-btn" data-post-key="${post.key}">削除</button>` : ''}
           </span>
         </div>
         ${post.content ? `<div class="text-gray-900 whitespace-pre-wrap mb-1 break-words">${formatContent(post.content)}</div>` : ''}
@@ -855,7 +879,7 @@
 
       const rbtn = postDiv.querySelector('.reply-btn');
       if (rbtn) rbtn.addEventListener('click', () => onReplyClick(post.key));
-      if (isAdmin) {
+      if (canDelete()) {
         const dbtn = postDiv.querySelector('.delete-btn');
         if (dbtn) dbtn.addEventListener('click', () => deletePost(currentThreadKey, post.key, postNumberMap.get(post.key)));
       }
@@ -875,10 +899,7 @@
 
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
-      if (activeReplyParentId === parentId) {
-        closeReplyBox();
-        return;
-      }
+      if (activeReplyParentId === parentId) { closeReplyBox(); return; }
       activeReplyParentId = parentId;
       openReplyBox(parentId);
     }
@@ -924,10 +945,7 @@
 
       fileInp.addEventListener('change', async () => {
         const f = fileInp.files[0];
-        if (!f) {
-          previewBox.classList.remove('show');
-          return;
-        }
+        if (!f) { previewBox.classList.remove('show'); return; }
         try {
           const result = await fileToBase64Image(f);
           previewImg.src = result.dataUrl;
@@ -979,9 +997,7 @@
       if (!currentThreadKey) throw new Error('スレッドが選択されていません');
 
       let fileData = null;
-      if (file) {
-        fileData = await fileToBase64Image(file);
-      }
+      if (file) fileData = await fileToBase64Image(file);
 
       const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
       const newPostRef = push(postsRef);
@@ -998,7 +1014,7 @@
     }
 
     // ============================================================
-    // 4. レス投稿（トップレベル）
+    // 4. レス投稿
     // ============================================================
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1041,9 +1057,7 @@
 
       try {
         let fileData = null;
-        if (file) {
-          fileData = await fileToBase64Image(file);
-        }
+        if (file) fileData = await fileToBase64Image(file);
 
         document.getElementById('postForm').reset();
         document.getElementById('postPreviewBox').classList.remove('show');
@@ -1076,10 +1090,10 @@
     });
 
     // ============================================================
-    // 5. 管理者用：レス削除
+    // 5. 削除（管理者・主・VIP）
     // ============================================================
     window.deletePost = async function(threadKey, postKey, index) {
-      if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
+      if (!canDelete()) { alert('削除権限がありません。'); return; }
 
       const hasChildren = allPostsCache.some(p => p.parentId === postKey);
       const msg = hasChildren
@@ -1090,11 +1104,9 @@
       try {
         const toDelete = collectDescendants(postKey);
         toDelete.push(postKey);
-
         for (const key of toDelete) {
           await remove(ref(db, `threads/${threadKey}/posts/${key}`));
         }
-
         showBanner('レスを削除しました', false);
       } catch (err) {
         console.error("削除エラー:", err);
@@ -1118,11 +1130,8 @@
       return result;
     }
 
-    // ============================================================
-    // 6. 管理者用：スレッド削除
-    // ============================================================
     window.deleteCurrentThread = async function() {
-      if (!isAdmin) { alert('管理者のみ削除できます。'); return; }
+      if (!canDelete()) { alert('削除権限がありません。'); return; }
       if (!currentThreadKey) return;
       if (!confirm('このスレッドをすべてのレスごと削除しますか？\nこの操作は取り消せません。')) return;
 
@@ -1137,6 +1146,93 @@
         alert('削除に失敗しました。');
       }
     };
+
+    // ============================================================
+    // 6. ★ バックアップ / 復元（管理者・主のみ）
+    // ============================================================
+    window.doBackup = async function() {
+      if (!canBackup()) { alert('バックアップ権限がありません。'); return; }
+      try {
+        showBanner('バックアップを作成中...', false);
+        const snap = await get(ref(db, 'threads'));
+        const data = snap.exists() ? snap.val() : {};
+        const payload = {
+          _meta: {
+            exportedAt: new Date().toISOString(),
+            exportedBy: currentUser.email,
+            app: '7ch'
+          },
+          threads: data
+        };
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `7ch-backup-${ts}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showBanner('バックアップをダウンロードしました', false);
+      } catch (err) {
+        console.error("バックアップエラー:", err);
+        showBanner('バックアップ失敗: ' + (err.code || err.message), true);
+        alert('バックアップに失敗しました。');
+      }
+    };
+
+    // 復元ファイルが選択された時
+    document.getElementById('restoreInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (!canBackup()) { alert('復元権限がありません。'); return; }
+
+      if (!confirm(
+        '【警告】\n' +
+        '選択したバックアップファイルで、現在のすべてのスレッドを上書きします。\n' +
+        '現在のデータは完全に失われます（バックアップを取っていない場合）。\n\n' +
+        '本当に復元しますか？'
+      )) return;
+
+      const doubleCheck = prompt(
+        '確認のため「RESTORE」と入力してください（大文字・半角）:'
+      );
+      if (doubleCheck !== 'RESTORE') {
+        alert('キャンセルしました。');
+        return;
+      }
+
+      try {
+        showBanner('復元中...', false);
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+
+        // 形式チェック
+        let threadsData;
+        if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
+          threadsData = parsed.threads;
+        } else if (parsed && typeof parsed === 'object') {
+          // _meta なしの古い形式も一応受け付ける
+          threadsData = parsed;
+        } else {
+          throw new Error('不正なバックアップファイル形式です');
+        }
+
+        // threads ノードを丸ごと置き換え
+        await set(ref(db, 'threads'), threadsData);
+
+        showBanner('復元が完了しました', false);
+        alert('復元が完了しました。');
+        showThreadList();
+      } catch (err) {
+        console.error("復元エラー:", err);
+        showBanner('復元失敗: ' + (err.code || err.message), true);
+        alert('復元に失敗しました。\n' + (err.message || ''));
+      }
+    });
 
     // ============================================================
     // クリーンアップ
