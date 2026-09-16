@@ -86,12 +86,6 @@
       background: #991b1b; color: #fff; font-size: 10px; padding: 2px 6px;
       border-radius: 4px; margin-left: 4px; font-weight: 700;
     }
-    /* ★ 保護マークは使用しない（CSSは残しても害はないがコメント化）
-    .protected-mark {
-      background: #059669; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: 700;
-    }
-    */
     .reply-cancel-btn {
       background: #6b7280; color: #fff; font-size: 11px; padding: 3px 10px;
       border-radius: 4px; cursor: pointer; border: none;
@@ -333,9 +327,6 @@
     .user-row .role-tag.vip   { background: #7c3aed; }
     .user-row .role-tag.none  { background: #6b7280; }
     .user-row .role-tag.banned { background: #991b1b; }
-    /* ★ .role-tag.protected は使用しない
-    .user-row .role-tag.protected { background: #059669; }
-    */
     .user-row .action-btns { display: flex; gap: 4px; flex-wrap: wrap; }
     .user-row .btn-mini {
       font-size: 10px; padding: 3px 8px; border-radius: 4px;
@@ -678,6 +669,10 @@
             <input type="checkbox" id="badgeToggle" checked>
             <span>バッジを他の人に見せる</span>
           </label>
+          <label id="emailToggleWrap" class="badge-toggle-wrap hidden" title="投稿者のメールアドレスを表示するかどうか">
+            <input type="checkbox" id="emailToggle" checked>
+            <span>メールアドレスを表示</span>
+          </label>
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
@@ -843,6 +838,7 @@
     let badgeEditingBadgeId = null;
 
     let myBadgePublic = true;
+    let myEmailVisible = true;   // ★ 追加
 
     let intentionalSignOut = false;
     let userApproved = false;
@@ -864,6 +860,8 @@
     const adminControls = document.getElementById('adminControls');
     const badgeToggleWrap = document.getElementById('badgeToggleWrap');
     const badgeToggle = document.getElementById('badgeToggle');
+    const emailToggleWrap = document.getElementById('emailToggleWrap');   // ★ 追加
+    const emailToggle = document.getElementById('emailToggle');           // ★ 追加
     const banOverlay = document.getElementById('banOverlay');
     const banOverlayMsg = document.getElementById('banOverlayMsg');
     const banOverlaySub = document.getElementById('banOverlaySub');
@@ -878,7 +876,9 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canViewEmail() {
-      return userRole === 'admin' || userRole === 'owner';
+      // ★ 管理者・主かつ「メール表示」がONの場合のみ true
+      if (userRole !== 'admin' && userRole !== 'owner') return false;
+      return myEmailVisible === true;
     }
     function canManageBadge() {
       return userRole === 'admin' || userRole === 'owner';
@@ -955,6 +955,18 @@
     }
     function saveBadgeVisibility(email, visible) {
       localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
+    }
+
+    // ★ メール表示設定（localStorage）
+    function emailStorageKey(email) {
+      return 'emailVisible_' + (email || 'anonymous');
+    }
+    function loadEmailVisibility(email) {
+      const v = localStorage.getItem(emailStorageKey(email));
+      return v === null ? true : v === 'true';   // デフォルトは表示
+    }
+    function saveEmailVisibility(email, visible) {
+      localStorage.setItem(emailStorageKey(email), visible ? 'true' : 'false');
     }
 
     function renderRoleBadge(role) {
@@ -1437,6 +1449,7 @@
 
       userRole = roleFromEmail(user.email);
       myBadgePublic = loadBadgeVisibility(user.email);
+      myEmailVisible = loadEmailVisibility(user.email);   // ★ 追加
       myFingerprint = generateFingerprint();
 
       if (checkSelfBan()) return;
@@ -1467,6 +1480,14 @@
         badgeToggle.checked = myBadgePublic;
       } else {
         badgeToggleWrap.classList.add('hidden');
+      }
+
+      // ★ メール表示トグルは管理者・主のみ
+      if (canManageBadge()) {
+        emailToggleWrap.classList.remove('hidden');
+        emailToggle.checked = myEmailVisible;
+      } else {
+        emailToggleWrap.classList.add('hidden');
       }
 
       renderRoleBadge(userRole);
@@ -1552,6 +1573,34 @@
       }
     });
 
+    // ★ メール表示トグル
+    emailToggle.addEventListener('change', () => {
+      if (!currentUser) return;
+      const visible = emailToggle.checked;
+      saveEmailVisibility(currentUser.email, visible);
+      myEmailVisible = visible;
+
+      // 投稿一覧を再描画（メール表示が切り替わる）
+      if (currentThreadKey) renderPostsFromCache();
+      // スレッド作成者のメール表示も更新
+      refreshThreadAuthorDisplay();
+
+      showBanner(visible ? 'メールアドレスを表示します' : 'メールアドレスを非表示にしました', false);
+    });
+
+    // ★ スレッド詳細ヘッダーの作成者表示を更新
+    let currentThreadAuthorEmail = '';
+    function refreshThreadAuthorDisplay() {
+      const authorEl = document.getElementById('currentThreadAuthor');
+      if (!authorEl) return;
+      if (canViewEmail() && currentThreadAuthorEmail) {
+        authorEl.textContent = '作成者: ' + currentThreadAuthorEmail;
+        authorEl.className = 'text-xs text-red-700 font-bold mt-1';
+      } else {
+        authorEl.textContent = '';
+      }
+    }
+
     document.getElementById('threadFileInput').addEventListener('change', () => {
       updatePreview(document.getElementById('threadFileInput'), 'threadPreviewBox', 'threadPreviewImg', 'threadPreviewInfo');
     });
@@ -1565,6 +1614,7 @@
       backToListBtn.classList.add('hidden');
       currentThreadKey = null;
       currentThreadOwnerUid = null;
+      currentThreadAuthorEmail = '';
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
@@ -1573,18 +1623,14 @@
     function openThread(threadKey, title, createdAt, authorEmail, authorUid) {
       currentThreadKey = threadKey;
       currentThreadOwnerUid = authorUid || null;
+      currentThreadAuthorEmail = authorEmail || '';
       activeReplyParentId = null;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
 
-      const authorEl = document.getElementById('currentThreadAuthor');
+      refreshThreadAuthorDisplay();
+
       const delBtn = document.getElementById('deleteThreadBtn');
-      if (canViewEmail()) {
-        authorEl.textContent = '作成者: ' + (authorEmail || '不明');
-        authorEl.className = 'text-xs text-red-700 font-bold mt-1';
-      } else {
-        authorEl.textContent = '';
-      }
       if (canDelete()) {
         delBtn.classList.remove('hidden');
       } else {
@@ -1857,9 +1903,7 @@
       const isBanned = isPostBanned(post);
       const bannedMark = isBanned ? `<span class="banned-mark">BAN中</span>` : '';
 
-      // ★ 保護マークは表示しない（BAN不可判定には使うが、見た目には出さない）
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
-      const protectedMark = '';
 
       let adminInfo = '';
       if (canViewEmail()) {
@@ -1898,7 +1942,6 @@
           ${roleBadgeHtml}
           ${customBadgeHtml}
           ${bannedMark}
-          ${protectedMark}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">${date}</span>
           ${adminInfo}
@@ -2248,7 +2291,6 @@
         else if (u.role === 'owner') roleTag = '<span class="role-tag owner">主</span>';
         else if (u.role === 'vip') roleTag = '<span class="role-tag vip">VIP</span>';
         if (isBanned) roleTag += ' <span class="role-tag banned">BAN中</span>';
-        // ★ 保護タグは表示しない
 
         const row = document.createElement('div');
         row.className = 'user-row';
