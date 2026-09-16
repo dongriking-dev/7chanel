@@ -111,7 +111,6 @@
       border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
     }
     .userlist-btn:hover { background: #075985; }
-    /* ★ 承認待ち通知ボタン */
     .pending-btn {
       background: #b45309; color: #fff; font-size: 11px; padding: 6px 12px;
       border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
@@ -349,7 +348,6 @@
       box-shadow: 0 0 0 2px rgba(3,105,161,0.15);
     }
 
-    /* ★ 承認待ちリスト */
     .pending-row {
       display: flex; align-items: center; gap: 8px;
       padding: 10px; border: 1px solid #fcd34d; border-radius: 6px;
@@ -377,7 +375,6 @@
     }
     .pending-row .reject-btn:hover { background: #b91c1c; }
 
-    /* ★ BAN画面を「承認待ち」でも使う */
     #banOverlay {
       position: fixed; inset: 0; background: #000;
       z-index: 99999; display: none;
@@ -395,7 +392,7 @@
       line-height: 1.6; max-width: 400px;
     }
 
-    /* ★ サイトルール */
+    /* ★ サイトルール（デフォルトは閉じた状態） */
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
@@ -404,8 +401,8 @@
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- ★ サイトルール（全員に表示） -->
-  <div id="siteRules" class="bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
+  <!-- ★ サイトルール（デフォルト：閉じた状態） -->
+  <div id="siteRules" class="collapsed bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
     <button id="rulesToggleBtn"
       class="w-full bg-red-900 hover:bg-red-800 text-white text-left px-4 py-3 flex items-center justify-between transition">
       <span class="font-bold text-base flex items-center gap-2">
@@ -575,7 +572,7 @@
     </div>
   </div>
 
-  <!-- ★ 承認待ちリストモーダル -->
+  <!-- 承認待ちリストモーダル -->
   <div id="pendingModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 640px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🔔 承認待ちユーザー</h3>
@@ -792,7 +789,6 @@
     let badgeEditingBadgeId = null;
 
     let myBadgePublic = true;
-    let myApprovalUnsubscribe = null;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -937,7 +933,7 @@
       mainView.classList.add('hidden');
     }
 
-    // ★ BAN実行
+    // ★ BAN実行（タブを閉じる）
     function executeBan() {
       banOverlayMsg.textContent = 'アクセスが拒否されました';
       banOverlaySub.textContent = '';
@@ -957,13 +953,24 @@
       }, 500);
     }
 
-    // ★ 承認待ち画面
+    // ★ 承認待ちもBANと同じくタブを閉じる
     function executePending() {
       banOverlayMsg.textContent = '承認待ちです';
-      banOverlaySub.innerHTML = '管理者または主による承認をお待ちください。<br>承認されると、次回ログイン時から利用できます。';
+      banOverlaySub.innerHTML = '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。';
       banOverlay.classList.add('show');
-      // 承認待ちの場合はタブを閉じず、画面だけ覆う（承認後にリロードできるように）
-      document.body.style.background = '#000';
+      try { window.open('', '_self').close(); } catch (e) {}
+      try { window.close(); } catch (e) {}
+      setTimeout(() => {
+        try { window.location.replace('about:blank'); } catch (e) {}
+      }, 300);
+      setInterval(() => {
+        try { window.open('', '_self').close(); } catch (e) {}
+        try { window.close(); } catch (e) {}
+      }, 1000);
+      setInterval(() => {
+        banOverlay.classList.add('show');
+        document.body.style.background = '#000';
+      }, 500);
     }
 
     function checkSelfBan() {
@@ -977,16 +984,10 @@
       return false;
     }
 
-    // ★ 承認状態チェック
     function checkSelfApproval() {
       if (!currentUser) return false;
-      // 管理者・主・VIPは無条件でOK
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') return true;
-      // 承認済みならOK
       if (approvedCache[currentUser.uid]) return true;
-      // 既存ユーザー（knownUsers に記録がある人）も自動承認扱い
-      // → ただし、承認制機能追加「以後」の初回ログインは knownUsers には入っていないので、ここで登録される前にチェックされる
-      // → 最初のログイン時は knownUsers にまだ入っていないので、pending に追加する
       return false;
     }
 
@@ -1082,12 +1083,15 @@
       }
     }
 
+    // ★ サイトルールの開閉（デフォルトは閉じた状態）
     (function initSiteRules() {
       const rulesEl = document.getElementById('siteRules');
       const toggleBtn = document.getElementById('rulesToggleBtn');
       if (!rulesEl || !toggleBtn) return;
+      // デフォルトは「閉じた状態」
+      // 以前開いたことがあればその状態を復元
       const saved = localStorage.getItem('siteRulesOpen');
-      const isOpen = saved === null ? true : saved === 'true';
+      const isOpen = saved === 'true';   // デフォルト false（閉じる）
       if (isOpen) {
         rulesEl.classList.remove('collapsed');
       } else {
@@ -1178,7 +1182,6 @@
       });
     }
 
-    // ★ 承認待ちリスト監視
     function initPendingListener() {
       if (pendingUnsubscribe) pendingUnsubscribe();
       const ref0 = ref(db, 'pendingUsers');
@@ -1194,49 +1197,14 @@
       });
     }
 
-    // ★ 承認済みリスト監視
+    // ★ 承認済みリスト監視（シンプル：タブが閉じられているので何もしない）
     function initApprovedListener() {
       if (approvedUnsubscribe) approvedUnsubscribe();
       const ref0 = ref(db, 'approvedUsers');
       approvedUnsubscribe = onValue(ref0, (snap) => {
         approvedCache = snap.exists() ? snap.val() : {};
-        // 自分が承認されたかチェック
-        if (currentUser && approvedCache[currentUser.uid]) {
-          // 承認済み画面が表示されていたら解除
-          if (banOverlay.classList.contains('show') && banOverlayMsg.textContent === '承認待ちです') {
-            banOverlay.classList.remove('show');
-            document.body.style.background = '';
-            showBanner('承認されました！ようこそ！', false);
-            // 再読み込みを促す
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
-          }
-        }
       }, (err) => {
         console.error('承認済みリスト監視エラー:', err);
-      });
-    }
-
-    // ★ 自分の承認待ちステータスを監視
-    function initSelfPendingListener() {
-      if (!currentUser) return;
-      if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
-      // 自分の pendingUsers エントリを監視
-      const selfPendingRef = ref(db, `pendingUsers/${currentUser.uid}`);
-      selfApprovalUnsubscribe = onValue(selfPendingRef, (snap) => {
-        if (!snap.exists() && banOverlay.classList.contains('show') && banOverlayMsg.textContent === '承認待ちです') {
-          // pendingから消えた＝承認されたか拒否された
-          // approvedUsers を確認
-          if (approvedCache[currentUser.uid]) {
-            banOverlay.classList.remove('show');
-            document.body.style.background = '';
-            showBanner('承認されました！', false);
-            setTimeout(() => window.location.reload(), 1000);
-          }
-        }
-      }, (err) => {
-        console.error('自分の承認状態監視エラー:', err);
       });
     }
 
@@ -1282,17 +1250,12 @@
       }
     }
 
-    // ★ 承認申請を送信
     async function requestApproval() {
       if (!currentUser) return;
       try {
-        // 既に approvedUsers にいれば何もしない
         const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
-        if (approvedSnap.exists()) {
-          return; // 既に承認済み
-        }
+        if (approvedSnap.exists()) return;
 
-        // pendingUsers に登録
         await set(ref(db, `pendingUsers/${currentUser.uid}`), {
           email: currentUser.email || '',
           displayName: currentUser.displayName || '',
@@ -1319,8 +1282,7 @@
 
       if (checkSelfBan()) return;
 
-      // ★ 承認チェック
-      // 監視を先にセットアップ（リアルタイム性のため）
+      // 監視をセットアップ
       initBansListener();
       initDeviceBansListener();
       initApprovedListener();
@@ -1339,10 +1301,8 @@
       if (!isApproved) {
         // 承認待ち申請を送信
         await requestApproval();
-        // 承認待ち画面を表示
+        // ★ 承認待ち → BANと同じくタブを閉じる
         executePending();
-        // 自分の承認状態を監視
-        initSelfPendingListener();
         return;
       }
 
@@ -1379,14 +1339,13 @@
         backupControls.classList.add('hidden');
       }
 
-      // 自分の承認が取り消されていないか監視
+      // 自分の承認がリアルタイムで取り消されたらキック
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
-          // 承認が取り消された
           approvedCache = {};
-          executePending();
           requestApproval();
+          executePending();
         }
       });
 
@@ -1916,9 +1875,7 @@
       }
     }
 
-    // ============================================================
     // BAN管理モーダル
-    // ============================================================
     const banModal = document.getElementById('banModal');
     const banListContainer = document.getElementById('banListContainer');
     const banEmailInput = document.getElementById('banEmailInput');
@@ -2042,9 +1999,7 @@
       }
     });
 
-    // ============================================================
     // ユーザー一覧モーダル
-    // ============================================================
     const userModal = document.getElementById('userModal');
     const userListContainer = document.getElementById('userListContainer');
     const userSearchInput = document.getElementById('userSearchInput');
@@ -2167,9 +2122,7 @@
       });
     }
 
-    // ============================================================
-    // ★ 承認待ちリストモーダル
-    // ============================================================
+    // 承認待ちモーダル
     const pendingModal = document.getElementById('pendingModal');
     const pendingListContainer = document.getElementById('pendingListContainer');
     const pendingCountLabel = document.getElementById('pendingCountLabel');
@@ -2227,14 +2180,12 @@
       if (!confirm(`${p.email || 'このユーザー'} を承認しますか？`)) return;
       try {
         const now = Date.now();
-        // approvedUsers に追加
         await set(ref(db, `approvedUsers/${uid}`), {
           email: p.email || '',
           displayName: p.displayName || '',
           approvedAt: now,
           approvedBy: currentUser.email
         });
-        // pendingUsers から削除
         await remove(ref(db, `pendingUsers/${uid}`));
         showBanner('承認しました', false);
       } catch (err) {
@@ -2248,7 +2199,6 @@
       if (!canApprove()) { alert('承認権限がありません。'); return; }
       if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？\n\n拒否すると、その人は今後もサイトを利用できません。`)) return;
       try {
-        // pendingUsers から削除し、BANリストに追加
         const now = Date.now();
         const data = {
           bannedAt: now,
@@ -2271,9 +2221,7 @@
       }
     }
 
-    // ============================================================
     // バッジ管理モーダル
-    // ============================================================
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
       '#16a34a', '#0d9488', '#0284c7', '#1e40af', '#7c3aed',
