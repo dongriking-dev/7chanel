@@ -391,6 +391,22 @@
       font-size: 14px; margin-top: 16px; color: #fca5a5;
       line-height: 1.6; max-width: 400px;
     }
+    #banOverlay .ban-actions {
+      margin-top: 24px;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      justify-content: center;
+    }
+    #banOverlay .ban-actions button {
+      font-size: 13px; padding: 10px 20px; border-radius: 6px;
+      border: none; cursor: pointer; font-weight: 600;
+      font-family: sans-serif;
+    }
+    #banOverlay .btn-switch-account {
+      background: #2563eb; color: #fff;
+    }
+    #banOverlay .btn-switch-account:hover {
+      background: #1d4ed8;
+    }
 
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
@@ -485,10 +501,13 @@
     </div>
   </div>
 
-  <!-- BAN画面 -->
+  <!-- BAN/承認待ち画面 -->
   <div id="banOverlay">
     <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
     <div class="ban-sub" id="banOverlaySub"></div>
+    <div class="ban-actions" id="banOverlayActions" style="display:none;">
+      <button class="btn-switch-account" id="switchAccountBtn">別のGoogleアカウントでログイン</button>
+    </div>
   </div>
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
@@ -614,6 +633,29 @@
     </div>
   </div>
 
+  <!-- ログイン画面 -->
+  <div id="loginView" class="hidden">
+    <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
+      <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃんねる</h1>
+      <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
+      <p class="text-sm text-gray-600 mb-6">安全のためです。</p>
+      <button id="googleLoginBtn"
+        class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded shadow-sm flex items-center justify-center gap-3 mx-auto transition w-full">
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+          <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.2 5.2C41.4 35.3 44 30.1 44 24c0-1.3-.1-2.3-.4-3.5z"/>
+        </svg>
+        Googleでログイン
+      </button>
+      <p class="text-xs text-gray-400 mt-4">※ 投稿は匿名で表示されます</p>
+      <p class="text-xs text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded p-2">
+        ⚠️ 初回ログイン時は管理者の承認が必要です
+      </p>
+    </div>
+  </div>
+
   <!-- メイン画面 -->
   <div id="mainView" class="hidden">
     <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
@@ -729,7 +771,7 @@
       query, orderByChild, get, update
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
-      getAuth, GoogleAuthProvider, signOut, onAuthStateChanged,
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
       setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -748,6 +790,7 @@
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
     const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
     setPersistence(auth, browserLocalPersistence).catch((err) => {
       console.warn('永続化設定失敗:', err);
@@ -769,7 +812,6 @@
     let userRole = null;
     let currentThreadKey = null;
     let currentThreadOwnerUid = null;
-    let currentThreadAuthorEmail = '';
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
     let badgesUnsubscribe = null;
@@ -799,7 +841,11 @@
     let myEmailVisible = true;
 
     let intentionalSignOut = false;
+    let userApproved = false;
 
+    let initialAuthCheckDone = false;
+
+    const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
     const threadListView = document.getElementById('threadListView');
     const threadDetailView = document.getElementById('threadDetailView');
@@ -819,6 +865,7 @@
     const banOverlay = document.getElementById('banOverlay');
     const banOverlayMsg = document.getElementById('banOverlayMsg');
     const banOverlaySub = document.getElementById('banOverlaySub');
+    const banOverlayActions = document.getElementById('banOverlayActions');
     const bootOverlay = document.getElementById('bootOverlay');
     let bannerTimer = null;
 
@@ -965,23 +1012,26 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
+    function showMainView() {
+      loginView.classList.add('hidden');
+      mainView.classList.remove('hidden');
+    }
+    function showLoginView() {
+      loginView.classList.remove('hidden');
+      mainView.classList.add('hidden');
+    }
     function hideBootOverlay() {
       bootOverlay.classList.add('hidden');
     }
 
-    // ★ 未ログイン・未承認 → about:blank に置き換える
-    function blankOut() {
-      try {
-        window.location.replace('about:blank');
-      } catch (e) {
-        document.body.innerHTML = '';
-        document.body.style.background = '#000';
+    function forceExit(msg, sub, showSwitchButton) {
+      banOverlayMsg.textContent = msg || 'アクセスが拒否されました';
+      banOverlaySub.innerHTML = sub || '';
+      if (showSwitchButton) {
+        banOverlayActions.style.display = 'flex';
+      } else {
+        banOverlayActions.style.display = 'none';
       }
-    }
-
-    function executeBan() {
-      banOverlayMsg.textContent = 'アクセスが拒否されました';
-      banOverlaySub.innerHTML = 'このアカウントはBANされています。';
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
       try { window.open('', '_self').close(); } catch (e) {}
@@ -999,6 +1049,23 @@
       }, 300);
     }
 
+    function executeBan() {
+      forceExit(
+        'アクセスが拒否されました',
+        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
+        true
+      );
+    }
+
+    function executePending() {
+      forceExit(
+        '承認待ちです',
+        '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。<br><br>' +
+        '<small style="color:#9ca3af;">このウィンドウは自動的に閉じられます。</small>',
+        true
+      );
+    }
+
     function checkSelfBan() {
       if (!currentUser) return false;
       if (bansCache && bansCache[currentUser.uid]) { executeBan(); return true; }
@@ -1008,6 +1075,51 @@
         executeBan(); return true;
       }
       return false;
+    }
+
+    // ★★★ 端末BAN連鎖：BAN済み端末からのアクセスなら、このアカウントも自動でBAN登録
+    async function checkAndApplyDeviceBan(user, currentFingerprint) {
+      if (!user || !currentFingerprint) return false;
+
+      // 管理者・主は対象外（誤ってロックされないように）
+      const role = roleFromEmail(user.email);
+      if (role === 'admin' || role === 'owner') return false;
+
+      try {
+        // 1. 端末BANチェック
+        const deviceBanSnap = await get(ref(db, `deviceBans/${currentFingerprint}`));
+        if (!deviceBanSnap.exists()) {
+          return false;
+        }
+
+        // 2. BAN済み端末からのアクセスなので、このアカウントをBANに追加
+        const now = Date.now();
+        const banData = {
+          bannedAt: now,
+          bannedBy: "SYSTEM_DEVICE_LINK",
+          reason: "BAN済み端末からのアクセス検知（アカウント切り替え）",
+          email: user.email || "",
+          uid: user.uid
+        };
+
+        const updates = {};
+        updates[`bans/${user.uid}`] = banData;
+
+        if (user.email) {
+          const ek = emailToKey(user.email);
+          if (ek) updates[`bans/${ek}`] = banData;
+        }
+
+        // 3. 一括更新
+        await update(ref(db), updates);
+        console.log('端末BAN連鎖: このアカウントもBAN登録しました', user.email);
+
+        return true;
+      } catch (err) {
+        console.error('端末BAN連鎖エラー:', err);
+        // エラーでも端末BAN自体は存在しているので true を返す
+        return true;
+      }
     }
 
     function checkSelfApproval() {
@@ -1134,21 +1246,93 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
+        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
         e.preventDefault();
+        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
+        forceExit('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
       if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
+        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
     });
+
+    document.getElementById('switchAccountBtn').addEventListener('click', async () => {
+      intentionalSignOut = true;
+      try { await signOut(auth); } catch (e) { console.error(e); }
+      banOverlay.classList.remove('show');
+      document.body.style.background = '';
+      showLoginView();
+      hideBootOverlay();
+      setTimeout(() => {
+        intentionalSignOut = false;
+        initialAuthCheckDone = false;
+      }, 500);
+    });
+
+    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error("ログインエラー:", err);
+        if (err.code !== 'auth/popup-closed-by-user') {
+          alert("ログインに失敗しました: " + (err.message || ''));
+        }
+      }
+    });
+
+    async function trySilentSignIn() {
+      try {
+        const p = new GoogleAuthProvider();
+        p.setCustomParameters({ prompt: 'none' });
+        const result = await signInWithPopup(auth, p);
+        console.log('サイレントサインイン成功:', result.user.email);
+      } catch (err) {
+        console.warn('サイレントサインイン失敗:', err.code || err.message);
+        hideBootOverlay();
+        showLoginView();
+      } finally {
+        initialAuthCheckDone = true;
+      }
+    }
+
+    window.doLogout = async function() {
+      intentionalSignOut = true;
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
+      if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
+      if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
+      if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
+      if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
+      if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
+      if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
+      if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
+      if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
+      try { await signOut(auth); } catch (e) { console.error(e); }
+      banOverlay.classList.remove('show');
+      document.body.style.background = '';
+      showLoginView();
+      hideBootOverlay();
+      setTimeout(() => {
+        intentionalSignOut = false;
+        initialAuthCheckDone = false;
+      }, 500);
+    };
+
+    function roleFromEmail(email) {
+      if (email === ROLE_ADMIN_EMAIL) return 'admin';
+      if (email === ROLE_OWNER_EMAIL) return 'owner';
+      if (ROLE_VIP_EMAILS.includes(email)) return 'vip';
+      return null;
+    }
 
     function initCustomBadgesListener() {
       if (badgesUnsubscribe) badgesUnsubscribe();
@@ -1241,6 +1425,7 @@
     async function registerMyFingerprint() {
       if (!currentUser || !myFingerprint) return;
       const now = Date.now();
+
       try {
         await update(ref(db, `userDevices/${currentUser.uid}`), {
           [myFingerprint]: now
@@ -1248,10 +1433,12 @@
       } catch (e) {
         console.warn('フィンガープリント登録スキップ:', e.message);
       }
+
       try {
         const userRef = ref(db, `knownUsers/${currentUser.uid}`);
         const existingSnap = await get(userRef);
         const existing = existingSnap.exists() ? existingSnap.val() : null;
+
         const data = {
           email: currentUser.email || '',
           displayName: currentUser.displayName || '',
@@ -1271,6 +1458,7 @@
       try {
         const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
         if (approvedSnap.exists()) return;
+
         await set(ref(db, `pendingUsers/${currentUser.uid}`), {
           email: currentUser.email || '',
           displayName: currentUser.displayName || '',
@@ -1282,14 +1470,6 @@
       }
     }
 
-    function roleFromEmail(email) {
-      if (email === ROLE_ADMIN_EMAIL) return 'admin';
-      if (email === ROLE_OWNER_EMAIL) return 'owner';
-      if (ROLE_VIP_EMAILS.includes(email)) return 'vip';
-      return null;
-    }
-
-    // ★ 認証状態監視
     onAuthStateChanged(auth, async (user) => {
       if (intentionalSignOut) {
         currentUser = null;
@@ -1299,10 +1479,14 @@
 
       currentUser = user;
 
-      // ★ 未ログイン → about:blank
       if (!user) {
         userRole = null;
-        blankOut();
+        if (!initialAuthCheckDone) {
+          trySilentSignIn();
+          return;
+        }
+        hideBootOverlay();
+        showLoginView();
         return;
       }
 
@@ -1311,6 +1495,15 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
+      // ★★★ 端末BAN連鎖チェック（UID/メールBANより先に実行）
+      // BAN済み端末からのアクセスなら、このアカウントも自動的にBAN登録される
+      const isDeviceBanned = await checkAndApplyDeviceBan(user, myFingerprint);
+      if (isDeviceBanned) {
+        executeBan();
+        return;
+      }
+
+      // 通常のBANチェック（UID・メール・デバイス）
       if (checkSelfBan()) return;
 
       initBansListener();
@@ -1327,13 +1520,13 @@
       const isApproved = checkSelfApproval();
 
       if (!isApproved) {
-        // ★ 未承認 → about:blank
         await requestApproval();
-        blankOut();
+        executePending();
         return;
       }
 
-      // ===== 承認済み =====
+      userApproved = true;
+
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
         badgeToggle.checked = myBadgePublic;
@@ -1376,13 +1569,14 @@
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
+          userApproved = false;
           requestApproval();
-          blankOut();
+          executePending();
         }
       });
 
       hideBootOverlay();
-      mainView.classList.remove('hidden');
+      showMainView();
       setConnection(navigator.onLine);
 
       showThreadList();
@@ -1442,6 +1636,7 @@
       showBanner(visible ? 'メールアドレスを表示します' : 'メールアドレスを非表示にしました', false);
     });
 
+    let currentThreadAuthorEmail = '';
     function refreshThreadAuthorDisplay() {
       const authorEl = document.getElementById('currentThreadAuthor');
       if (!authorEl) return;
@@ -1498,7 +1693,7 @@
 
     document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!currentUser) { return; }
+      if (!currentUser) { alert('ログインが必要です。'); return; }
       if (checkSelfBan()) return;
 
       const title = document.getElementById('threadTitle').value.trim();
@@ -1853,7 +2048,9 @@
       if (action === 'ban') {
         if (!confirm(
           `このユーザーをBANしますか？\n\n対象: ${email || '（メール不明）'}\nUID: ${uid}\n\n` +
-          `・UID・メール・デバイスの3つでブロックします。`
+          `・UID・メール・デバイスの3つでブロックします。\n` +
+          `・同じデバイスを使っている他のアカウントもBANされます。\n` +
+          `・BANされたユーザーは次にサイトを開いた瞬間にタブが閉じられます。`
         )) return;
         try {
           const now = Date.now();
@@ -1872,6 +2069,7 @@
           }
           await Promise.all(ops);
 
+          // 対象ユーザーの全デバイスをBAN（自分自身のデバイスは除外）
           if (uid) {
             try {
               const devSnap = await get(ref(db, `userDevices/${uid}`));
@@ -1879,6 +2077,7 @@
                 const devOps = [];
                 devSnap.forEach((child) => {
                   const fp = child.key;
+                  if (currentUser && myFingerprint && fp === myFingerprint) return;
                   devOps.push(set(ref(db, `deviceBans/${fp}`), {
                     bannedAt: now,
                     bannedBy: currentUser.email,
@@ -1893,39 +2092,39 @@
             }
           }
 
-          showBanner('BANしました', false);
+          showBanner('BANしました（同じデバイスの他アカウントも対象）', false);
         } catch (err) {
           console.error('BANエラー:', err);
           showBanner('BAN失敗: ' + (err.code || err.message), true);
           alert('BANに失敗しました。');
         }
       } else if (action === 'unban') {
-        if (!confirm(`このユーザーのBANを解除しますか？\n\n対象: ${email || '（メール不明）'}`)) return;
+        if (!confirm(`このユーザーのBANを解除しますか？\n\n対象: ${email || '（メール不明）'}\n\n※関連するデバイスBANもすべて解除されます。`)) return;
         try {
+          let targetFps = [];
+          if (uid) {
+            try {
+              const devSnap = await get(ref(db, `userDevices/${uid}`));
+              if (devSnap.exists()) {
+                devSnap.forEach((child) => targetFps.push(child.key));
+              }
+            } catch (e) {
+              console.warn('デバイス取得スキップ:', e.message);
+            }
+          }
+
           const ops = [];
           if (uid) ops.push(remove(ref(db, `bans/${uid}`)));
           if (email) {
             const ek = emailToKey(email);
             if (ek) ops.push(remove(ref(db, `bans/${ek}`)));
           }
+          targetFps.forEach((fp) => {
+            ops.push(remove(ref(db, `deviceBans/${fp}`)));
+          });
           await Promise.all(ops);
 
-          if (uid) {
-            try {
-              const devSnap = await get(ref(db, `userDevices/${uid}`));
-              if (devSnap.exists()) {
-                const devOps = [];
-                devSnap.forEach((child) => {
-                  devOps.push(remove(ref(db, `deviceBans/${child.key}`)));
-                });
-                if (devOps.length > 0) await Promise.all(devOps);
-              }
-            } catch (e) {
-              console.warn('デバイスBAN解除スキップ:', e.message);
-            }
-          }
-
-          showBanner('BANを解除しました', false);
+          showBanner('BANを解除しました（関連デバイス含む）', false);
         } catch (err) {
           console.error('BAN解除エラー:', err);
           showBanner('解除失敗: ' + (err.code || err.message), true);
@@ -2034,7 +2233,7 @@
         return;
       }
 
-      if (!confirm(`${email} をBANしますか？`)) return;
+      if (!confirm(`${email} をBANしますか？\n\nこのメールアドレスでログインしようとした人は即座にブロックされます。`)) return;
 
       try {
         const now = Date.now();
@@ -2049,11 +2248,57 @@
         const ops = [];
         if (ek) ops.push(set(ref(db, `bans/${ek}`), data));
 
+        // 同じメールを持つUIDを探して、そのデバイスもBAN
+        const targetUids = new Set();
+        Object.entries(knownUsersCache || {}).forEach(([uid, u]) => {
+          if (u && u.email && u.email.toLowerCase() === email) {
+            targetUids.add(uid);
+          }
+        });
+        Object.entries(approvedCache || {}).forEach(([uid, u]) => {
+          if (u && u.email && u.email.toLowerCase() === email) {
+            targetUids.add(uid);
+          }
+        });
+
+        targetUids.forEach((tu) => {
+          ops.push(set(ref(db, `bans/${tu}`), {
+            bannedAt: now,
+            bannedBy: currentUser.email,
+            email: email,
+            uid: tu,
+            reason: reason || ''
+          }));
+        });
+
         await Promise.all(ops);
+
+        // 各UIDのデバイスをBAN
+        for (const tu of targetUids) {
+          try {
+            const devSnap = await get(ref(db, `userDevices/${tu}`));
+            if (devSnap.exists()) {
+              const devOps = [];
+              devSnap.forEach((child) => {
+                const fp = child.key;
+                if (currentUser && myFingerprint && fp === myFingerprint) return;
+                devOps.push(set(ref(db, `deviceBans/${fp}`), {
+                  bannedAt: now,
+                  bannedBy: currentUser.email,
+                  email: email,
+                  uid: tu
+                }));
+              });
+              if (devOps.length > 0) await Promise.all(devOps);
+            }
+          } catch (e) {
+            console.warn('デバイスBAN登録スキップ:', e.message);
+          }
+        }
 
         banEmailInput.value = '';
         banReasonInput.value = '';
-        showBanner('メールアドレスをBANしました', false);
+        showBanner('メールアドレスをBANしました（同じデバイスの他アカウントも対象）', false);
         renderBanList();
       } catch (err) {
         console.error('BANエラー:', err);
@@ -2261,7 +2506,7 @@
 
     async function rejectUser(uid, p) {
       if (!canApprove()) { alert('承認権限がありません。'); return; }
-      if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？`)) return;
+      if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？\n\n拒否すると、その人は今後もサイトを利用できません。`)) return;
       try {
         const now = Date.now();
         const data = {
@@ -2276,8 +2521,30 @@
           const ek = emailToKey(p.email);
           if (ek) await set(ref(db, `bans/${ek}`), data);
         }
+
+        // 対象UIDのデバイスもBAN
+        try {
+          const devSnap = await get(ref(db, `userDevices/${uid}`));
+          if (devSnap.exists()) {
+            const devOps = [];
+            devSnap.forEach((child) => {
+              const fp = child.key;
+              if (currentUser && myFingerprint && fp === myFingerprint) return;
+              devOps.push(set(ref(db, `deviceBans/${fp}`), {
+                bannedAt: now,
+                bannedBy: currentUser.email,
+                email: p.email || '',
+                uid: uid
+              }));
+            });
+            if (devOps.length > 0) await Promise.all(devOps);
+          }
+        } catch (e) {
+          console.warn('デバイスBAN登録スキップ:', e.message);
+        }
+
         await remove(ref(db, `pendingUsers/${uid}`));
-        showBanner('拒否しました', false);
+        showBanner('拒否しました（同じデバイスの他アカウントも対象）', false);
       } catch (err) {
         console.error('拒否エラー:', err);
         showBanner('拒否失敗: ' + (err.code || err.message), true);
@@ -2470,7 +2737,7 @@
     buildColorRow();
 
     function onReplyClick(parentId) {
-      if (!currentUser) { return; }
+      if (!currentUser) { alert('ログインが必要です。'); return; }
       if (checkSelfBan()) return;
       if (activeReplyParentId === parentId) { closeReplyBox(); return; }
       activeReplyParentId = parentId;
@@ -2591,8 +2858,8 @@
 
     document.getElementById('postForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!currentUser) { return; }
-      if (!currentThreadKey) { return; }
+      if (!currentUser) { alert('ログインが必要です。'); return; }
+      if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
       if (checkSelfBan()) return;
 
       const content = document.getElementById('postContent').value.trim();
@@ -2686,8 +2953,8 @@
 
       const hasChildren = allPostsCache.some(p => p.parentId === postKey);
       const msg = hasChildren
-        ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。`
-        : `レス #${index} を削除しますか？`;
+        ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。\nこの操作は取り消せません。`
+        : `レス #${index} を削除しますか？\nこの操作は取り消せません。`;
       if (!confirm(msg)) return;
 
       try {
@@ -2722,7 +2989,7 @@
     window.deleteCurrentThread = async function() {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
       if (!currentThreadKey) return;
-      if (!confirm('このスレッドをすべてのレスごと削除しますか？')) return;
+      if (!confirm('このスレッドをすべてのレスごと削除しますか？\nこの操作は取り消せません。')) return;
 
       const key = currentThreadKey;
       try {
@@ -2786,9 +3053,14 @@
       if (!file) return;
       if (!canBackup()) { alert('復元権限がありません。'); return; }
 
-      if (!confirm('選択したバックアップで全データを上書きします。本当に復元しますか？')) return;
+      if (!confirm(
+        '【警告】\n' +
+        '選択したバックアップファイルで、現在のすべてのデータを上書きします。\n' +
+        '現在のデータは完全に失われます（バックアップを取っていない場合）。\n\n' +
+        '本当に復元しますか？'
+      )) return;
 
-      const doubleCheck = prompt('確認のため「RESTORE」と入力してください:');
+      const doubleCheck = prompt('確認のため「RESTORE」と入力してください（大文字・半角）:');
       if (doubleCheck !== 'RESTORE') {
         alert('キャンセルしました。');
         return;
@@ -2838,22 +3110,6 @@
         alert('復元に失敗しました。\n' + (err.message || ''));
       }
     });
-
-    // ★ ログアウト → about:blank
-    window.doLogout = async function() {
-      intentionalSignOut = true;
-      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
-      if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
-      if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
-      if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
-      if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
-      if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
-      if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
-      if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
-      if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
-      try { await signOut(auth); } catch (e) { console.error(e); }
-      blankOut();
-    };
 
     window.addEventListener('beforeunload', () => {
       if (postsUnsubscribe) postsUnsubscribe();
