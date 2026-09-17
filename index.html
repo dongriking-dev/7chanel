@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>69ch</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
+  <link id="faviconLink" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
@@ -125,6 +125,51 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
       50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
     }
+    /* ★ 通知ボタン */
+    .notif-btn {
+      background: #0891b2; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
+      position: relative;
+    }
+    .notif-btn:hover { background: #0e7490; }
+    .notif-btn.has-unread {
+      background: #dc2626;
+      animation: pulseRed 1.5s infinite;
+    }
+    .notif-badge-count {
+      background: #fff; color: #dc2626; font-size: 10px;
+      padding: 1px 6px; border-radius: 8px; font-weight: 700;
+      margin-left: 4px;
+    }
+    /* ★ 通知一覧アイテム */
+    .notif-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+      background: #fff; margin-bottom: 6px; font-size: 12px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .notif-item:hover { background: #f0f9ff; border-color: #7dd3fc; }
+    .notif-item.unread { background: #fef2f2; border-color: #fca5a5; }
+    .notif-item.unread:hover { background: #fee2e2; }
+    .notif-item .notif-icon {
+      font-size: 18px; flex-shrink: 0;
+    }
+    .notif-item .notif-body { flex: 1; min-width: 0; }
+    .notif-item .notif-thread-title {
+      font-weight: 700; color: #1e40af; word-break: break-all;
+      margin-bottom: 2px;
+    }
+    .notif-item .notif-preview {
+      color: #4b5563; word-break: break-all; margin-bottom: 2px;
+      font-size: 11px;
+    }
+    .notif-item .notif-date {
+      color: #9ca3af; font-size: 10px;
+    }
+    .notif-item .notif-unread-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #dc2626; flex-shrink: 0; margin-top: 6px;
+    }
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -135,6 +180,14 @@
     .post-card.banned-post {
       opacity: 0.5;
       border-left: 3px solid #111827;
+    }
+    /* ★ ハイライト（通知からジャンプした時） */
+    .post-card.highlight-flash {
+      animation: highlightFlash 2s ease-out;
+    }
+    @keyframes highlightFlash {
+      0% { background: #fef08a; border-color: #eab308; }
+      100% { background: #fff; border-color: #d1d5db; }
     }
     .post-children {
       margin-left: 20px;
@@ -633,6 +686,30 @@
     </div>
   </div>
 
+  <!-- ★ 通知モーダル -->
+  <div id="notifModal" class="modal-backdrop hidden">
+    <div class="modal-content" style="max-width: 640px;">
+      <h3 class="text-lg font-bold text-gray-800 mb-1">🔔 通知</h3>
+      <p class="text-xs text-gray-500 mb-3">
+        あなたへの返信通知です。クリックでスレッドに飛べます。
+      </p>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-gray-600">
+          未読: <span id="notifUnreadCountLabel" class="font-bold text-red-700">0</span> 件
+        </p>
+        <button id="notifMarkAllReadBtn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-bold">
+          すべて既読にする
+        </button>
+      </div>
+      <div id="notifListContainer" style="max-height: 55vh; overflow-y: auto;">
+        <p class="text-xs text-gray-400">（読み込み中...）</p>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button id="notifCloseBtn" class="reply-cancel-btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ログイン画面 -->
   <div id="loginView" class="hidden">
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
@@ -684,6 +761,10 @@
           <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
+        <!-- ★ 通知ボタン（全員） -->
+        <button id="notifBtn" class="notif-btn" onclick="openNotifModal()">
+          🔔 通知 <span id="notifBadgeCount" class="notif-badge-count hidden">0</span>
+        </button>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
         <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
           ログアウト
@@ -808,6 +889,13 @@
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
+    // ★ ファビコン URL
+    const FAVICON_NORMAL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E";
+    const FAVICON_NOTIFY = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%233b82f6'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%2393c5fd'/%3E%3Ccircle cx='48' cy='48' r='14' fill='%23ffffff'/%3E%3Ccircle cx='48' cy='48' r='12' fill='%23ef4444'/%3E%3Cpath d='M48 41v8M48 53v2' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E";
+
+    // ★ 通知音
+    const NOTIFICATION_SOUND_URL = "https://www.myinstants.com/media/sounds/perfect-fart.mp3";
+
     let currentUser = null;
     let userRole = null;
     let currentThreadKey = null;
@@ -821,6 +909,7 @@
     let pendingUnsubscribe = null;
     let approvedUnsubscribe = null;
     let selfApprovalUnsubscribe = null;
+    let notifUnsubscribe = null;   // ★ 通知監視
 
     let activeReplyParentId = null;
     let allPostsCache = [];
@@ -832,6 +921,7 @@
     let knownUsersCache = {};
     let pendingCache = {};
     let approvedCache = {};
+    let notifCache = {};   // ★ 通知キャッシュ
     let myFingerprint = null;
 
     let badgeEditingTarget = null;
@@ -844,6 +934,11 @@
     let userApproved = false;
 
     let initialAuthCheckDone = false;
+
+    // ★ 通知音の初回再生制御
+    let audioUnlocked = false;
+    let lastNotifCount = 0;
+    let notifInitialized = false;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -867,6 +962,12 @@
     const banOverlaySub = document.getElementById('banOverlaySub');
     const banOverlayActions = document.getElementById('banOverlayActions');
     const bootOverlay = document.getElementById('bootOverlay');
+    const faviconLink = document.getElementById('faviconLink');
+    const notifBtn = document.getElementById('notifBtn');
+    const notifBadgeCount = document.getElementById('notifBadgeCount');
+    const notifModal = document.getElementById('notifModal');
+    const notifListContainer = document.getElementById('notifListContainer');
+    const notifUnreadCountLabel = document.getElementById('notifUnreadCountLabel');
     let bannerTimer = null;
 
     function canDelete() {
@@ -889,13 +990,11 @@
       return userRole === 'admin' || userRole === 'owner';
     }
 
-    // ★ 保護対象メール判定（管理者・主）
     function isProtectedEmail(email) {
       if (!email) return false;
       const e = email.toLowerCase().trim();
       return e === ROLE_ADMIN_EMAIL.toLowerCase() || e === ROLE_OWNER_EMAIL.toLowerCase();
     }
-    // ★ UIDからロールを判定（knownUsers / approvedUsers から）
     function getRoleByUid(uid) {
       if (knownUsersCache[uid] && knownUsersCache[uid].role) return knownUsersCache[uid].role;
       if (approvedCache[uid] && approvedCache[uid].email) {
@@ -903,7 +1002,6 @@
       }
       return null;
     }
-    // ★ UIDが保護対象かどうか（ロール or メール逆引きで判定）
     function isProtectedUid(uid) {
       if (!uid) return false;
       const r = getRoleByUid(uid);
@@ -914,7 +1012,6 @@
       if (u2 && u2.email && isProtectedEmail(u2.email)) return true;
       return false;
     }
-    // ★ 現在ログイン中のユーザーが保護対象かどうか
     function isCurrentUserProtected() {
       if (!currentUser) return false;
       if (userRole === 'admin' || userRole === 'owner') return true;
@@ -981,6 +1078,25 @@
     }
     function saveEmailVisibility(email, visible) {
       localStorage.setItem(emailStorageKey(email), visible ? 'true' : 'false');
+    }
+
+    // ★ ファビコン更新
+    function updateFavicon(hasUnread) {
+      faviconLink.href = hasUnread ? FAVICON_NOTIFY : FAVICON_NORMAL;
+    }
+
+    // ★ 通知音を鳴らす
+    function playNotificationSound() {
+      try {
+        const audio = new Audio(NOTIFICATION_SOUND_URL);
+        audio.volume = 0.5;
+        audio.play().catch((e) => {
+          // ブラウザの自動再生制限で失敗する場合がある
+          console.warn('通知音再生失敗（ユーザー操作後に有効化されます）:', e.message);
+        });
+      } catch (e) {
+        console.warn('通知音エラー:', e.message);
+      }
     }
 
     function renderRoleBadge(role) {
@@ -1085,7 +1201,6 @@
     function checkSelfBan() {
       if (!currentUser) return false;
 
-      // ★★★ 管理者・主は何があってもBANしない（最優先で除外）
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBANチェックをスキップ:', currentUser.email);
         return false;
@@ -1100,11 +1215,9 @@
       return false;
     }
 
-    // ★★★ 端末BAN連鎖：BAN済み端末からのアクセスなら、このアカウントも自動でBAN登録
     async function checkAndApplyDeviceBan(user, currentFingerprint) {
       if (!user || !currentFingerprint) return false;
 
-      // ★★★ 管理者・主は何があってもBANしない（最優先で除外）
       const role = roleFromEmail(user.email);
       if (role === 'admin' || role === 'owner') {
         console.log('管理者/主のため端末BAN連鎖チェックをスキップ:', user.email);
@@ -1292,6 +1405,23 @@
       }
     });
 
+    // ★ 初回ユーザー操作で音声再生を有効化
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      try {
+        const audio = new Audio(NOTIFICATION_SOUND_URL);
+        audio.volume = 0;
+        audio.play().then(() => {
+          audio.pause();
+          audioUnlocked = true;
+          console.log('通知音の再生を有効化しました');
+        }).catch(() => {});
+      } catch (e) {}
+    }
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+
     document.getElementById('switchAccountBtn').addEventListener('click', async () => {
       intentionalSignOut = true;
       try { await signOut(auth); } catch (e) { console.error(e); }
@@ -1342,11 +1472,14 @@
       if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
       if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
       if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
+      if (notifUnsubscribe) { notifUnsubscribe(); notifUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
       banOverlay.classList.remove('show');
       document.body.style.background = '';
       showLoginView();
       hideBootOverlay();
+      // ★ ファビコンを通常に戻す
+      updateFavicon(false);
       setTimeout(() => {
         intentionalSignOut = false;
         initialAuthCheckDone = false;
@@ -1437,6 +1570,48 @@
       });
     }
 
+    // ★ 通知監視
+    function initNotificationsListener() {
+      if (!currentUser) return;
+      if (notifUnsubscribe) notifUnsubscribe();
+
+      const notifRef = ref(db, `notifications/${currentUser.uid}`);
+      notifUnsubscribe = onValue(notifRef, (snap) => {
+        notifCache = snap.exists() ? snap.val() : {};
+        const unreadCount = Object.values(notifCache).filter(n => n && !n.read).length;
+
+        // バッジカウント更新
+        if (unreadCount > 0) {
+          notifBadgeCount.textContent = unreadCount;
+          notifBadgeCount.classList.remove('hidden');
+          notifBtn.classList.add('has-unread');
+        } else {
+          notifBadgeCount.classList.add('hidden');
+          notifBtn.classList.remove('has-unread');
+        }
+
+        // ファビコン更新
+        updateFavicon(unreadCount > 0);
+
+        // 通知音（初回のロード時は鳴らさない、増えた時だけ鳴らす）
+        if (notifInitialized) {
+          if (unreadCount > lastNotifCount) {
+            playNotificationSound();
+          }
+        } else {
+          notifInitialized = true;
+        }
+        lastNotifCount = unreadCount;
+
+        // モーダルが開いていれば再描画
+        if (notifModal && !notifModal.classList.contains('hidden')) {
+          renderNotifList();
+        }
+      }, (err) => {
+        console.error('通知監視エラー:', err);
+      });
+    }
+
     function updatePendingBadge() {
       const cnt = Object.keys(pendingCache || {}).length;
       const badgeEl = document.getElementById('pendingBadgeCount');
@@ -1513,6 +1688,7 @@
         }
         hideBootOverlay();
         showLoginView();
+        updateFavicon(false);
         return;
       }
 
@@ -1521,24 +1697,18 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
-      // ★★★ 管理者・主は BAN 関連の全チェックをスキップ
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBAN関連チェックを全スキップ:', user.email);
-
         initBansListener();
         initDeviceBansListener();
         initApprovedListener();
       } else {
-        // 端末BAN連鎖チェック（UID/メールBANより先に実行）
         const isDeviceBanned = await checkAndApplyDeviceBan(user, myFingerprint);
         if (isDeviceBanned) {
           executeBan();
           return;
         }
-
-        // 通常のBANチェック（UID・メール・デバイス）
         if (checkSelfBan()) return;
-
         initBansListener();
         initDeviceBansListener();
         initApprovedListener();
@@ -1618,6 +1788,7 @@
       initCustomBadgesListener();
       initKnownUsersListener();
       initPendingListener();
+      initNotificationsListener();   // ★ 通知監視を開始
       registerMyFingerprint();
     });
 
@@ -2014,6 +2185,7 @@
 
       const postDiv = document.createElement('div');
       postDiv.className = 'post-card' + (isBanned ? ' banned-post' : '');
+      postDiv.dataset.postKey = post.key;
       postDiv.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
           <span class="post-number">${number}</span>
@@ -2074,7 +2246,6 @@
       if (!canBan()) { alert('BAN権限がありません。'); return; }
       if (!uid && !email) return;
 
-      // ★★★ 管理者・主は絶対にBANさせない
       if (isProtectedEmail(email)) {
         alert('管理者および主はBANできません。');
         return;
@@ -2083,7 +2254,6 @@
         alert('管理者および主はBANできません。');
         return;
       }
-      // UIDが保護対象の可能性がある場合、knownUsers/approvedUsersからメールを取得して再チェック
       if (uid) {
         const u1 = knownUsersCache[uid];
         if (u1 && u1.email && isProtectedEmail(u1.email)) {
@@ -2279,7 +2449,6 @@
         return;
       }
 
-      // ★★★ 管理者・主は絶対にBANさせない
       if (isProtectedEmail(email)) {
         alert('管理者および主はBANできません。');
         return;
@@ -2557,7 +2726,6 @@
     async function rejectUser(uid, p) {
       if (!canApprove()) { alert('承認権限がありません。'); return; }
 
-      // ★★★ 管理者・主は絶対に拒否させない（念のため）
       if (isProtectedEmail(p.email)) {
         alert('管理者および主は拒否できません。');
         return;
@@ -2796,6 +2964,123 @@
 
     buildColorRow();
 
+    // ★ 通知モーダルを開く
+    window.openNotifModal = function() {
+      notifModal.classList.remove('hidden');
+      renderNotifList();
+      // 既読化は行わない（個別クリック時 or「すべて既読」ボタン時）
+    };
+
+    function closeNotifModal() {
+      notifModal.classList.add('hidden');
+    }
+
+    document.getElementById('notifCloseBtn').addEventListener('click', closeNotifModal);
+    notifModal.addEventListener('click', (e) => {
+      if (e.target.id === 'notifModal') closeNotifModal();
+    });
+
+    // ★ 通知一覧を描画
+    function renderNotifList() {
+      notifListContainer.innerHTML = '';
+      const entries = Object.entries(notifCache || {});
+      const unreadCount = entries.filter(([_, n]) => n && !n.read).length;
+      notifUnreadCountLabel.textContent = unreadCount;
+
+      if (entries.length === 0) {
+        notifListContainer.innerHTML = '<p class="text-xs text-gray-400">通知はありません。</p>';
+        return;
+      }
+
+      // 新しい順
+      entries.sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+      entries.forEach(([nid, n]) => {
+        if (!n) return;
+        const date = n.createdAt ? new Date(n.createdAt).toLocaleString('ja-JP') : '不明';
+        const row = document.createElement('div');
+        row.className = 'notif-item' + (n.read ? '' : ' unread');
+        row.innerHTML = `
+          <div class="notif-icon">${n.read ? '📩' : '🔔'}</div>
+          <div class="notif-body">
+            <div class="notif-thread-title">「${escapeHtml(n.threadTitle || '(無題)')}」</div>
+            <div class="notif-preview">${escapeHtml((n.preview || '').slice(0, 60))}${(n.preview || '').length > 60 ? '…' : ''}</div>
+            <div class="notif-date">${escapeHtml(date)}</div>
+          </div>
+          ${n.read ? '' : '<div class="notif-unread-dot"></div>'}
+        `;
+        row.addEventListener('click', () => handleNotifClick(nid, n));
+        notifListContainer.appendChild(row);
+      });
+    }
+
+    // ★ 通知クリック時の処理
+    async function handleNotifClick(notifId, notif) {
+      // 既読化
+      try {
+        await update(ref(db, `notifications/${currentUser.uid}/${notifId}`), {
+          read: true
+        });
+      } catch (e) {
+        console.warn('既読化失敗:', e.message);
+      }
+
+      // モーダルを閉じる
+      closeNotifModal();
+
+      // スレッドに飛ぶ
+      if (notif && notif.threadId) {
+        // スレッド一覧から該当スレッド情報を探す
+        const threadsSnap = await get(ref(db, `threads/${notif.threadId}`));
+        if (threadsSnap.exists()) {
+          const t = threadsSnap.val();
+          let date = '日時不明';
+          if (t.createdAt) {
+            try { date = new Date(t.createdAt).toLocaleString('ja-JP'); }
+            catch (e) { date = '日時不明'; }
+          }
+          openThread(notif.threadId, t.title, date, t.authorEmail, t.authorUid);
+
+          // 該当レスにスクロール・ハイライト
+          if (notif.postId) {
+            setTimeout(() => {
+              const target = document.querySelector(`.post-card[data-post-key="${notif.postId}"]`);
+              if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.classList.add('highlight-flash');
+                setTimeout(() => target.classList.remove('highlight-flash'), 2200);
+              }
+            }, 500);
+          }
+        } else {
+          alert('該当スレッドは削除されています。');
+        }
+      }
+    }
+
+    // ★ 全既読
+    document.getElementById('notifMarkAllReadBtn').addEventListener('click', async () => {
+      if (!currentUser) return;
+      const entries = Object.entries(notifCache || {});
+      const unreadIds = entries.filter(([_, n]) => n && !n.read).map(([id]) => id);
+      if (unreadIds.length === 0) {
+        showBanner('未読通知はありません', false);
+        return;
+      }
+      if (!confirm(`${unreadIds.length} 件の通知をすべて既読にしますか？`)) return;
+      try {
+        const updates = {};
+        unreadIds.forEach((id) => {
+          updates[`notifications/${currentUser.uid}/${id}/read`] = true;
+        });
+        await update(ref(db), updates);
+        showBanner('すべて既読にしました', false);
+      } catch (e) {
+        console.error('既読化失敗:', e);
+        showBanner('既読化失敗: ' + e.message, true);
+      }
+    });
+
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (checkSelfBan()) return;
@@ -2892,6 +3177,36 @@
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
     }
 
+    // ★ 通知を送信するヘルパー
+    async function sendReplyNotification(parentPost, newContent) {
+      try {
+        // 返信先の投稿者のUID/メールを取得
+        const targetUid = parentPost.authorUid;
+        const targetEmail = parentPost.authorEmail;
+
+        // 自分自身への返信は通知しない
+        if (!targetUid || targetUid === currentUser.uid) return;
+
+        const threadTitle = document.getElementById('currentThreadTitle').innerText || '(無題)';
+
+        const notifRef = push(ref(db, `notifications/${targetUid}`));
+        await set(notifRef, {
+          type: 'reply',
+          threadId: currentThreadKey,
+          threadTitle: threadTitle,
+          postId: parentPost.key,
+          fromEmail: currentUser.email || '',
+          fromUid: currentUser.uid || '',
+          preview: (newContent || '').slice(0, 100),
+          createdAt: Date.now(),
+          read: false
+        });
+        console.log('通知を送信しました:', targetEmail);
+      } catch (e) {
+        console.warn('通知送信スキップ:', e.message);
+      }
+    }
+
     async function submitReply(parentId, content, file) {
       if (!currentUser) throw new Error('ログインが必要です');
       if (!currentThreadKey) throw new Error('スレッドが選択されていません');
@@ -2913,6 +3228,13 @@
         parentId: parentId,
         file: fileData
       });
+
+      // ★ 返信先の投稿を探して通知
+      const parentPost = allPostsCache.find(p => p.key === parentId);
+      if (parentPost) {
+        await sendReplyNotification(parentPost, content);
+      }
+
       showBanner('返信を保存しました', false);
     }
 
@@ -3153,14 +3475,11 @@
           throw new Error('不正なバックアップファイル形式です');
         }
 
-        // ★ 復元時も管理者・主のUID/メール/デバイスBANを自動削除
         try {
-          // 管理者・主のメールキーを削除
           const adminEmailKey = emailToKey(ROLE_ADMIN_EMAIL);
           const ownerEmailKey = emailToKey(ROLE_OWNER_EMAIL);
           if (bansData && adminEmailKey) delete bansData[adminEmailKey];
           if (bansData && ownerEmailKey) delete bansData[ownerEmailKey];
-          // UIDベースのbansも削除（knownUsers/approvedUsersからUIDを逆引き）
           if (knownUsersData) {
             Object.entries(knownUsersData).forEach(([uid, u]) => {
               if (u && u.email && isProtectedEmail(u.email)) {
@@ -3208,6 +3527,7 @@
       if (pendingUnsubscribe) pendingUnsubscribe();
       if (approvedUnsubscribe) approvedUnsubscribe();
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
+      if (notifUnsubscribe) notifUnsubscribe();
     });
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
