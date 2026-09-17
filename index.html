@@ -125,6 +125,16 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
       50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
     }
+    /* ★ 公開/非公開ボタン */
+    .publish-btn {
+      background: #7c3aed; color: #fff; font-size: 11px; padding: 6px 12px;
+      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
+    }
+    .publish-btn:hover { background: #6d28d9; }
+    .publish-btn.unpublished {
+      background: #16a34a;
+    }
+    .publish-btn.unpublished:hover { background: #15803d; }
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -408,6 +418,44 @@
       background: #1d4ed8;
     }
 
+    /* ★ 非公開画面 */
+    #unpublishedOverlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      z-index: 99998; display: none;
+      align-items: center; justify-content: center;
+      color: #78350f; text-align: center; font-family: sans-serif;
+      flex-direction: column; padding: 20px;
+    }
+    #unpublishedOverlay.show { display: flex; }
+    #unpublishedOverlay .unp-msg {
+      font-size: 42px; font-weight: bold;
+      letter-spacing: 0.05em;
+      text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.1);
+    }
+    #unpublishedOverlay .unp-sub {
+      font-size: 14px; margin-top: 16px; color: #92400e;
+      line-height: 1.6; max-width: 400px;
+    }
+    #unpublishedOverlay .unp-action {
+      margin-top: 32px;
+    }
+    #unpublishedOverlay .unp-go-btn {
+      background: #78350f; color: #fff;
+      font-size: 18px; padding: 14px 40px; border-radius: 8px;
+      border: none; cursor: pointer; font-weight: 700;
+      font-family: sans-serif;
+      box-shadow: 0 4px 0 #451a03;
+      transition: transform 0.1s;
+    }
+    #unpublishedOverlay .unp-go-btn:hover {
+      background: #451a03;
+    }
+    #unpublishedOverlay .unp-go-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #451a03;
+    }
+
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
@@ -439,6 +487,15 @@
   <div id="bootOverlay">
     <div class="boot-spinner"></div>
     <div class="boot-msg">アカウントを確認しています...</div>
+  </div>
+
+  <!-- ★ 非公開画面 -->
+  <div id="unpublishedOverlay">
+    <div class="unp-msg">ちょっと待って！</div>
+    <div class="unp-sub" id="unpublishedSub">現在このサイトは非公開です。</div>
+    <div class="unp-action">
+      <button class="unp-go-btn" id="unpGoBtn">何？</button>
+    </div>
   </div>
 
   <!-- サイトルール -->
@@ -510,6 +567,34 @@
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
 
+  <!-- 公開/非公開設定モーダル -->
+  <div id="publishModal" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <h3 class="text-lg font-bold text-gray-800 mb-1">🌐 サイト公開設定</h3>
+      <p class="text-xs text-gray-500 mb-4">
+        非公開にすると、一般ユーザー・VIPの画面に「ちょっと待って！」画面が表示されます。<br>
+        管理者・主は通常通りサイトを使えます。
+      </p>
+
+      <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+        <p class="text-xs text-gray-600 mb-1">現在のステータス:</p>
+        <p id="publishStatusLabel" class="text-sm font-bold">公開中</p>
+      </div>
+
+      <label class="block text-xs text-gray-600 mb-1">飛び先URL（非公開時に「何？」ボタンで飛ぶURL）:</label>
+      <input type="url" id="publishUrlInput" placeholder="https://example.com/"
+        class="w-full border p-2 rounded text-sm mb-3 font-mono">
+
+      <div class="flex justify-end gap-2 flex-wrap">
+        <button id="publishCancelBtn" class="reply-cancel-btn">キャンセル</button>
+        <button id="publishSaveUrlBtn" class="bg-blue-700 hover:bg-blue-800 text-white text-xs py-1.5 px-4 rounded font-bold">
+          URLを保存
+        </button>
+        <button id="publishToggleBtn" class="publish-btn">非公開にする</button>
+      </div>
+    </div>
+  </div>
+
   <!-- バッジ管理モーダル -->
   <div id="badgeModal" class="modal-backdrop hidden">
     <div class="modal-content">
@@ -532,7 +617,7 @@
         <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
         <div class="flex items-center gap-2 mb-3">
           <input type="color" id="badgeColorPicker" value="#ef4444" class="w-10 h-8 border rounded cursor-pointer">
-          <input type="text" id="badgeColorText" value="#ef4444" maxlength="#7" class="flex-1 border p-2 rounded text-sm font-mono">
+          <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
         </div>
         <div class="mb-3">
           <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
@@ -680,6 +765,7 @@
           <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
           <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
+          <button id="publishBtn" class="publish-btn" onclick="openPublishModal()">🌐 公開設定</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
@@ -804,7 +890,7 @@
 
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
-    const IMAGE_MAX_BASE64_SIZE = 200 * 1024; // ★ 200KBに変更
+    const IMAGE_MAX_BASE64_SIZE = 200 * 1024; // 200KB
 
     let currentUser = null;
     let userRole = null;
@@ -819,6 +905,7 @@
     let pendingUnsubscribe = null;
     let approvedUnsubscribe = null;
     let selfApprovalUnsubscribe = null;
+    let siteStatusUnsubscribe = null;   // ★ サイト公開状態監視
 
     let activeReplyParentId = null;
     let allPostsCache = [];
@@ -830,6 +917,7 @@
     let knownUsersCache = {};
     let pendingCache = {};
     let approvedCache = {};
+    let siteStatusCache = { published: true, messageUrl: '' };   // ★ サイト公開状態
     let myFingerprint = null;
 
     let badgeEditingTarget = null;
@@ -865,6 +953,10 @@
     const banOverlaySub = document.getElementById('banOverlaySub');
     const banOverlayActions = document.getElementById('banOverlayActions');
     const bootOverlay = document.getElementById('bootOverlay');
+    const unpublishedOverlay = document.getElementById('unpublishedOverlay');
+    const unpublishedSub = document.getElementById('unpublishedSub');
+    const unpGoBtn = document.getElementById('unpGoBtn');
+    const publishBtn = document.getElementById('publishBtn');
     let bannerTimer = null;
 
     function canDelete() {
@@ -884,6 +976,9 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canApprove() {
+      return userRole === 'admin' || userRole === 'owner';
+    }
+    function canPublish() {
       return userRole === 'admin' || userRole === 'owner';
     }
 
@@ -1075,6 +1170,36 @@
         true
       );
     }
+
+    // ★ 非公開画面を表示
+    function showUnpublishedOverlay() {
+      if (!siteStatusCache || siteStatusCache.published !== false) {
+        unpublishedOverlay.classList.remove('show');
+        return;
+      }
+      const msgUrl = siteStatusCache.messageUrl || '';
+      unpublishedSub.innerHTML = '現在このサイトは非公開です。<br>もうしばらくお待ちください。';
+      // 「何？」ボタンにURLをセット
+      if (msgUrl) {
+        unpGoBtn.dataset.url = msgUrl;
+        unpGoBtn.style.display = '';
+      } else {
+        unpGoBtn.dataset.url = '';
+        unpGoBtn.style.display = 'none';
+      }
+      unpublishedOverlay.classList.add('show');
+    }
+    function hideUnpublishedOverlay() {
+      unpublishedOverlay.classList.remove('show');
+    }
+
+    // 「何？」ボタン
+    unpGoBtn.addEventListener('click', () => {
+      const url = unpGoBtn.dataset.url;
+      if (url) {
+        try { window.location.href = url; } catch (e) { alert('URLを開けませんでした'); }
+      }
+    });
 
     function checkSelfBan() {
       if (!currentUser) return false;
@@ -1333,8 +1458,10 @@
       if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
       if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
       if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
+      if (siteStatusUnsubscribe) { siteStatusUnsubscribe(); siteStatusUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
       banOverlay.classList.remove('show');
+      hideUnpublishedOverlay();
       document.body.style.background = '';
       showLoginView();
       hideBootOverlay();
@@ -1349,6 +1476,35 @@
       if (email === ROLE_OWNER_EMAIL) return 'owner';
       if (ROLE_VIP_EMAILS.includes(email)) return 'vip';
       return null;
+    }
+
+    // ★ サイト公開状態を監視
+    function initSiteStatusListener() {
+      if (siteStatusUnsubscribe) siteStatusUnsubscribe();
+      const ref0 = ref(db, 'siteStatus');
+      siteStatusUnsubscribe = onValue(ref0, (snap) => {
+        const val = snap.exists() ? snap.val() : { published: true, messageUrl: '' };
+        siteStatusCache = {
+          published: val.published !== false,   // デフォルトは公開
+          messageUrl: val.messageUrl || ''
+        };
+        console.log('サイト公開状態更新:', siteStatusCache);
+
+        // ★ 管理者・主は非公開画面を表示しない
+        if (isCurrentUserProtected()) {
+          hideUnpublishedOverlay();
+          return;
+        }
+
+        // ★ 一般ユーザー・VIPは非公開なら画面を出す
+        if (siteStatusCache.published === false) {
+          showUnpublishedOverlay();
+        } else {
+          hideUnpublishedOverlay();
+        }
+      }, (err) => {
+        console.error('サイト公開状態監視エラー:', err);
+      });
     }
 
     function initCustomBadgesListener() {
@@ -1504,6 +1660,7 @@
         }
         hideBootOverlay();
         showLoginView();
+        hideUnpublishedOverlay();
         return;
       }
 
@@ -1512,12 +1669,15 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
+      // ★ サイト公開状態を先に監視開始
+      initSiteStatusListener();
+
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBAN関連チェックを全スキップ:', user.email);
-
         initBansListener();
         initDeviceBansListener();
         initApprovedListener();
+        hideUnpublishedOverlay();   // 管理者・主は非公開画面を出さない
       } else {
         const isDeviceBanned = await checkAndApplyDeviceBan(user, myFingerprint);
         if (isDeviceBanned) {
@@ -2596,6 +2756,96 @@
       }
     }
 
+    // ★ 公開設定モーダル
+    const publishModal = document.getElementById('publishModal');
+    const publishStatusLabel = document.getElementById('publishStatusLabel');
+    const publishUrlInput = document.getElementById('publishUrlInput');
+    const publishToggleBtn = document.getElementById('publishToggleBtn');
+
+    window.openPublishModal = function() {
+      if (!canPublish()) { alert('公開設定権限がありません。'); return; }
+      // 現在の値を反映
+      publishUrlInput.value = siteStatusCache.messageUrl || '';
+      updatePublishModalUI();
+      publishModal.classList.remove('hidden');
+    };
+
+    function updatePublishModalUI() {
+      const isPublished = siteStatusCache.published !== false;
+      publishStatusLabel.textContent = isPublished ? '🌐 公開中' : '🚫 非公開中';
+      publishStatusLabel.className = isPublished ? 'text-sm font-bold text-green-700' : 'text-sm font-bold text-red-700';
+      publishToggleBtn.textContent = isPublished ? '非公開にする' : '公開する';
+      publishToggleBtn.className = isPublished ? 'publish-btn' : 'publish-btn unpublished';
+    }
+
+    function closePublishModal() {
+      publishModal.classList.add('hidden');
+    }
+
+    document.getElementById('publishCancelBtn').addEventListener('click', closePublishModal);
+    publishModal.addEventListener('click', (e) => {
+      if (e.target.id === 'publishModal') closePublishModal();
+    });
+
+    // URL保存
+    document.getElementById('publishSaveUrlBtn').addEventListener('click', async () => {
+      if (!canPublish()) { alert('公開設定権限がありません。'); return; }
+      const url = publishUrlInput.value.trim();
+
+      // URLチェック（空でもOK）
+      if (url && !/^https?:\/\//i.test(url)) {
+        alert('URLは http:// または https:// で始まる必要があります。');
+        return;
+      }
+
+      try {
+        await update(ref(db, 'siteStatus'), {
+          messageUrl: url,
+          updatedAt: Date.now(),
+          updatedBy: currentUser.email
+        });
+        showBanner('URLを保存しました', false);
+      } catch (err) {
+        console.error('URL保存エラー:', err);
+        showBanner('URL保存失敗: ' + (err.code || err.message), true);
+        alert('URLの保存に失敗しました。');
+      }
+    });
+
+    // 公開/非公開切替
+    publishToggleBtn.addEventListener('click', async () => {
+      if (!canPublish()) { alert('公開設定権限がありません。'); return; }
+      const isPublished = siteStatusCache.published !== false;
+      const newState = !isPublished;
+
+      const url = publishUrlInput.value.trim();
+      if (url && !/^https?:\/\//i.test(url)) {
+        alert('URLは http:// または https:// で始まる必要があります。');
+        return;
+      }
+
+      if (!confirm(
+        newStatus === false
+          ? 'サイトを非公開にします。\n一般ユーザー・VIPの画面に「ちょっと待って！」画面が表示されます。\nよろしいですか？'
+          : 'サイトを公開します。\nよろしいですか？'
+      )) return;
+
+      try {
+        await update(ref(db, 'siteStatus'), {
+          published: newState,
+          messageUrl: url,
+          updatedAt: Date.now(),
+          updatedBy: currentUser.email
+        });
+        showBanner(newState ? 'サイトを公開しました' : 'サイトを非公開にしました', false);
+        closePublishModal();
+      } catch (err) {
+        console.error('公開設定エラー:', err);
+        showBanner('公開設定失敗: ' + (err.code || err.message), true);
+        alert('公開設定に失敗しました。');
+      }
+    });
+
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
       '#16a34a', '#0d9488', '#0284c7', '#1e40af', '#7c3aed',
@@ -3058,6 +3308,7 @@
         const snapKnown = await get(ref(db, 'knownUsers'));
         const snapApproved = await get(ref(db, 'approvedUsers'));
         const snapPending = await get(ref(db, 'pendingUsers'));
+        const snapSite = await get(ref(db, 'siteStatus'));
         const payload = {
           _meta: {
             exportedAt: new Date().toISOString(),
@@ -3070,7 +3321,8 @@
           deviceBans: snapDevBans.exists() ? snapDevBans.val() : {},
           knownUsers: snapKnown.exists() ? snapKnown.val() : {},
           approvedUsers: snapApproved.exists() ? snapApproved.val() : {},
-          pendingUsers: snapPending.exists() ? snapPending.val() : {}
+          pendingUsers: snapPending.exists() ? snapPending.val() : {},
+          siteStatus: snapSite.exists() ? snapSite.val() : {}
         };
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
@@ -3122,6 +3374,7 @@
         let knownUsersData = {};
         let approvedData = {};
         let pendingData = {};
+        let siteStatusData = {};
 
         if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
           threadsData = parsed.threads;
@@ -3131,6 +3384,7 @@
           if (parsed.knownUsers && typeof parsed.knownUsers === 'object') knownUsersData = parsed.knownUsers;
           if (parsed.approvedUsers && typeof parsed.approvedUsers === 'object') approvedData = parsed.approvedUsers;
           if (parsed.pendingUsers && typeof parsed.pendingUsers === 'object') pendingData = parsed.pendingUsers;
+          if (parsed.siteStatus && typeof parsed.siteStatus === 'object') siteStatusData = parsed.siteStatus;
         } else if (parsed && typeof parsed === 'object') {
           threadsData = parsed;
         } else {
@@ -3168,6 +3422,9 @@
         await set(ref(db, 'knownUsers'), knownUsersData);
         await set(ref(db, 'approvedUsers'), approvedData);
         await set(ref(db, 'pendingUsers'), pendingData);
+        if (Object.keys(siteStatusData).length > 0) {
+          await set(ref(db, 'siteStatus'), siteStatusData);
+        }
 
         showBanner('復元が完了しました', false);
         alert('復元が完了しました。');
@@ -3189,6 +3446,7 @@
       if (pendingUnsubscribe) pendingUnsubscribe();
       if (approvedUnsubscribe) approvedUnsubscribe();
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
+      if (siteStatusUnsubscribe) siteStatusUnsubscribe();
     });
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
