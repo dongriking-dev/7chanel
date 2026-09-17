@@ -823,7 +823,9 @@
 
     let intentionalSignOut = false;
     let userApproved = false;
-    let redirectedToLogin = false;
+
+    // ★ 「about:blankに強制置換」フラグ
+    let forcedOut = false;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -999,62 +1001,75 @@
       bootOverlay.classList.add('hidden');
     }
 
-    // ★ BAN画面
-    function forceExit(msg, sub, showSwitchButton) {
-      banOverlayMsg.textContent = msg || 'アクセスが拒否されました';
-      banOverlaySub.innerHTML = sub || '';
-      if (showSwitchButton) {
-        banOverlayActions.style.display = 'flex';
-      } else {
-        banOverlayActions.style.display = 'none';
-      }
-      banOverlay.classList.add('show');
-      document.body.style.background = '#000';
-      try { window.open('', '_self').close(); } catch (e) {}
-      try { window.close(); } catch (e) {}
-      setTimeout(() => {
-        try { window.location.replace('about:blank'); } catch (e) {}
-      }, 200);
-      setInterval(() => {
-        try { window.open('', '_self').close(); } catch (e) {}
-        try { window.close(); } catch (e) {}
-      }, 800);
-      setInterval(() => {
-        banOverlay.classList.add('show');
-        document.body.style.background = '#000';
-      }, 300);
-    }
+    // ============================================================
+    // ★ 強制退場（about:blank に置換 + タブを閉じる試行）
+    // ============================================================
+    function forceCloseTab(reason, sub, loginSiteUrl) {
+      if (forcedOut) return;
+      forcedOut = true;
 
-    function executeBan() {
-      forceExit(
-        'アクセスが拒否されました',
-        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
-        true
-      );
-    }
-
-    // ★ 未ログイン・未承認時に強制ログインサイトへ誘導
-    function forceToLoginSite(reason) {
-      banOverlayMsg.textContent = 'ログインが必要です';
-      banOverlaySub.innerHTML = reason +
-        '<br><br>' +
-        '<a href="' + LOGIN_SITE_URL + '" ' +
-        'style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;' +
-        'border-radius:6px;text-decoration:none;font-weight:bold;margin-top:8px;font-size:14px;">' +
-        'ログインサイトへ →</a>' +
-        '<br><br>' +
-        '<small style="color:#9ca3af;">自動で移動しない場合は上のボタンを押してください</small>';
+      // 1. 全画面黒オーバーレイ（一瞬だけ表示）
+      banOverlayMsg.textContent = reason || 'アクセスできません';
+      banOverlaySub.innerHTML = (sub || '') +
+        (loginSiteUrl ? '<br><br><a href="' + loginSiteUrl + '" ' +
+          'style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;' +
+          'border-radius:6px;text-decoration:none;font-weight:bold;margin-top:8px;font-size:14px;">' +
+          'ログインサイトへ →</a>' : '') +
+        '<br><br><small style="color:#9ca3af;">このタブはまもなく閉じられます...</small>';
       banOverlayActions.style.display = 'none';
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
 
-      // 1.5秒後に自動でリダイレクト
-      if (!redirectedToLogin) {
-        redirectedToLogin = true;
-        setTimeout(() => {
+      // 2. タブを閉じる試行（多段）
+      try { window.open('', '_self').close(); } catch (e) {}
+      try { window.close(); } catch (e) {}
+
+      // 3. about:blank に置換（少し遅延させて、オーバーレイが見えるように）
+      setTimeout(() => {
+        try { window.location.replace('about:blank'); } catch (e) {}
+      }, 250);
+
+      // 4. タブを閉じる試行を繰り返す
+      setInterval(() => {
+        try { window.open('', '_self').close(); } catch (e) {}
+        try { window.close(); } catch (e) {}
+      }, 800);
+    }
+
+    // ★ BAN
+    function executeBan() {
+      forceCloseTab(
+        'アクセスが拒否されました',
+        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
+        LOGIN_SITE_URL
+      );
+    }
+
+    // ★ 未ログイン・未承認 → 強制ログインサイトへ（about:blank方式）
+    function forceToLoginSite(reason) {
+      // まずログインサイトへリダイレクトする方式
+      // （タブを閉じるのではなく、ログインサイトに飛ばす）
+      if (forcedOut) return;
+      forcedOut = true;
+
+      // 黒画面を一瞬見せる
+      banOverlayMsg.textContent = 'ログインが必要です';
+      banOverlaySub.innerHTML = reason +
+        '<br><br><small style="color:#9ca3af;">ログインサイトへ移動します...</small>';
+      banOverlayActions.style.display = 'none';
+      banOverlay.classList.add('show');
+      document.body.style.background = '#000';
+
+      // 1秒後にログインサイトへ強制リダイレクト
+      // （URLが置き換わるので、戻るボタンでも戻れない）
+      setTimeout(() => {
+        try {
           window.location.replace(LOGIN_SITE_URL);
-        }, 1500);
-      }
+        } catch (e) {
+          // 失敗したらabout:blankへ
+          try { window.location.replace('about:blank'); } catch (e) {}
+        }
+      }, 800);
     }
 
     function checkSelfBan() {
@@ -1185,22 +1200,22 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
+        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
         e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
+        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        forceExit('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', false);
+        forceCloseTab('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', null);
         return false;
       }
       if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
+        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
         return false;
       }
     });
@@ -1208,7 +1223,6 @@
     document.getElementById('switchAccountBtn').addEventListener('click', async () => {
       intentionalSignOut = true;
       try { await signOut(auth); } catch (e) { console.error(e); }
-      // ログインサイトへ移動
       window.location.href = LOGIN_SITE_URL;
     });
 
@@ -1355,10 +1369,11 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (intentionalSignOut) return;
+      if (forcedOut) return;
 
       currentUser = user;
 
-      // ★ 未ログイン → 強制ログインサイト
+      // ★ 未ログイン → 強制ログインサイトへ（about:blankで閉じるのではなく、ログインサイトへ飛ばす）
       if (!user) {
         forceToLoginSite('このサイトはログイン済みのユーザーのみ利用できます。<br>ログインサイトでGoogleログインしてください。');
         return;
@@ -1385,7 +1400,7 @@
         console.warn('承認済みリスト取得スキップ:', e.message);
       }
 
-      // ★ 管理者・主・VIPは無条件でOK
+      // 管理者・主・VIPは無条件OK
       const isAdminUser = (userRole === 'admin' || userRole === 'owner' || userRole === 'vip');
 
       // 未承認 かつ 管理者でもVIPでもない → 既存ユーザーなら自動承認
@@ -1393,7 +1408,6 @@
         try {
           const knownSnap = await get(ref(db, `knownUsers/${user.uid}`));
           if (knownSnap.exists()) {
-            // 既存ユーザー → 自動承認
             await set(ref(db, `approvedUsers/${user.uid}`), {
               email: user.email || '',
               displayName: user.displayName || '',
