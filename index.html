@@ -485,7 +485,7 @@
     </div>
   </div>
 
-  <!-- BAN/承認待ち画面 -->
+  <!-- BAN画面 -->
   <div id="banOverlay">
     <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
     <div class="ban-sub" id="banOverlaySub"></div>
@@ -729,7 +729,7 @@
       query, orderByChild, get, update
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+      getAuth, GoogleAuthProvider, signOut, onAuthStateChanged,
       setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -752,9 +752,6 @@
     setPersistence(auth, browserLocalPersistence).catch((err) => {
       console.warn('永続化設定失敗:', err);
     });
-
-    // ★ ログインサイトのURL（絶対URL）
-    const LOGIN_SITE_URL = 'https://dongriking-dev.github.io/login/index.html';
 
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
@@ -972,6 +969,16 @@
       bootOverlay.classList.add('hidden');
     }
 
+    // ★ 未ログイン・未承認 → about:blank に置き換える
+    function blankOut() {
+      try {
+        window.location.replace('about:blank');
+      } catch (e) {
+        document.body.innerHTML = '';
+        document.body.style.background = '#000';
+      }
+    }
+
     function executeBan() {
       banOverlayMsg.textContent = 'アクセスが拒否されました';
       banOverlaySub.innerHTML = 'このアカウントはBANされています。';
@@ -1143,11 +1150,6 @@
       }
     });
 
-    // ★ 未ログイン・未承認 → ログインサイトへリダイレクト
-    function goToLoginSite() {
-      window.location.replace(LOGIN_SITE_URL);
-    }
-
     function initCustomBadgesListener() {
       if (badgesUnsubscribe) badgesUnsubscribe();
       const badgesRef = ref(db, 'customBadges');
@@ -1287,7 +1289,7 @@
       return null;
     }
 
-    // ★ メインの認証状態監視
+    // ★ 認証状態監視
     onAuthStateChanged(auth, async (user) => {
       if (intentionalSignOut) {
         currentUser = null;
@@ -1297,10 +1299,10 @@
 
       currentUser = user;
 
-      // ★ 未ログイン → ログインサイトへ
+      // ★ 未ログイン → about:blank
       if (!user) {
         userRole = null;
-        goToLoginSite();
+        blankOut();
         return;
       }
 
@@ -1325,9 +1327,9 @@
       const isApproved = checkSelfApproval();
 
       if (!isApproved) {
-        // ★ 未承認 → ログインサイトへ
+        // ★ 未承認 → about:blank
         await requestApproval();
-        goToLoginSite();
+        blankOut();
         return;
       }
 
@@ -1375,7 +1377,7 @@
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
           requestApproval();
-          goToLoginSite();
+          blankOut();
         }
       });
 
@@ -2837,7 +2839,7 @@
       }
     });
 
-    // ★ ログアウト → ログインサイトへ
+    // ★ ログアウト → about:blank
     window.doLogout = async function() {
       intentionalSignOut = true;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
@@ -2850,8 +2852,7 @@
       if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
       if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
       try { await signOut(auth); } catch (e) { console.error(e); }
-      // ★ ログインサイトへリダイレクト
-      window.location.replace(LOGIN_SITE_URL);
+      blankOut();
     };
 
     window.addEventListener('beforeunload', () => {
