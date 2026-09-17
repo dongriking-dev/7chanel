@@ -508,7 +508,7 @@
     </div>
   </div>
 
-  <!-- BAN/承認待ち/未ログイン画面 -->
+  <!-- BAN/未承認画面 -->
   <div id="banOverlay">
     <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
     <div class="ban-sub" id="banOverlaySub"></div>
@@ -828,8 +828,9 @@
     let intentionalSignOut = false;
     let userApproved = false;
 
-    // ★ ブラックアウト済みフラグ
-    let blackedOut = false;
+    // ★ ブラックアウト済みフラグ（BANと未承認で共有しない）
+    let bannedOut = false;
+    let pendingOut = false;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -1006,17 +1007,22 @@
     }
 
     // ============================================================
-    // ★ BAN画面（ログインサイトへボタン付き）
+    // ★ BAN画面（BAN専用：ログインサイトへボタン付き）
     // ============================================================
     function executeBan() {
+      if (bannedOut) return;
+      bannedOut = true;
+
       banOverlayMsg.textContent = 'アクセスが拒否されました';
       banOverlaySub.innerHTML = 'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。';
       banOverlayActions.style.display = 'flex';
       banOverlayActions.innerHTML = `
-        <a href="${LOGIN_SITE_URL}" class="btn-goto-login">別のGoogleアカウントでログイン</a>
+        <a href="${LOGIN_SITE_URL}" class="btn-goto-login">ログインサイトへ →</a>
       `;
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
+
+      // タブを閉じる試行
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
       setInterval(() => {
@@ -1026,18 +1032,18 @@
     }
 
     // ============================================================
-    // ★ 未ログイン・未承認時：about:blank に置換＋ログインサイトボタン
-    //    （自動リダイレクトはしない → ループ防止）
+    // ★ 未承認画面（BANとは別：ログインサイトへボタン付き）
+    //   自動リダイレクトはしない（ループ防止）
     // ============================================================
-    function blackoutToLogin(reason) {
-      if (blackedOut) return;
-      blackedOut = true;
+    function showPendingOverlay(reason) {
+      if (pendingOut) return;
+      pendingOut = true;
 
-      banOverlayMsg.textContent = 'アクセスできません';
+      banOverlayMsg.textContent = '承認待ち';
       banOverlaySub.innerHTML = reason +
         '<br><br>' +
         '<small style="color:#9ca3af;">※この画面からは自動で移動しません。<br>' +
-        '下のボタンからログインしてください。</small>';
+        '下のボタンからログインサイトで承認状況を確認してください。</small>';
       banOverlayActions.style.display = 'flex';
       banOverlayActions.innerHTML = `
         <a href="${LOGIN_SITE_URL}" class="btn-goto-login">ログインサイトへ →</a>
@@ -1045,13 +1051,8 @@
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
 
-      // タブを閉じる試行（多段）
-      try { window.open('', '_self').close(); } catch (e) {}
-      try { window.close(); } catch (e) {}
-      setInterval(() => {
-        try { window.open('', '_self').close(); } catch (e) {}
-        try { window.close(); } catch (e) {}
-      }, 800);
+      // ★ 未承認時はタブを閉じない（ユーザーがログインサイトへ行けるように）
+      // 閉じるとログインサイトに行けなくなるため
     }
 
     // BAN判定
@@ -1183,28 +1184,31 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
-        blackoutToLogin('開発者ツールの使用は禁止されています。');
+        executeBan();
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
         e.preventDefault();
-        blackoutToLogin('開発者ツールの使用は禁止されています。');
+        executeBan();
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        blackoutToLogin('ソースコードの表示は禁止されています。');
+        executeBan();
         return false;
       }
       if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        blackoutToLogin('開発者ツールの使用は禁止されています。');
+        executeBan();
         return false;
       }
     });
 
+    // ★ ログアウト：フラグをリセットしてからログインサイトへ
     window.doLogout = async function() {
       intentionalSignOut = true;
+
+      // 購読解除
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
       if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
@@ -1214,7 +1218,18 @@
       if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
       if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
       if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
+
+      // Firebaseからログアウト
       try { await signOut(auth); } catch (e) { console.error(e); }
+
+      // ★ フラグをリセット（重要：これがないと再ログイン時にBAN扱いになる）
+      bannedOut = false;
+      pendingOut = false;
+      userApproved = false;
+      currentUser = null;
+      userRole = null;
+
+      // ログインサイトへ
       window.location.href = LOGIN_SITE_URL;
     };
 
@@ -1344,15 +1359,33 @@
       }
     }
 
+    // ★ 承認申請を送信（pendingUsersに登録 → 管理者・主に通知）
+    async function requestApproval() {
+      if (!currentUser) return;
+      try {
+        const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
+        if (approvedSnap.exists()) return;
+
+        await set(ref(db, `pendingUsers/${currentUser.uid}`), {
+          email: currentUser.email || '',
+          displayName: currentUser.displayName || '',
+          requestedAt: Date.now(),
+          fingerprint: myFingerprint || ''
+        });
+        console.log('承認申請を送信:', currentUser.email);
+      } catch (e) {
+        console.warn('承認申請スキップ:', e.message);
+      }
+    }
+
     onAuthStateChanged(auth, async (user) => {
       if (intentionalSignOut) return;
-      if (blackedOut) return;
 
       currentUser = user;
 
-      // ★ 未ログイン → 黒画面で待機（自動でログインサイトに飛ばさない）
+      // ★ 未ログイン → 未承認画面（黒画面）
       if (!user) {
-        blackoutToLogin('このサイトはログイン済みのユーザーのみ利用できます。<br>下のボタンからログインサイトに移動してください。');
+        showPendingOverlay('このサイトはログイン済みのユーザーのみ利用できます。<br>下のボタンからログインサイトに移動してください。');
         return;
       }
 
@@ -1401,14 +1434,23 @@
         }
       }
 
-      // ★ 承認されていない → 黒画面で待機（自動でログインサイトに飛ばさない）
+      // ★ 承認されていない → 承認申請を送信 + 未承認画面
       if (!isAdminUser && !approvedCache[user.uid]) {
-        blackoutToLogin('このアカウントはまだ承認されていません。<br>ログインサイトで承認状況を確認してください。');
+        // 承認申請を送信（管理者・主の通知に表示される）
+        await requestApproval();
+        // 未承認画面（黒画面 + ログインサイトへボタン）
+        showPendingOverlay(
+          'このアカウントはまだ承認されていません。<br>' +
+          '承認申請を管理者・主に送信しました。<br>' +
+          '承認されるまでお待ちください。'
+        );
         return;
       }
 
       // ===== 以下、承認済みユーザーの処理 =====
       userApproved = true;
+      bannedOut = false;
+      pendingOut = false;
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1453,7 +1495,12 @@
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
           userApproved = false;
-          blackoutToLogin('承認が取り消されました。<br>ログインサイトで承認状況を確認してください。');
+          // 承認が取り消された場合も未承認画面
+          requestApproval();
+          showPendingOverlay(
+            '承認が取り消されました。<br>' +
+            '再度、管理者・主に承認申請を送信しました。'
+          );
         }
       });
 
