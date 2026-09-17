@@ -532,7 +532,7 @@
         <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
         <div class="flex items-center gap-2 mb-3">
           <input type="color" id="badgeColorPicker" value="#ef4444" class="w-10 h-8 border rounded cursor-pointer">
-          <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
+          <input type="text" id="badgeColorText" value="#ef4444" maxlength="#7" class="flex-1 border p-2 rounded text-sm font-mono">
         </div>
         <div class="mb-3">
           <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
@@ -700,7 +700,7 @@
           <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
           <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
           <div>
-            <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB、任意）:</label>
+            <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大200KB、任意）:</label>
             <input type="file" id="threadFileInput" accept="image/*" class="text-xs text-gray-600 w-full">
             <div class="preview-box" id="threadPreviewBox">
               <img id="threadPreviewImg" alt="プレビュー">
@@ -738,7 +738,7 @@
           <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex-1 min-w-[200px]">
-              <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB）:</label>
+              <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大200KB）:</label>
               <input type="file" id="fileInput" accept="image/*" class="text-xs text-gray-600 w-full">
               <div class="preview-box" id="postPreviewBox">
                 <img id="postPreviewImg" alt="プレビュー">
@@ -804,7 +804,7 @@
 
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
-    const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
+    const IMAGE_MAX_BASE64_SIZE = 200 * 1024; // ★ 200KBに変更
 
     let currentUser = null;
     let userRole = null;
@@ -887,13 +887,11 @@
       return userRole === 'admin' || userRole === 'owner';
     }
 
-    // ★ 保護対象メール判定（管理者・主）
     function isProtectedEmail(email) {
       if (!email) return false;
       const e = email.toLowerCase().trim();
       return e === ROLE_ADMIN_EMAIL.toLowerCase() || e === ROLE_OWNER_EMAIL.toLowerCase();
     }
-    // ★ UIDからロールを判定（knownUsers / approvedUsers から）
     function getRoleByUid(uid) {
       if (knownUsersCache[uid] && knownUsersCache[uid].role) return knownUsersCache[uid].role;
       if (approvedCache[uid] && approvedCache[uid].email) {
@@ -901,7 +899,6 @@
       }
       return null;
     }
-    // ★ UIDが保護対象かどうか（ロール or メール逆引きで判定）
     function isProtectedUid(uid) {
       if (!uid) return false;
       const r = getRoleByUid(uid);
@@ -912,7 +909,6 @@
       if (u2 && u2.email && isProtectedEmail(u2.email)) return true;
       return false;
     }
-    // ★ 現在ログイン中のユーザーが保護対象かどうか
     function isCurrentUserProtected() {
       if (!currentUser) return false;
       if (userRole === 'admin' || userRole === 'owner') return true;
@@ -1083,7 +1079,6 @@
     function checkSelfBan() {
       if (!currentUser) return false;
 
-      // ★★★ 管理者・主は何があってもBANしない（最優先で除外）
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBANチェックをスキップ:', currentUser.email);
         return false;
@@ -1098,11 +1093,9 @@
       return false;
     }
 
-    // ★★★ 端末BAN連鎖：BAN済み端末からのアクセスなら、このアカウントも自動でBAN登録
     async function checkAndApplyDeviceBan(user, currentFingerprint) {
       if (!user || !currentFingerprint) return false;
 
-      // ★★★ 管理者・主は何があってもBANしない（最優先で除外）
       const role = roleFromEmail(user.email);
       if (role === 'admin' || role === 'owner') {
         console.log('管理者/主のため端末BAN連鎖チェックをスキップ:', user.email);
@@ -1519,7 +1512,6 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
-      // ★★★ 管理者・主は BAN 関連の全チェックをスキップ
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBAN関連チェックを全スキップ:', user.email);
 
@@ -1527,14 +1519,12 @@
         initDeviceBansListener();
         initApprovedListener();
       } else {
-        // 端末BAN連鎖チェック（UID/メールBANより先に実行）
         const isDeviceBanned = await checkAndApplyDeviceBan(user, myFingerprint);
         if (isDeviceBanned) {
           executeBan();
           return;
         }
 
-        // 通常のBANチェック（UID・メール・デバイス）
         if (checkSelfBan()) return;
 
         initBansListener();
@@ -2072,7 +2062,6 @@
       if (!canBan()) { alert('BAN権限がありません。'); return; }
       if (!uid && !email) return;
 
-      // ★★★ 管理者・主は絶対にBANさせない
       if (isProtectedEmail(email)) {
         alert('管理者および主はBANできません。');
         return;
@@ -2081,7 +2070,6 @@
         alert('管理者および主はBANできません。');
         return;
       }
-      // UIDが保護対象の可能性がある場合、knownUsers/approvedUsersからメールを取得して再チェック
       if (uid) {
         const u1 = knownUsersCache[uid];
         if (u1 && u1.email && isProtectedEmail(u1.email)) {
@@ -2277,7 +2265,6 @@
         return;
       }
 
-      // ★★★ 管理者・主は絶対にBANさせない
       if (isProtectedEmail(email)) {
         alert('管理者および主はBANできません。');
         return;
@@ -2555,7 +2542,6 @@
     async function rejectUser(uid, p) {
       if (!canApprove()) { alert('承認権限がありません。'); return; }
 
-      // ★★★ 管理者・主は絶対に拒否させない（念のため）
       if (isProtectedEmail(p.email)) {
         alert('管理者および主は拒否できません。');
         return;
@@ -3151,14 +3137,11 @@
           throw new Error('不正なバックアップファイル形式です');
         }
 
-        // ★ 復元時も管理者・主のUID/メール/デバイスBANを自動削除
         try {
-          // 管理者・主のメールキーを削除
           const adminEmailKey = emailToKey(ROLE_ADMIN_EMAIL);
           const ownerEmailKey = emailToKey(ROLE_OWNER_EMAIL);
           if (bansData && adminEmailKey) delete bansData[adminEmailKey];
           if (bansData && ownerEmailKey) delete bansData[ownerEmailKey];
-          // UIDベースのbansも削除（knownUsers/approvedUsersからUIDを逆引き）
           if (knownUsersData) {
             Object.entries(knownUsersData).forEach(([uid, u]) => {
               if (u && u.email && isProtectedEmail(u.email)) {
