@@ -408,6 +408,12 @@
     #banOverlay .btn-switch-account:hover {
       background: #1d4ed8;
     }
+    #banOverlay .btn-goto-login {
+      background: #2563eb; color: #fff;
+    }
+    #banOverlay .btn-goto-login:hover {
+      background: #1d4ed8;
+    }
 
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
@@ -506,9 +512,7 @@
   <div id="banOverlay">
     <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
     <div class="ban-sub" id="banOverlaySub"></div>
-    <div class="ban-actions" id="banOverlayActions" style="display:none;">
-      <button class="btn-switch-account" id="switchAccountBtn">別のGoogleアカウントでログイン</button>
-    </div>
+    <div class="ban-actions" id="banOverlayActions" style="display:none;"></div>
   </div>
 
   <div id="statusBanner" class="bg-red-600 text-white"></div>
@@ -824,8 +828,8 @@
     let intentionalSignOut = false;
     let userApproved = false;
 
-    // ★ 「about:blankに強制置換」フラグ
-    let forcedOut = false;
+    // ★ ブラックアウト済みフラグ
+    let blackedOut = false;
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -1002,76 +1006,55 @@
     }
 
     // ============================================================
-    // ★ 強制退場（about:blank に置換 + タブを閉じる試行）
+    // ★ BAN画面（ログインサイトへボタン付き）
     // ============================================================
-    function forceCloseTab(reason, sub, loginSiteUrl) {
-      if (forcedOut) return;
-      forcedOut = true;
-
-      // 1. 全画面黒オーバーレイ（一瞬だけ表示）
-      banOverlayMsg.textContent = reason || 'アクセスできません';
-      banOverlaySub.innerHTML = (sub || '') +
-        (loginSiteUrl ? '<br><br><a href="' + loginSiteUrl + '" ' +
-          'style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;' +
-          'border-radius:6px;text-decoration:none;font-weight:bold;margin-top:8px;font-size:14px;">' +
-          'ログインサイトへ →</a>' : '') +
-        '<br><br><small style="color:#9ca3af;">このタブはまもなく閉じられます...</small>';
-      banOverlayActions.style.display = 'none';
+    function executeBan() {
+      banOverlayMsg.textContent = 'アクセスが拒否されました';
+      banOverlaySub.innerHTML = 'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。';
+      banOverlayActions.style.display = 'flex';
+      banOverlayActions.innerHTML = `
+        <a href="${LOGIN_SITE_URL}" class="btn-goto-login">別のGoogleアカウントでログイン</a>
+      `;
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
-
-      // 2. タブを閉じる試行（多段）
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
-
-      // 3. about:blank に置換（少し遅延させて、オーバーレイが見えるように）
-      setTimeout(() => {
-        try { window.location.replace('about:blank'); } catch (e) {}
-      }, 250);
-
-      // 4. タブを閉じる試行を繰り返す
       setInterval(() => {
         try { window.open('', '_self').close(); } catch (e) {}
         try { window.close(); } catch (e) {}
       }, 800);
     }
 
-    // ★ BAN
-    function executeBan() {
-      forceCloseTab(
-        'アクセスが拒否されました',
-        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
-        LOGIN_SITE_URL
-      );
-    }
+    // ============================================================
+    // ★ 未ログイン・未承認時：about:blank に置換＋ログインサイトボタン
+    //    （自動リダイレクトはしない → ループ防止）
+    // ============================================================
+    function blackoutToLogin(reason) {
+      if (blackedOut) return;
+      blackedOut = true;
 
-    // ★ 未ログイン・未承認 → 強制ログインサイトへ（about:blank方式）
-    function forceToLoginSite(reason) {
-      // まずログインサイトへリダイレクトする方式
-      // （タブを閉じるのではなく、ログインサイトに飛ばす）
-      if (forcedOut) return;
-      forcedOut = true;
-
-      // 黒画面を一瞬見せる
-      banOverlayMsg.textContent = 'ログインが必要です';
+      banOverlayMsg.textContent = 'アクセスできません';
       banOverlaySub.innerHTML = reason +
-        '<br><br><small style="color:#9ca3af;">ログインサイトへ移動します...</small>';
-      banOverlayActions.style.display = 'none';
+        '<br><br>' +
+        '<small style="color:#9ca3af;">※この画面からは自動で移動しません。<br>' +
+        '下のボタンからログインしてください。</small>';
+      banOverlayActions.style.display = 'flex';
+      banOverlayActions.innerHTML = `
+        <a href="${LOGIN_SITE_URL}" class="btn-goto-login">ログインサイトへ →</a>
+      `;
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
 
-      // 1秒後にログインサイトへ強制リダイレクト
-      // （URLが置き換わるので、戻るボタンでも戻れない）
-      setTimeout(() => {
-        try {
-          window.location.replace(LOGIN_SITE_URL);
-        } catch (e) {
-          // 失敗したらabout:blankへ
-          try { window.location.replace('about:blank'); } catch (e) {}
-        }
+      // タブを閉じる試行（多段）
+      try { window.open('', '_self').close(); } catch (e) {}
+      try { window.close(); } catch (e) {}
+      setInterval(() => {
+        try { window.open('', '_self').close(); } catch (e) {}
+        try { window.close(); } catch (e) {}
       }, 800);
     }
 
+    // BAN判定
     function checkSelfBan() {
       if (!currentUser) return false;
       if (bansCache && bansCache[currentUser.uid]) { executeBan(); return true; }
@@ -1200,30 +1183,24 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
-        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
+        blackoutToLogin('開発者ツールの使用は禁止されています。');
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
         e.preventDefault();
-        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
+        blackoutToLogin('開発者ツールの使用は禁止されています。');
         return false;
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        forceCloseTab('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', null);
+        blackoutToLogin('ソースコードの表示は禁止されています。');
         return false;
       }
       if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
-        forceCloseTab('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', null);
+        blackoutToLogin('開発者ツールの使用は禁止されています。');
         return false;
       }
-    });
-
-    document.getElementById('switchAccountBtn').addEventListener('click', async () => {
-      intentionalSignOut = true;
-      try { await signOut(auth); } catch (e) { console.error(e); }
-      window.location.href = LOGIN_SITE_URL;
     });
 
     window.doLogout = async function() {
@@ -1369,13 +1346,13 @@
 
     onAuthStateChanged(auth, async (user) => {
       if (intentionalSignOut) return;
-      if (forcedOut) return;
+      if (blackedOut) return;
 
       currentUser = user;
 
-      // ★ 未ログイン → 強制ログインサイトへ（about:blankで閉じるのではなく、ログインサイトへ飛ばす）
+      // ★ 未ログイン → 黒画面で待機（自動でログインサイトに飛ばさない）
       if (!user) {
-        forceToLoginSite('このサイトはログイン済みのユーザーのみ利用できます。<br>ログインサイトでGoogleログインしてください。');
+        blackoutToLogin('このサイトはログイン済みのユーザーのみ利用できます。<br>下のボタンからログインサイトに移動してください。');
         return;
       }
 
@@ -1424,9 +1401,9 @@
         }
       }
 
-      // ★ 承認されていない → 強制ログインサイトへ
+      // ★ 承認されていない → 黒画面で待機（自動でログインサイトに飛ばさない）
       if (!isAdminUser && !approvedCache[user.uid]) {
-        forceToLoginSite('このアカウントはまだ承認されていません。<br>ログインサイトで承認状況を確認してください。');
+        blackoutToLogin('このアカウントはまだ承認されていません。<br>ログインサイトで承認状況を確認してください。');
         return;
       }
 
@@ -1476,7 +1453,7 @@
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
           userApproved = false;
-          forceToLoginSite('承認が取り消されました。<br>ログインサイトで承認状況を確認してください。');
+          blackoutToLogin('承認が取り消されました。<br>ログインサイトで承認状況を確認してください。');
         }
       });
 
