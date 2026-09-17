@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>69ch</title>
+  <title>シクナイちゃんねる</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -375,6 +375,11 @@
     }
     .pending-row .reject-btn:hover { background: #b91c1c; }
 
+    #siteRules { transition: box-shadow 0.2s; }
+    #siteRules.collapsed #rulesContent { display: none; }
+    #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
+    #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
+
     #banOverlay {
       position: fixed; inset: 0; background: #000;
       z-index: 99999; display: none;
@@ -407,39 +412,11 @@
     #banOverlay .btn-switch-account:hover {
       background: #1d4ed8;
     }
-
-    #siteRules { transition: box-shadow 0.2s; }
-    #siteRules.collapsed #rulesContent { display: none; }
-    #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
-    #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
-
-    #bootOverlay {
-      position: fixed; inset: 0; background: #111827;
-      z-index: 99998; display: flex;
-      align-items: center; justify-content: center;
-      color: #fff; font-family: sans-serif;
-      flex-direction: column; gap: 16px;
-    }
-    #bootOverlay.hidden { display: none; }
-    #bootOverlay .boot-msg {
-      font-size: 14px; color: #9ca3af;
-    }
-    #bootOverlay .boot-spinner {
-      width: 40px; height: 40px;
-      border: 3px solid #374151;
-      border-top-color: #ef4444;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- 起動時ローディング -->
-  <div id="bootOverlay">
-    <div class="boot-spinner"></div>
-    <div class="boot-msg">アカウントを確認しています...</div>
-  </div>
+  <div id="statusBanner" class="bg-red-600 text-white"></div>
 
   <!-- サイトルール -->
   <div id="siteRules" class="collapsed bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
@@ -501,35 +478,125 @@
     </div>
   </div>
 
-  <!-- BAN/承認待ち画面 -->
-  <div id="banOverlay">
-    <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
-    <div class="ban-sub" id="banOverlaySub"></div>
-    <div class="ban-actions" id="banOverlayActions" style="display:none;">
-      <button class="btn-switch-account" id="switchAccountBtn">別のGoogleアカウントでログイン</button>
+  <!-- ヘッダー -->
+  <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
+    <div>
+      <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
+      <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
+        <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
+        <span id="connText">接続中...</span>
+        <span id="roleBadgeContainer"></span>
+        <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分の投稿に付くバッジを他の人に見せるかどうか">
+          <input type="checkbox" id="badgeToggle" checked>
+          <span>バッジを他の人に見せる</span>
+        </label>
+        <label id="emailToggleWrap" class="badge-toggle-wrap hidden" title="投稿者のメールアドレスを表示するかどうか">
+          <input type="checkbox" id="emailToggle" checked>
+          <span>メールアドレスを表示</span>
+        </label>
+      </p>
     </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <div id="adminControls" class="hidden flex gap-2 flex-wrap">
+        <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
+        <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
+        <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
+        <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
+        <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
+        <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
+      </div>
+      <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
+      <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
+        ログアウト
+      </button>
+      <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
+        ← スレッド一覧に戻る
+      </button>
+    </div>
+  </header>
+
+  <!-- View 1: スレッド一覧 -->
+  <div id="threadListView">
+    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+      <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
+      <form id="createThreadForm" class="space-y-3">
+        <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
+        <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB、任意）:</label>
+          <input type="file" id="threadFileInput" accept="image/*" class="text-xs text-gray-600 w-full">
+          <div class="preview-box" id="threadPreviewBox">
+            <img id="threadPreviewImg" alt="プレビュー">
+            <div class="preview-info" id="threadPreviewInfo"></div>
+          </div>
+        </div>
+        <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
+          スレッドを立てる
+        </button>
+      </form>
+    </section>
+
+    <main>
+      <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
+      <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
+        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
+      </div>
+    </main>
   </div>
 
-  <div id="statusBanner" class="bg-red-600 text-white"></div>
+  <!-- View 2: スレッド詳細 -->
+  <div id="threadDetailView" class="hidden">
+    <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm flex justify-between items-start gap-3 flex-wrap">
+      <div class="flex-1 min-w-0">
+        <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
+        <p id="currentThreadDate" class="text-xs text-gray-500"></p>
+        <p id="currentThreadAuthor" class="text-xs text-gray-500 mt-1"></p>
+      </div>
+      <button id="deleteThreadBtn" class="delete-btn hidden" onclick="deleteCurrentThread()">スレッドを削除</button>
+    </div>
 
-  <!-- バッジ管理モーダル -->
+    <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
+      <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
+      <form id="postForm" class="space-y-3">
+        <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB）:</label>
+            <input type="file" id="fileInput" accept="image/*" class="text-xs text-gray-600 w-full">
+            <div class="preview-box" id="postPreviewBox">
+              <img id="postPreviewImg" alt="プレビュー">
+              <div class="preview-info" id="postPreviewInfo"></div>
+            </div>
+          </div>
+          <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
+            書き込む
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <main>
+      <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
+      <div id="postsContainer" class="post-tree">
+        <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- モーダル群 -->
   <div id="badgeModal" class="modal-backdrop hidden">
     <div class="modal-content">
       <h3 class="text-lg font-bold text-gray-800 mb-1">バッジ管理</h3>
-      <p class="text-xs text-gray-500 mb-4">
-        対象: <span id="badgeTargetEmail" class="admin-email"></span>
-      </p>
+      <p class="text-xs text-gray-500 mb-4">対象: <span id="badgeTargetEmail" class="admin-email"></span></p>
       <div class="mb-3">
         <p class="text-xs font-bold text-gray-600 mb-2">現在のバッジ:</p>
-        <div id="badgeListContainer">
-          <p class="text-xs text-gray-400">（なし）</p>
-        </div>
+        <div id="badgeListContainer"><p class="text-xs text-gray-400">（なし）</p></div>
       </div>
       <button id="addBadgeBtn" class="add-badge-btn w-full mb-3">＋ 新しいバッジを追加</button>
       <div id="badgeEditor" class="editor-box hidden">
         <p class="text-xs font-bold text-gray-700 mb-2" id="badgeEditorTitle">新しいバッジ</p>
         <label class="block text-xs text-gray-600 mb-1">バッジ名（最大12文字）:</label>
-        <input type="text" id="badgeLabelInput" maxlength="12" placeholder="例: 常連 / 荒らし / 神" class="w-full border p-2 rounded text-sm mb-3">
+        <input type="text" id="badgeLabelInput" maxlength="12" placeholder="例: 常連" class="w-full border p-2 rounded text-sm mb-3">
         <label class="block text-xs text-gray-600 mb-1">バッジ色:</label>
         <div class="color-swatch-row mb-3" id="badgeColorRow"></div>
         <div class="flex items-center gap-2 mb-3">
@@ -551,34 +618,25 @@
     </div>
   </div>
 
-  <!-- BAN管理モーダル -->
   <div id="banModal" class="modal-backdrop hidden">
     <div class="modal-content">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🚫 BANユーザー管理</h3>
-      <p class="text-xs text-gray-500 mb-4">
-        メールアドレスを指定してBANできます（未投稿でも可）。BANはUID・メール・デバイスの3つに紐づきます。
-      </p>
+      <p class="text-xs text-gray-500 mb-4">メールアドレスを指定してBANできます。</p>
       <div class="p-3 border border-red-200 bg-red-50 rounded mb-4">
         <p class="text-xs font-bold text-red-700 mb-2">新規BAN</p>
         <label class="block text-xs text-gray-600 mb-1">メールアドレス（必須）:</label>
-        <input type="email" id="banEmailInput" placeholder="例: spammer@gmail.com"
-          class="w-full border p-2 rounded text-sm mb-2 font-mono">
+        <input type="email" id="banEmailInput" placeholder="例: spammer@gmail.com" class="w-full border p-2 rounded text-sm mb-2 font-mono">
         <label class="block text-xs text-gray-600 mb-1">理由（任意）:</label>
-        <input type="text" id="banReasonInput" placeholder="例: 荒らし"
-          class="w-full border p-2 rounded text-sm mb-2" maxlength="100">
+        <input type="text" id="banReasonInput" placeholder="例: 荒らし" class="w-full border p-2 rounded text-sm mb-2" maxlength="100">
         <label class="flex items-center gap-2 text-xs text-gray-600 mb-3 cursor-pointer">
           <input type="checkbox" id="banDeviceCheck" checked>
-          <span>このメールに紐づくデバイスもBANする（フィンガープリント登録）</span>
+          <span>このメールに紐づくデバイスもBANする</span>
         </label>
-        <button id="banAddBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-2 px-4 rounded font-bold w-full">
-          このメールアドレスをBANする
-        </button>
+        <button id="banAddBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-2 px-4 rounded font-bold w-full">このメールアドレスをBANする</button>
       </div>
       <div>
         <p class="text-xs font-bold text-gray-600 mb-2">現在BANされているユーザー:</p>
-        <div id="banListContainer">
-          <p class="text-xs text-gray-400">（読み込み中...）</p>
-        </div>
+        <div id="banListContainer"><p class="text-xs text-gray-400">（読み込み中...）</p></div>
       </div>
       <div class="flex justify-end mt-4">
         <button id="banCloseBtn" class="reply-cancel-btn">閉じる</button>
@@ -586,181 +644,43 @@
     </div>
   </div>
 
-  <!-- ユーザー一覧モーダル -->
   <div id="userModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 640px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">👥 サイトを開いたユーザー一覧</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        ログインしたことがある全ユーザーの一覧です（新しい順）。
-      </p>
       <input type="text" id="userSearchInput" class="user-search-input" placeholder="🔍 メールアドレスで検索...">
       <div class="flex items-center justify-between mb-2">
-        <p class="text-xs text-gray-600">
-          合計: <span id="userCountLabel" class="font-bold">0</span> 人
-        </p>
+        <p class="text-xs text-gray-600">合計: <span id="userCountLabel" class="font-bold">0</span> 人</p>
         <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
           <input type="checkbox" id="userShowOnlyNotBanned">
           <span>BANされていない人のみ</span>
         </label>
       </div>
-      <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;">
-        <p class="text-xs text-gray-400">（読み込み中...）</p>
-      </div>
+      <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;"></div>
       <div class="flex justify-end mt-4">
         <button id="userCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
 
-  <!-- 承認待ちリストモーダル -->
   <div id="pendingModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 640px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🔔 承認待ちユーザー</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        初めてログインしたユーザーです。承認すると利用可能になります。
-      </p>
+      <p class="text-xs text-gray-500 mb-3">初めてログインしたユーザーです。</p>
       <div class="flex items-center justify-between mb-2">
-        <p class="text-xs text-gray-600">
-          承認待ち: <span id="pendingCountLabel" class="font-bold text-red-700">0</span> 人
-        </p>
+        <p class="text-xs text-gray-600">承認待ち: <span id="pendingCountLabel" class="font-bold text-red-700">0</span> 人</p>
       </div>
-      <div id="pendingListContainer" style="max-height: 55vh; overflow-y: auto;">
-        <p class="text-xs text-gray-400">（読み込み中...）</p>
-      </div>
+      <div id="pendingListContainer" style="max-height: 55vh; overflow-y: auto;"></div>
       <div class="flex justify-end mt-4">
         <button id="pendingCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
     </div>
   </div>
 
-  <!-- ログイン画面 -->
-  <div id="loginView" class="hidden">
-    <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
-      <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃんねる</h1>
-      <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
-      <p class="text-sm text-gray-600 mb-6">安全のためです。</p>
-      <button id="googleLoginBtn"
-        class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded shadow-sm flex items-center justify-center gap-3 mx-auto transition w-full">
-        <svg width="20" height="20" viewBox="0 0 48 48">
-          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
-          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
-          <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
-          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.2 5.2C41.4 35.3 44 30.1 44 24c0-1.3-.1-2.3-.4-3.5z"/>
-        </svg>
-        Googleでログイン
-      </button>
-      <p class="text-xs text-gray-400 mt-4">※ 投稿は匿名で表示されます</p>
-      <p class="text-xs text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded p-2">
-        ⚠️ 初回ログイン時は管理者の承認が必要です
-      </p>
-    </div>
-  </div>
-
-  <!-- メイン画面 -->
-  <div id="mainView" class="hidden">
-    <header class="border-b-2 border-red-800 pb-2 mb-4 flex justify-between items-center flex-wrap gap-2">
-      <div>
-        <h1 class="text-3xl font-bold text-red-900 cursor-pointer" onclick="showThreadList()">シクナイちゃんねる</h1>
-        <p class="text-sm text-gray-600 flex flex-wrap items-center gap-2">
-          <span id="connDot" class="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
-          <span id="connText">接続中...</span>
-          <span id="roleBadgeContainer"></span>
-          <label id="badgeToggleWrap" class="badge-toggle-wrap hidden" title="自分の投稿に付くバッジを他の人に見せるかどうか">
-            <input type="checkbox" id="badgeToggle" checked>
-            <span>バッジを他の人に見せる</span>
-          </label>
-          <label id="emailToggleWrap" class="badge-toggle-wrap hidden" title="投稿者のメールアドレスを表示するかどうか">
-            <input type="checkbox" id="emailToggle" checked>
-            <span>メールアドレスを表示</span>
-          </label>
-        </p>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <div id="adminControls" class="hidden flex gap-2 flex-wrap">
-          <button id="pendingBtn" class="pending-btn" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
-          <button id="backupBtn" class="backup-btn" onclick="doBackup()">💾 バックアップ</button>
-          <button id="restoreBtn" class="restore-btn" onclick="document.getElementById('restoreInput').click()">📥 復元</button>
-          <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
-          <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
-          <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
-        </div>
-        <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
-        <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">
-          ログアウト
-        </button>
-        <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">
-          ← スレッド一覧に戻る
-        </button>
-      </div>
-    </header>
-
-    <!-- View 1: スレッド一覧 -->
-    <div id="threadListView">
-      <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
-        <h2 class="text-lg font-bold text-gray-700 mb-2">新規スレッド作成</h2>
-        <form id="createThreadForm" class="space-y-3">
-          <input type="text" id="threadTitle" placeholder="スレッドのタイトルを入力（必須）" maxlength="100" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none" required>
-          <textarea id="firstPostContent" rows="3" placeholder="最初の書き込み内容（任意）" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
-          <div>
-            <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB、任意）:</label>
-            <input type="file" id="threadFileInput" accept="image/*" class="text-xs text-gray-600 w-full">
-            <div class="preview-box" id="threadPreviewBox">
-              <img id="threadPreviewImg" alt="プレビュー">
-              <div class="preview-info" id="threadPreviewInfo"></div>
-            </div>
-          </div>
-          <button type="submit" id="createThreadBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm">
-            スレッドを立てる
-          </button>
-        </form>
-      </section>
-
-      <main>
-        <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
-        <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
-          <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
-        </div>
-      </main>
-    </div>
-
-    <!-- View 2: スレッド詳細 -->
-    <div id="threadDetailView" class="hidden">
-      <div class="bg-white p-4 border border-gray-300 rounded mb-4 shadow-sm flex justify-between items-start gap-3 flex-wrap">
-        <div class="flex-1 min-w-0">
-          <h2 id="currentThreadTitle" class="text-2xl font-bold text-red-900 mb-1 break-words"></h2>
-          <p id="currentThreadDate" class="text-xs text-gray-500"></p>
-          <p id="currentThreadAuthor" class="text-xs text-gray-500 mt-1"></p>
-        </div>
-        <button id="deleteThreadBtn" class="delete-btn hidden" onclick="deleteCurrentThread()">スレッドを削除</button>
-      </div>
-
-      <section class="bg-amber-50 border border-amber-200 p-4 rounded mb-6 shadow-sm">
-        <h3 class="text-md font-bold text-gray-700 mb-2">このスレッドに書き込む</h3>
-        <form id="postForm" class="space-y-3">
-          <textarea id="postContent" rows="4" placeholder="コメントを入力してください。URLは自動でリンク化されます。" maxlength="2000" class="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none"></textarea>
-          <div class="flex items-center justify-between flex-wrap gap-3">
-            <div class="flex-1 min-w-[200px]">
-              <label class="block text-xs text-gray-600 mb-1">画像を添付（自動リサイズ・最大800KB）:</label>
-              <input type="file" id="fileInput" accept="image/*" class="text-xs text-gray-600 w-full">
-              <div class="preview-box" id="postPreviewBox">
-                <img id="postPreviewImg" alt="プレビュー">
-                <div class="preview-info" id="postPreviewInfo"></div>
-              </div>
-            </div>
-            <button type="submit" id="submitBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap">
-              書き込む
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <main>
-        <h3 class="text-lg font-bold border-b pb-1 mb-4 text-gray-700">レス一覧</h3>
-        <div id="postsContainer" class="post-tree">
-          <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>
-        </div>
-      </main>
-    </div>
+  <!-- BANオーバーレイ -->
+  <div id="banOverlay">
+    <div class="ban-msg" id="banOverlayMsg">アクセスが拒否されました</div>
+    <div class="ban-sub" id="banOverlaySub"></div>
+    <div class="ban-actions" id="banOverlayActions" style="display:none;"></div>
   </div>
 
   <script type="module">
@@ -808,10 +728,14 @@
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 800 * 1024;
 
+    // ★ ログインサイトURL（別サイトに飛ばす場合）
+    const LOGIN_SITE_URL = "https://7chanel-login.noel-k27.workers.dev/";
+
     let currentUser = null;
     let userRole = null;
     let currentThreadKey = null;
     let currentThreadOwnerUid = null;
+    let currentThreadAuthorEmail = '';
     let postsUnsubscribe = null;
     let threadsUnsubscribe = null;
     let badgesUnsubscribe = null;
@@ -838,18 +762,10 @@
     let badgeEditingBadgeId = null;
 
     let myBadgePublic = true;
-    let myEmailVisible = true;   // ★ 追加
+    let myEmailVisible = true;
 
     let intentionalSignOut = false;
-    let userApproved = false;
 
-    let initialAuthCheckDone = false;
-
-    const loginView = document.getElementById('loginView');
-    const mainView = document.getElementById('mainView');
-    const threadListView = document.getElementById('threadListView');
-    const threadDetailView = document.getElementById('threadDetailView');
-    const backToListBtn = document.getElementById('backToListBtn');
     const threadsContainer = document.getElementById('threadsContainer');
     const postsContainer = document.getElementById('postsContainer');
     const connDot = document.getElementById('connDot');
@@ -860,15 +776,20 @@
     const adminControls = document.getElementById('adminControls');
     const badgeToggleWrap = document.getElementById('badgeToggleWrap');
     const badgeToggle = document.getElementById('badgeToggle');
-    const emailToggleWrap = document.getElementById('emailToggleWrap');   // ★ 追加
-    const emailToggle = document.getElementById('emailToggle');           // ★ 追加
+    const emailToggleWrap = document.getElementById('emailToggleWrap');
+    const emailToggle = document.getElementById('emailToggle');
+    const threadListView = document.getElementById('threadListView');
+    const threadDetailView = document.getElementById('threadDetailView');
+    const backToListBtn = document.getElementById('backToListBtn');
     const banOverlay = document.getElementById('banOverlay');
     const banOverlayMsg = document.getElementById('banOverlayMsg');
     const banOverlaySub = document.getElementById('banOverlaySub');
     const banOverlayActions = document.getElementById('banOverlayActions');
-    const bootOverlay = document.getElementById('bootOverlay');
     let bannerTimer = null;
 
+    // ============================================================
+    // 権限ヘルパー
+    // ============================================================
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
@@ -876,7 +797,6 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canViewEmail() {
-      // ★ 管理者・主かつ「メール表示」がONの場合のみ true
       if (userRole !== 'admin' && userRole !== 'owner') return false;
       return myEmailVisible === true;
     }
@@ -909,8 +829,7 @@
 
     function generateFingerprint() {
       const parts = [
-        navigator.userAgent,
-        navigator.language,
+        navigator.userAgent, navigator.language,
         (navigator.languages || []).join(','),
         screen.width + 'x' + screen.height,
         screen.colorDepth,
@@ -922,15 +841,13 @@
       ];
       const raw = parts.join('|');
       function hash(str) {
-        let h1 = 0x811c9dc5;
-        let h2 = 0xcbf29ce4;
+        let h1 = 0x811c9dc5, h2 = 0xcbf29ce4;
         for (let i = 0; i < str.length; i++) {
           const c = str.charCodeAt(i);
           h1 ^= c; h1 = Math.imul(h1, 0x01000193);
           h2 ^= c; h2 = Math.imul(h2, 0x01000193);
         }
-        return (h1 >>> 0).toString(16).padStart(8, '0') +
-               (h2 >>> 0).toString(16).padStart(8, '0');
+        return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
       }
       return 'fp_' + hash(raw);
     }
@@ -946,9 +863,7 @@
       return 'em_' + (h1 >>> 0).toString(16).padStart(8, '0');
     }
 
-    function badgeStorageKey(email) {
-      return 'badgeVisible_' + (email || 'anonymous');
-    }
+    function badgeStorageKey(email) { return 'badgeVisible_' + (email || 'anonymous'); }
     function loadBadgeVisibility(email) {
       const v = localStorage.getItem(badgeStorageKey(email));
       return v === null ? true : v === 'true';
@@ -956,14 +871,10 @@
     function saveBadgeVisibility(email, visible) {
       localStorage.setItem(badgeStorageKey(email), visible ? 'true' : 'false');
     }
-
-    // ★ メール表示設定（localStorage）
-    function emailStorageKey(email) {
-      return 'emailVisible_' + (email || 'anonymous');
-    }
+    function emailStorageKey(email) { return 'emailVisible_' + (email || 'anonymous'); }
     function loadEmailVisibility(email) {
       const v = localStorage.getItem(emailStorageKey(email));
-      return v === null ? true : v === 'true';   // デフォルトは表示
+      return v === null ? true : v === 'true';
     }
     function saveEmailVisibility(email, visible) {
       localStorage.setItem(emailStorageKey(email), visible ? 'true' : 'false');
@@ -1014,58 +925,36 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
-    function showMainView() {
-      loginView.classList.add('hidden');
-      mainView.classList.remove('hidden');
-    }
-    function showLoginView() {
-      loginView.classList.remove('hidden');
-      mainView.classList.add('hidden');
-    }
-    function hideBootOverlay() {
-      bootOverlay.classList.add('hidden');
-    }
 
-    function forceExit(msg, sub, showSwitchButton) {
-      banOverlayMsg.textContent = msg || 'アクセスが拒否されました';
-      banOverlaySub.innerHTML = sub || '';
-      if (showSwitchButton) {
-        banOverlayActions.style.display = 'flex';
-      } else {
-        banOverlayActions.style.display = 'none';
-      }
+    // 未承認/未ログイン時はログインサイトへ誘導（本サイトでは使わない想定）
+    function forceToLoginSite(reason) {
+      banOverlayMsg.textContent = 'アクセスできません';
+      banOverlaySub.innerHTML = reason;
+      banOverlayActions.innerHTML = '';
+      const btn = document.createElement('a');
+      btn.href = LOGIN_SITE_URL;
+      btn.className = 'btn-switch-account';
+      btn.style.cssText = 'display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;';
+      btn.textContent = 'ログインサイトへ →';
+      banOverlayActions.appendChild(btn);
+      banOverlayActions.style.display = 'flex';
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
-      try { window.open('', '_self').close(); } catch (e) {}
-      try { window.close(); } catch (e) {}
-      setTimeout(() => {
-        try { window.location.replace('about:blank'); } catch (e) {}
-      }, 200);
-      setInterval(() => {
-        try { window.open('', '_self').close(); } catch (e) {}
-        try { window.close(); } catch (e) {}
-      }, 800);
-      setInterval(() => {
-        banOverlay.classList.add('show');
-        document.body.style.background = '#000';
-      }, 300);
     }
 
     function executeBan() {
-      forceExit(
-        'アクセスが拒否されました',
-        'このアカウントはBANされています。<br>別のGoogleアカウントでログインしてください。',
-        true
-      );
-    }
-
-    function executePending() {
-      forceExit(
-        '承認待ちです',
-        '管理者または主による承認をお待ちください。<br>承認されたら、またサイトを開いてください。<br><br>' +
-        '<small style="color:#9ca3af;">このウィンドウは自動的に閉じられます。</small>',
-        true
-      );
+      banOverlayMsg.textContent = 'アクセスが拒否されました';
+      banOverlaySub.innerHTML = 'このアカウントはBANされています。';
+      banOverlayActions.innerHTML = '';
+      const btn = document.createElement('a');
+      btn.href = LOGIN_SITE_URL;
+      btn.className = 'btn-switch-account';
+      btn.style.cssText = 'display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;';
+      btn.textContent = 'ログインサイトへ';
+      banOverlayActions.appendChild(btn);
+      banOverlayActions.style.display = 'flex';
+      banOverlay.classList.add('show');
+      document.body.style.background = '#000';
     }
 
     function checkSelfBan() {
@@ -1079,20 +968,16 @@
       return false;
     }
 
-    function checkSelfApproval() {
+    function isApproved() {
       if (!currentUser) return false;
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') return true;
-      if (approvedCache[currentUser.uid]) return true;
-      return false;
+      return !!approvedCache[currentUser.uid];
     }
 
     function fileToBase64Image(file) {
       return new Promise((resolve, reject) => {
         if (!file) { resolve(null); return; }
-        if (!file.type.startsWith('image/')) {
-          reject(new Error('画像ファイルを選択してください'));
-          return;
-        }
+        if (!file.type.startsWith('image/')) { reject(new Error('画像ファイルを選択してください')); return; }
         const reader = new FileReader();
         reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'));
         reader.onload = (e) => {
@@ -1105,8 +990,7 @@
               width = IMAGE_MAX_WIDTH;
             }
             const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = width; canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
             let quality = IMAGE_QUALITY;
@@ -1119,14 +1003,7 @@
               reject(new Error('画像が大きすぎます。別の画像を選んでください。'));
               return;
             }
-            resolve({
-              dataUrl: dataUrl,
-              name: file.name,
-              type: 'image/jpeg',
-              width: width,
-              height: height,
-              size: dataUrl.length
-            });
+            resolve({ dataUrl, name: file.name, type: 'image/jpeg', width, height, size: dataUrl.length });
           };
           img.src = e.target.result;
         };
@@ -1158,12 +1035,7 @@
       const box = document.getElementById(boxId);
       const img = document.getElementById(imgId);
       const info = document.getElementById(infoId);
-      if (!file) {
-        box.classList.remove('show');
-        img.src = '';
-        info.textContent = '';
-        return null;
-      }
+      if (!file) { box.classList.remove('show'); img.src = ''; info.textContent = ''; return null; }
       try {
         const result = await fileToBase64Image(file);
         img.src = result.dataUrl;
@@ -1178,112 +1050,6 @@
       }
     }
 
-    (function initSiteRules() {
-      const rulesEl = document.getElementById('siteRules');
-      const toggleBtn = document.getElementById('rulesToggleBtn');
-      if (!rulesEl || !toggleBtn) return;
-      const saved = localStorage.getItem('siteRulesOpen');
-      const isOpen = saved === 'true';
-      if (isOpen) {
-        rulesEl.classList.remove('collapsed');
-      } else {
-        rulesEl.classList.add('collapsed');
-      }
-      toggleBtn.addEventListener('click', () => {
-        const nowCollapsed = rulesEl.classList.toggle('collapsed');
-        localStorage.setItem('siteRulesOpen', nowCollapsed ? 'false' : 'true');
-      });
-    })();
-
-    document.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      return false;
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'F12' || e.keyCode === 123) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
-        e.preventDefault();
-        forceExit('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-    });
-
-    document.getElementById('switchAccountBtn').addEventListener('click', async () => {
-      intentionalSignOut = true;
-      try { await signOut(auth); } catch (e) { console.error(e); }
-      banOverlay.classList.remove('show');
-      document.body.style.background = '';
-      showLoginView();
-      hideBootOverlay();
-      setTimeout(() => {
-        intentionalSignOut = false;
-        initialAuthCheckDone = false;
-      }, 500);
-    });
-
-    document.getElementById('googleLoginBtn').addEventListener('click', async () => {
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        console.error("ログインエラー:", err);
-        if (err.code !== 'auth/popup-closed-by-user') {
-          alert("ログインに失敗しました: " + (err.message || ''));
-        }
-      }
-    });
-
-    async function trySilentSignIn() {
-      try {
-        const p = new GoogleAuthProvider();
-        p.setCustomParameters({ prompt: 'none' });
-        const result = await signInWithPopup(auth, p);
-        console.log('サイレントサインイン成功:', result.user.email);
-      } catch (err) {
-        console.warn('サイレントサインイン失敗:', err.code || err.message);
-        hideBootOverlay();
-        showLoginView();
-      } finally {
-        initialAuthCheckDone = true;
-      }
-    }
-
-    window.doLogout = async function() {
-      intentionalSignOut = true;
-      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
-      if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
-      if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
-      if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
-      if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
-      if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
-      if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
-      if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
-      if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
-      try { await signOut(auth); } catch (e) { console.error(e); }
-      banOverlay.classList.remove('show');
-      document.body.style.background = '';
-      showLoginView();
-      hideBootOverlay();
-      setTimeout(() => {
-        intentionalSignOut = false;
-        initialAuthCheckDone = false;
-      }, 500);
-    };
-
     function roleFromEmail(email) {
       if (email === ROLE_ADMIN_EMAIL) return 'admin';
       if (email === ROLE_OWNER_EMAIL) return 'owner';
@@ -1291,80 +1057,54 @@
       return null;
     }
 
+    // ============================================================
+    // リスナー群
+    // ============================================================
     function initCustomBadgesListener() {
       if (badgesUnsubscribe) badgesUnsubscribe();
-      const badgesRef = ref(db, 'customBadges');
-      badgesUnsubscribe = onValue(badgesRef, (snap) => {
+      badgesUnsubscribe = onValue(ref(db, 'customBadges'), (snap) => {
         customBadgesCache = snap.exists() ? snap.val() : {};
         if (currentThreadKey) renderPostsFromCache();
-      }, (err) => {
-        console.error('カスタムバッジ監視エラー:', err);
       });
     }
-
     function initBansListener() {
       if (bansUnsubscribe) bansUnsubscribe();
-      const bansRef = ref(db, 'bans');
-      bansUnsubscribe = onValue(bansRef, (snap) => {
+      bansUnsubscribe = onValue(ref(db, 'bans'), (snap) => {
         bansCache = snap.exists() ? snap.val() : {};
         checkSelfBan();
         if (currentThreadKey) renderPostsFromCache();
-      }, (err) => {
-        console.error('BANリスト監視エラー:', err);
       });
     }
-
     function initDeviceBansListener() {
       if (deviceBansUnsubscribe) deviceBansUnsubscribe();
-      const ref0 = ref(db, 'deviceBans');
-      deviceBansUnsubscribe = onValue(ref0, (snap) => {
+      deviceBansUnsubscribe = onValue(ref(db, 'deviceBans'), (snap) => {
         deviceBansCache = snap.exists() ? snap.val() : {};
         checkSelfBan();
-      }, (err) => {
-        console.error('デバイスBANリスト監視エラー:', err);
       });
     }
-
     function initKnownUsersListener() {
       if (knownUsersUnsubscribe) knownUsersUnsubscribe();
-      const ref0 = ref(db, 'knownUsers');
-      knownUsersUnsubscribe = onValue(ref0, (snap) => {
+      knownUsersUnsubscribe = onValue(ref(db, 'knownUsers'), (snap) => {
         knownUsersCache = snap.exists() ? snap.val() : {};
         const um = document.getElementById('userModal');
-        if (um && !um.classList.contains('hidden')) {
-          renderUserList();
-        }
-      }, (err) => {
-        console.error('既知ユーザー監視エラー:', err);
+        if (um && !um.classList.contains('hidden')) renderUserList();
       });
     }
-
     function initPendingListener() {
       if (pendingUnsubscribe) pendingUnsubscribe();
-      const ref0 = ref(db, 'pendingUsers');
-      pendingUnsubscribe = onValue(ref0, (snap) => {
+      pendingUnsubscribe = onValue(ref(db, 'pendingUsers'), (snap) => {
         pendingCache = snap.exists() ? snap.val() : {};
         updatePendingBadge();
         const pm = document.getElementById('pendingModal');
-        if (pm && !pm.classList.contains('hidden')) {
-          renderPendingList();
-        }
-      }, (err) => {
-        console.error('承認待ちリスト監視エラー:', err);
+        if (pm && !pm.classList.contains('hidden')) renderPendingList();
       });
     }
-
     function initApprovedListener() {
       if (approvedUnsubscribe) approvedUnsubscribe();
-      const ref0 = ref(db, 'approvedUsers');
-      approvedUnsubscribe = onValue(ref0, (snap) => {
+      approvedUnsubscribe = onValue(ref(db, 'approvedUsers'), (snap) => {
         approvedCache = snap.exists() ? snap.val() : {};
         const um = document.getElementById('userModal');
-        if (um && !um.classList.contains('hidden')) {
-          renderUserList();
-        }
-      }, (err) => {
-        console.error('承認済みリスト監視エラー:', err);
+        if (um && !um.classList.contains('hidden')) renderUserList();
       });
     }
 
@@ -1382,98 +1122,95 @@
     async function registerMyFingerprint() {
       if (!currentUser || !myFingerprint) return;
       const now = Date.now();
-
       try {
-        await update(ref(db, `userDevices/${currentUser.uid}`), {
-          [myFingerprint]: now
-        });
-      } catch (e) {
-        console.warn('フィンガープリント登録スキップ:', e.message);
-      }
-
+        await update(ref(db, `userDevices/${currentUser.uid}`), { [myFingerprint]: now });
+      } catch (e) {}
       try {
         const userRef = ref(db, `knownUsers/${currentUser.uid}`);
         const existingSnap = await get(userRef);
         const existing = existingSnap.exists() ? existingSnap.val() : null;
-
-        const data = {
+        await update(userRef, {
           email: currentUser.email || '',
           displayName: currentUser.displayName || '',
           lastSeen: now,
           firstSeen: existing && existing.firstSeen ? existing.firstSeen : now,
           role: userRole || null,
           lastFingerprint: myFingerprint
-        };
-        await update(userRef, data);
-      } catch (e) {
-        console.warn('knownUsers 登録スキップ:', e.message);
-      }
-    }
-
-    async function requestApproval() {
-      if (!currentUser) return;
-      try {
-        const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
-        if (approvedSnap.exists()) return;
-
-        await set(ref(db, `pendingUsers/${currentUser.uid}`), {
-          email: currentUser.email || '',
-          displayName: currentUser.displayName || '',
-          requestedAt: Date.now(),
-          fingerprint: myFingerprint || ''
         });
-      } catch (e) {
-        console.warn('承認申請スキップ:', e.message);
-      }
+      } catch (e) {}
     }
 
-    onAuthStateChanged(auth, async (user) => {
-      if (intentionalSignOut) {
-        currentUser = null;
-        userRole = null;
-        return;
-      }
+    async function tryAutoApprove() {
+      if (!currentUser) return false;
+      if (approvedCache[currentUser.uid]) return true;
+      if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') return true;
+      try {
+        const knownSnap = await get(ref(db, `knownUsers/${currentUser.uid}`));
+        if (knownSnap.exists()) {
+          await set(ref(db, `approvedUsers/${currentUser.uid}`), {
+            email: currentUser.email || '',
+            displayName: currentUser.displayName || '',
+            approvedAt: Date.now(),
+            approvedBy: 'auto-migration'
+          });
+          await remove(ref(db, `pendingUsers/${currentUser.uid}`));
+          const approvedSnap = await get(ref(db, 'approvedUsers'));
+          approvedCache = approvedSnap.exists() ? approvedSnap.val() : {};
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
 
+    // ============================================================
+    // 認証状態監視
+    // ============================================================
+    onAuthStateChanged(auth, async (user) => {
+      if (intentionalSignOut) return;
       currentUser = user;
 
+      // 未ログイン → ログインサイトへ
       if (!user) {
-        userRole = null;
-        if (!initialAuthCheckDone) {
-          trySilentSignIn();
-          return;
-        }
-        hideBootOverlay();
-        showLoginView();
+        forceToLoginSite(
+          'このサイトはログイン済みのユーザーのみ利用できます。<br>' +
+          '下のボタンからログインしてください。'
+        );
         return;
       }
 
       userRole = roleFromEmail(user.email);
       myBadgePublic = loadBadgeVisibility(user.email);
-      myEmailVisible = loadEmailVisibility(user.email);   // ★ 追加
+      myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
+      // BANチェック
       if (checkSelfBan()) return;
 
+      // リスナー開始
       initBansListener();
       initDeviceBansListener();
       initApprovedListener();
 
+      // 承認済みチェック
       try {
         const approvedSnap = await get(ref(db, 'approvedUsers'));
         approvedCache = approvedSnap.exists() ? approvedSnap.val() : {};
-      } catch (e) {
-        console.warn('承認済みリスト取得スキップ:', e.message);
-      }
+      } catch (e) {}
 
-      const isApproved = checkSelfApproval();
+      await tryAutoApprove();
 
-      if (!isApproved) {
-        await requestApproval();
-        executePending();
+      if (!isApproved()) {
+        forceToLoginSite(
+          'このアカウントはまだ承認されていません。<br>' +
+          'ログインサイトで承認状況を確認してください。'
+        );
         return;
       }
 
-      userApproved = true;
+      // ===== 承認済み → 本サイトUI初期化 =====
+      initCustomBadgesListener();
+      initKnownUsersListener();
+      initPendingListener();
 
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip') {
         badgeToggleWrap.classList.remove('hidden');
@@ -1481,15 +1218,12 @@
       } else {
         badgeToggleWrap.classList.add('hidden');
       }
-
-      // ★ メール表示トグルは管理者・主のみ
       if (canManageBadge()) {
         emailToggleWrap.classList.remove('hidden');
         emailToggle.checked = myEmailVisible;
       } else {
         emailToggleWrap.classList.add('hidden');
       }
-
       renderRoleBadge(userRole);
 
       userEmailSpan.classList.add('hidden');
@@ -1508,42 +1242,88 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
-      if (canBackup()) {
-        adminControls.classList.remove('hidden');
-      } else {
-        adminControls.classList.add('hidden');
-      }
+      if (canBackup()) adminControls.classList.remove('hidden');
+      else adminControls.classList.add('hidden');
 
+      setConnection(navigator.onLine);
+      showThreadList();
+      initThreadsListener();
+      registerMyFingerprint();
+
+      // 自分の承認状態を監視（取り消されたらログインサイトへ）
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
         if (!snap.exists() && userRole !== 'admin' && userRole !== 'owner' && userRole !== 'vip') {
           approvedCache = {};
-          userApproved = false;
-          requestApproval();
-          executePending();
+          forceToLoginSite('承認が取り消されました。<br>ログインサイトで確認してください。');
         }
       });
-
-      hideBootOverlay();
-      showMainView();
-      setConnection(navigator.onLine);
-
-      showThreadList();
-      initThreadsListener();
-      initCustomBadgesListener();
-      initKnownUsersListener();
-      initPendingListener();
-      registerMyFingerprint();
     });
 
+    // ============================================================
+    // イベント
+    // ============================================================
+    window.doLogout = async function() {
+      intentionalSignOut = true;
+      if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
+      if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
+      if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
+      if (bansUnsubscribe) { bansUnsubscribe(); bansUnsubscribe = null; }
+      if (deviceBansUnsubscribe) { deviceBansUnsubscribe(); deviceBansUnsubscribe = null; }
+      if (knownUsersUnsubscribe) { knownUsersUnsubscribe(); knownUsersUnsubscribe = null; }
+      if (pendingUnsubscribe) { pendingUnsubscribe(); pendingUnsubscribe = null; }
+      if (approvedUnsubscribe) { approvedUnsubscribe(); approvedUnsubscribe = null; }
+      if (selfApprovalUnsubscribe) { selfApprovalUnsubscribe(); selfApprovalUnsubscribe = null; }
+      try { await signOut(auth); } catch (e) { console.error(e); }
+      forceToLoginSite('ログアウトしました。<br>ログインサイトで再ログインしてください。');
+      setTimeout(() => { intentionalSignOut = false; }, 500);
+    };
+
+    // サイトルール開閉
+    (function initSiteRules() {
+      const rulesEl = document.getElementById('siteRules');
+      const toggleBtn = document.getElementById('rulesToggleBtn');
+      if (!rulesEl || !toggleBtn) return;
+      const saved = localStorage.getItem('siteRulesOpen');
+      const isOpen = saved === 'true';
+      if (isOpen) rulesEl.classList.remove('collapsed');
+      else rulesEl.classList.add('collapsed');
+      toggleBtn.addEventListener('click', () => {
+        const nowCollapsed = rulesEl.classList.toggle('collapsed');
+        localStorage.setItem('siteRulesOpen', nowCollapsed ? 'false' : 'true');
+      });
+    })();
+
+    // コンテキストメニュー・開発者ツール対策
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      return false;
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        forceToLoginSite('開発者ツールの使用は禁止されています。');
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        forceToLoginSite('開発者ツールの使用は禁止されています。');
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        forceToLoginSite('ソースコードの表示は禁止されています。');
+        return false;
+      }
+    });
+
+    // バッジ表示トグル
     badgeToggle.addEventListener('change', async () => {
       if (!currentUser) return;
       const visible = badgeToggle.checked;
       saveBadgeVisibility(currentUser.email, visible);
       myBadgePublic = visible;
-
       showBanner('バッジ表示を更新中...', false);
-
       try {
         const snap = await get(ref(db, 'threads'));
         if (snap.exists()) {
@@ -1560,36 +1340,27 @@
               });
             }
           });
-          if (Object.keys(updates).length > 0) {
-            await update(ref(db), updates);
-          }
+          if (Object.keys(updates).length > 0) await update(ref(db), updates);
         }
         showBanner(visible ? 'バッジを他の人に表示します' : 'バッジを他の人に非表示にしました', false);
       } catch (err) {
-        console.error('バッジ更新エラー:', err);
         showBanner('バッジ設定の保存に失敗: ' + (err.code || err.message), true);
         badgeToggle.checked = !visible;
         myBadgePublic = !visible;
       }
     });
 
-    // ★ メール表示トグル
+    // メール表示トグル
     emailToggle.addEventListener('change', () => {
       if (!currentUser) return;
       const visible = emailToggle.checked;
       saveEmailVisibility(currentUser.email, visible);
       myEmailVisible = visible;
-
-      // 投稿一覧を再描画（メール表示が切り替わる）
       if (currentThreadKey) renderPostsFromCache();
-      // スレッド作成者のメール表示も更新
       refreshThreadAuthorDisplay();
-
       showBanner(visible ? 'メールアドレスを表示します' : 'メールアドレスを非表示にしました', false);
     });
 
-    // ★ スレッド詳細ヘッダーの作成者表示を更新
-    let currentThreadAuthorEmail = '';
     function refreshThreadAuthorDisplay() {
       const authorEl = document.getElementById('currentThreadAuthor');
       if (!authorEl) return;
@@ -1627,20 +1398,13 @@
       activeReplyParentId = null;
       document.getElementById('currentThreadTitle').innerText = title;
       document.getElementById('currentThreadDate').innerText = '作成日時: ' + createdAt;
-
       refreshThreadAuthorDisplay();
-
       const delBtn = document.getElementById('deleteThreadBtn');
-      if (canDelete()) {
-        delBtn.classList.remove('hidden');
-      } else {
-        delBtn.classList.add('hidden');
-      }
-
+      if (canDelete()) delBtn.classList.remove('hidden');
+      else delBtn.classList.add('hidden');
       threadListView.classList.add('hidden');
       threadDetailView.classList.remove('hidden');
       backToListBtn.classList.remove('hidden');
-
       loadPosts(threadKey);
     }
 
@@ -1674,7 +1438,6 @@
       try {
         let fileData = null;
         if (file) fileData = await fileToBase64Image(file);
-
         document.getElementById('createThreadForm').reset();
         document.getElementById('threadPreviewBox').classList.remove('show');
 
@@ -1713,11 +1476,9 @@
         const tempEl = document.getElementById('optimistic_thread_' + tempKey);
         if (tempEl) tempEl.remove();
       } catch (err) {
-        console.error("スレッド作成エラー:", err);
         const el = document.getElementById('optimistic_thread_' + tempKey);
         if (el) el.remove();
         showBanner('保存失敗: ' + (err.code || err.message || 'ネットワークエラー'), true);
-        alert("スレッドの作成に失敗しました。\n" + (err.message || ''));
       } finally {
         btn.disabled = false;
         btn.innerText = 'スレッドを立てる';
@@ -1726,32 +1487,23 @@
 
     function initThreadsListener() {
       if (threadsUnsubscribe) threadsUnsubscribe();
-
       const threadsRef = ref(db, 'threads');
       const q = query(threadsRef, orderByChild('createdAt'));
-
       threadsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
         threadsContainer.innerHTML = '';
-
         if (!snapshot.exists()) {
           threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
           return;
         }
-
         const threads = [];
-        snapshot.forEach((child) => {
-          threads.push({ key: child.key, ...child.val() });
-        });
+        snapshot.forEach((child) => threads.push({ key: child.key, ...child.val() }));
         threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
         threads.forEach((thread) => {
           let date = '日時不明';
           if (thread.createdAt) {
-            try { date = new Date(thread.createdAt).toLocaleString('ja-JP'); }
-            catch (e) { date = '日時不明'; }
+            try { date = new Date(thread.createdAt).toLocaleString('ja-JP'); } catch (e) {}
           }
-
           const item = document.createElement('div');
           item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
           item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail, thread.authorUid);
@@ -1764,84 +1516,61 @@
           threadsContainer.appendChild(item);
         });
       }, (error) => {
-        console.error("スレッド一覧の取得エラー:", error);
         setConnection(false);
-        threadsContainer.innerHTML =
-          '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。<br>' +
-          'Realtime Database のルールを確認してください。</p>';
-        showBanner('読み込み失敗: ' + (error.code || error.message), true);
+        threadsContainer.innerHTML = '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。</p>';
       });
     }
 
     function loadPosts(threadKey) {
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm"><span class="loading-spinner"></span> 読み込み中...</p>';
-
       const postsRef = ref(db, `threads/${threadKey}/posts`);
       const q = query(postsRef, orderByChild('createdAt'));
-
       postsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
-
         if (!snapshot.exists()) {
           allPostsCache = [];
           postNumberMap = new Map();
           postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
           return;
         }
-
         const posts = [];
-        snapshot.forEach((child) => {
-          posts.push({ key: child.key, ...child.val() });
-        });
+        snapshot.forEach((child) => posts.push({ key: child.key, ...child.val() }));
         posts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         allPostsCache = posts;
-
         postNumberMap = new Map();
         posts.forEach((p, i) => postNumberMap.set(p.key, i + 1));
-
         renderPostsFromCache();
       }, (error) => {
-        console.error("レス読み込みエラー:", error);
         setConnection(false);
         postsContainer.innerHTML = '<p class="text-red-500 text-sm">レス一覧の読み込みに失敗しました。</p>';
-        showBanner('レス読み込み失敗: ' + (error.code || error.message), true);
       });
     }
 
     function renderPostsFromCache() {
       postsContainer.innerHTML = '';
-
       if (allPostsCache.length === 0) {
         postsContainer.innerHTML = '<p class="text-gray-500 text-sm">まだ書き込みがありません。</p>';
         return;
       }
-
       const posts = allPostsCache;
       const childrenMap = new Map();
       const rootPosts = [];
       const keySet = new Set(posts.map(p => p.key));
-
       posts.forEach((p) => {
         let pid = p.parentId || null;
         if (pid && !keySet.has(pid)) pid = null;
-        if (pid === null) {
-          rootPosts.push(p);
-        } else {
+        if (pid === null) rootPosts.push(p);
+        else {
           if (!childrenMap.has(pid)) childrenMap.set(pid, []);
           childrenMap.get(pid).push(p);
         }
       });
-
       const frag = document.createDocumentFragment();
       rootPosts.forEach((p) => frag.appendChild(renderPostTree(p, childrenMap)));
       postsContainer.appendChild(frag);
-
-      if (activeReplyParentId && keySet.has(activeReplyParentId)) {
-        openReplyBox(activeReplyParentId);
-      } else {
-        activeReplyParentId = null;
-      }
+      if (activeReplyParentId && keySet.has(activeReplyParentId)) openReplyBox(activeReplyParentId);
+      else activeReplyParentId = null;
     }
 
     function isPostBanned(post) {
@@ -1855,18 +1584,15 @@
     }
 
     function buildPostRoleBadge(post) {
-      if (!post) return '';
-      if (post.badgeVisible === false) return '';
+      if (!post || post.badgeVisible === false) return '';
       const role = post.authorRole;
       if (role === 'admin') return `<span class="role-post-badge admin">管理者</span>`;
       if (role === 'owner') return `<span class="role-post-badge owner">主</span>`;
-      if (role === 'vip')   return `<span class="role-post-badge vip">VIP</span>`;
+      if (role === 'vip') return `<span class="role-post-badge vip">VIP</span>`;
       return '';
     }
-
     function buildPostCustomBadge(post) {
-      if (!post) return '';
-      if (post.badgeVisible === false) return '';
+      if (!post || post.badgeVisible === false) return '';
       const uid = post.authorUid;
       if (!uid) return '';
       const badges = customBadgesCache[uid];
@@ -1888,8 +1614,7 @@
       const number = postNumberMap.get(post.key) || '?';
       let date = '送信中...';
       if (post.createdAt) {
-        try { date = new Date(post.createdAt).toLocaleString('ja-JP'); }
-        catch (e) { date = '日時不明'; }
+        try { date = new Date(post.createdAt).toLocaleString('ja-JP'); } catch (e) {}
       }
 
       let opBadge = '';
@@ -1899,10 +1624,8 @@
 
       const roleBadgeHtml = buildPostRoleBadge(post);
       const customBadgeHtml = buildPostCustomBadge(post);
-
       const isBanned = isPostBanned(post);
       const bannedMark = isBanned ? `<span class="banned-mark">BAN中</span>` : '';
-
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
 
       let adminInfo = '';
@@ -1924,11 +1647,8 @@
       }
       let banBtn = '';
       if (canBan() && post.authorUid && !isProtected) {
-        if (isBanned) {
-          banBtn = `<button class="ban-btn" data-ban-action="unban" data-ban-uid="${post.authorUid}" data-ban-email="${escapeHtml(post.authorEmail || '')}">BAN解除</button>`;
-        } else {
-          banBtn = `<button class="ban-btn" data-ban-action="ban" data-ban-uid="${post.authorUid}" data-ban-email="${escapeHtml(post.authorEmail || '')}">BAN</button>`;
-        }
+        if (isBanned) banBtn = `<button class="ban-btn" data-ban-action="unban" data-ban-uid="${post.authorUid}" data-ban-email="${escapeHtml(post.authorEmail || '')}">BAN解除</button>`;
+        else banBtn = `<button class="ban-btn" data-ban-action="ban" data-ban-uid="${post.authorUid}" data-ban-email="${escapeHtml(post.authorEmail || '')}">BAN</button>`;
       }
 
       const postDiv = document.createElement('div');
@@ -1965,19 +1685,14 @@
       }
       const bbtn = postDiv.querySelector('.badge-manage-btn');
       if (bbtn) {
-        bbtn.addEventListener('click', () => {
-          openBadgeModal(bbtn.dataset.badgeUid, bbtn.dataset.badgeEmail);
-        });
+        bbtn.addEventListener('click', () => openBadgeModal(bbtn.dataset.badgeUid, bbtn.dataset.badgeEmail));
       }
       const bnbtn = postDiv.querySelector('.ban-btn');
       if (bnbtn) {
-        bnbtn.addEventListener('click', () => {
-          handleBanAction(bnbtn.dataset.banAction, bnbtn.dataset.banUid, bnbtn.dataset.banEmail);
-        });
+        bnbtn.addEventListener('click', () => handleBanAction(bnbtn.dataset.banAction, bnbtn.dataset.banUid, bnbtn.dataset.banEmail));
       }
 
       wrap.appendChild(postDiv);
-
       const children = childrenMap.get(post.key) || [];
       if (children.length > 0) {
         const childWrap = document.createElement('div');
@@ -1985,34 +1700,21 @@
         children.forEach((c) => childWrap.appendChild(renderPostTree(c, childrenMap)));
         wrap.appendChild(childWrap);
       }
-
       return wrap;
     }
 
     async function handleBanAction(action, uid, email) {
       if (!canBan()) { alert('BAN権限がありません。'); return; }
       if (!uid && !email) return;
-
       if (isProtectedEmail(email) || (uid && isProtectedUid(uid))) {
         alert('管理者および主はBANできません。');
         return;
       }
-
       if (action === 'ban') {
-        if (!confirm(
-          `このユーザーをBANしますか？\n\n対象: ${email || '（メール不明）'}\nUID: ${uid}\n\n` +
-          `・UID・メール・デバイスの3つでブロックします。\n` +
-          `・BANされたユーザーは次にサイトを開いた瞬間にタブが閉じられます。`
-        )) return;
+        if (!confirm(`このユーザーをBANしますか？\n\n対象: ${email || '（メール不明）'}\nUID: ${uid}`)) return;
         try {
           const now = Date.now();
-          const data = {
-            bannedAt: now,
-            bannedBy: currentUser.email,
-            email: email || '',
-            uid: uid || ''
-          };
-
+          const data = { bannedAt: now, bannedBy: currentUser.email, email: email || '', uid: uid || '' };
           const ops = [];
           if (uid) ops.push(set(ref(db, `bans/${uid}`), data));
           if (email) {
@@ -2020,36 +1722,24 @@
             if (ek) ops.push(set(ref(db, `bans/${ek}`), data));
           }
           await Promise.all(ops);
-
           if (uid) {
             try {
               const devSnap = await get(ref(db, `userDevices/${uid}`));
               if (devSnap.exists()) {
                 const devOps = [];
                 devSnap.forEach((child) => {
-                  const fp = child.key;
-                  devOps.push(set(ref(db, `deviceBans/${fp}`), {
-                    bannedAt: now,
-                    bannedBy: currentUser.email,
-                    email: email || '',
-                    uid: uid
-                  }));
+                  devOps.push(set(ref(db, `deviceBans/${child.key}`), { bannedAt: now, bannedBy: currentUser.email, email: email || '', uid: uid }));
                 });
                 if (devOps.length > 0) await Promise.all(devOps);
               }
-            } catch (e) {
-              console.warn('デバイスBAN登録スキップ:', e.message);
-            }
+            } catch (e) {}
           }
-
           showBanner('BANしました', false);
         } catch (err) {
-          console.error('BANエラー:', err);
           showBanner('BAN失敗: ' + (err.code || err.message), true);
-          alert('BANに失敗しました。');
         }
       } else if (action === 'unban') {
-        if (!confirm(`このユーザーのBANを解除しますか？\n\n対象: ${email || '（メール不明）'}\n\n※関連するデバイスBANも解除されます。`)) return;
+        if (!confirm(`このユーザーのBANを解除しますか？\n\n対象: ${email || '（メール不明）'}`)) return;
         try {
           const ops = [];
           if (uid) ops.push(remove(ref(db, `bans/${uid}`)));
@@ -2058,67 +1748,48 @@
             if (ek) ops.push(remove(ref(db, `bans/${ek}`)));
           }
           await Promise.all(ops);
-
           if (uid) {
             try {
               const devSnap = await get(ref(db, `userDevices/${uid}`));
               if (devSnap.exists()) {
                 const devOps = [];
-                devSnap.forEach((child) => {
-                  devOps.push(remove(ref(db, `deviceBans/${child.key}`)));
-                });
+                devSnap.forEach((child) => devOps.push(remove(ref(db, `deviceBans/${child.key}`))));
                 if (devOps.length > 0) await Promise.all(devOps);
               }
-            } catch (e) {
-              console.warn('デバイスBAN解除スキップ:', e.message);
-            }
+            } catch (e) {}
           }
-
           showBanner('BANを解除しました', false);
         } catch (err) {
-          console.error('BAN解除エラー:', err);
           showBanner('解除失敗: ' + (err.code || err.message), true);
-          alert('BAN解除に失敗しました。');
         }
       }
     }
 
+    // BAN管理モーダル
     const banModal = document.getElementById('banModal');
     const banListContainer = document.getElementById('banListContainer');
     const banEmailInput = document.getElementById('banEmailInput');
     const banReasonInput = document.getElementById('banReasonInput');
-    const banDeviceCheck = document.getElementById('banDeviceCheck');
 
     window.openBanModal = function() {
       if (!canBan()) { alert('BAN管理権限がありません。'); return; }
       banModal.classList.remove('hidden');
       renderBanList();
     };
-
-    function closeBanModal() {
-      banModal.classList.add('hidden');
-    }
-
+    function closeBanModal() { banModal.classList.add('hidden'); }
     document.getElementById('banCloseBtn').addEventListener('click', closeBanModal);
-    banModal.addEventListener('click', (e) => {
-      if (e.target.id === 'banModal') closeBanModal();
-    });
+    banModal.addEventListener('click', (e) => { if (e.target.id === 'banModal') closeBanModal(); });
 
     function renderBanList() {
       banListContainer.innerHTML = '';
-
       const entries = Object.entries(bansCache || {});
       const byUid = {};
       const byEmailKey = {};
       entries.forEach(([key, val]) => {
         if (!val) return;
-        if (key.startsWith('em_')) {
-          byEmailKey[key] = val;
-        } else {
-          byUid[key] = val;
-        }
+        if (key.startsWith('em_')) byEmailKey[key] = val;
+        else byUid[key] = val;
       });
-
       Object.entries(byUid).forEach(([uid, b]) => {
         const row = document.createElement('div');
         row.className = 'ban-list-row';
@@ -2129,14 +1800,10 @@
             <div class="meta-line">UID: ${escapeHtml(uid)}</div>
             <div class="meta-line">理由: ${escapeHtml(b.reason || '（なし）')} ／ BAN者: ${escapeHtml(b.bannedBy || '不明')} ／ ${date}</div>
           </div>
-          <button class="unban-btn">解除</button>
-        `;
-        row.querySelector('.unban-btn').addEventListener('click', () => {
-          handleBanAction('unban', uid, b.email);
-        });
+          <button class="unban-btn">解除</button>`;
+        row.querySelector('.unban-btn').addEventListener('click', () => handleBanAction('unban', uid, b.email));
         banListContainer.appendChild(row);
       });
-
       Object.entries(byEmailKey).forEach(([ek, b]) => {
         const alreadyShown = Object.values(byUid).some(u => u.email && b.email && u.email.toLowerCase() === b.email.toLowerCase());
         if (alreadyShown) return;
@@ -2149,14 +1816,10 @@
             <div class="meta-line">（メールアドレス指定でBAN）</div>
             <div class="meta-line">理由: ${escapeHtml(b.reason || '（なし）')} ／ BAN者: ${escapeHtml(b.bannedBy || '不明')} ／ ${date}</div>
           </div>
-          <button class="unban-btn">解除</button>
-        `;
-        row.querySelector('.unban-btn').addEventListener('click', () => {
-          handleBanAction('unban', '', b.email);
-        });
+          <button class="unban-btn">解除</button>`;
+        row.querySelector('.unban-btn').addEventListener('click', () => handleBanAction('unban', '', b.email));
         banListContainer.appendChild(row);
       });
-
       if (banListContainer.children.length === 0) {
         banListContainer.innerHTML = '<p class="text-xs text-gray-400">現在BANされているユーザーはいません。</p>';
       }
@@ -2166,51 +1829,24 @@
       if (!canBan()) { alert('BAN管理権限がありません。'); return; }
       const email = banEmailInput.value.trim().toLowerCase();
       const reason = banReasonInput.value.trim();
-
       if (!email) { alert('メールアドレスを入力してください。'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert('メールアドレスの形式が正しくありません。');
-        return;
-      }
-
-      if (currentUser && currentUser.email && currentUser.email.toLowerCase() === email) {
-        alert('自分自身はBANできません。');
-        return;
-      }
-
-      if (isProtectedEmail(email)) {
-        alert('管理者および主はBANできません。');
-        return;
-      }
-
-      if (!confirm(`${email} をBANしますか？\n\nこのメールアドレスでログインしようとした人は即座にブロックされます。`)) return;
-
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('メールアドレスの形式が正しくありません。'); return; }
+      if (currentUser && currentUser.email && currentUser.email.toLowerCase() === email) { alert('自分自身はBANできません。'); return; }
+      if (isProtectedEmail(email)) { alert('管理者および主はBANできません。'); return; }
+      if (!confirm(`${email} をBANしますか？`)) return;
       try {
         const now = Date.now();
         const ek = emailToKey(email);
-        const data = {
-          bannedAt: now,
-          bannedBy: currentUser.email,
-          email: email,
-          reason: reason || ''
-        };
-
-        const ops = [];
-        if (ek) ops.push(set(ref(db, `bans/${ek}`), data));
-
-        await Promise.all(ops);
-
-        banEmailInput.value = '';
-        banReasonInput.value = '';
+        await set(ref(db, `bans/${ek}`), { bannedAt: now, bannedBy: currentUser.email, email, reason: reason || '' });
+        banEmailInput.value = ''; banReasonInput.value = '';
         showBanner('メールアドレスをBANしました', false);
         renderBanList();
       } catch (err) {
-        console.error('BANエラー:', err);
         showBanner('BAN失敗: ' + (err.code || err.message), true);
-        alert('BANに失敗しました。');
       }
     });
 
+    // ユーザー一覧
     const userModal = document.getElementById('userModal');
     const userListContainer = document.getElementById('userListContainer');
     const userSearchInput = document.getElementById('userSearchInput');
@@ -2222,15 +1858,9 @@
       userModal.classList.remove('hidden');
       renderUserList();
     };
-
-    function closeUserModal() {
-      userModal.classList.add('hidden');
-    }
-
+    function closeUserModal() { userModal.classList.add('hidden'); }
     document.getElementById('userCloseBtn').addEventListener('click', closeUserModal);
-    userModal.addEventListener('click', (e) => {
-      if (e.target.id === 'userModal') closeUserModal();
-    });
+    userModal.addEventListener('click', (e) => { if (e.target.id === 'userModal') closeUserModal(); });
     userSearchInput.addEventListener('input', renderUserList);
     userShowOnlyNotBanned.addEventListener('change', renderUserList);
 
@@ -2238,60 +1868,40 @@
       userListContainer.innerHTML = '';
       const keyword = (userSearchInput.value || '').trim().toLowerCase();
       const onlyNotBanned = userShowOnlyNotBanned.checked;
-
       const list = Object.entries(knownUsersCache || {}).map(([uid, u]) => ({
         uid,
         email: (u && u.email) || '',
-        displayName: (u && u.displayName) || '',
         lastSeen: (u && u.lastSeen) || 0,
         firstSeen: (u && u.firstSeen) || 0,
-        role: (u && u.role) || null,
-        lastFingerprint: (u && u.lastFingerprint) || ''
+        role: (u && u.role) || null
       }));
-
       let filtered = list;
-      if (keyword) {
-        filtered = filtered.filter(u =>
-          u.email.toLowerCase().includes(keyword) ||
-          u.uid.toLowerCase().includes(keyword)
-        );
-      }
-      if (onlyNotBanned) {
-        filtered = filtered.filter(u => {
-          if (bansCache[u.uid]) return false;
-          const ek = emailToKey(u.email);
-          if (ek && bansCache[ek]) return false;
-          return true;
-        });
-      }
-
+      if (keyword) filtered = filtered.filter(u => u.email.toLowerCase().includes(keyword) || u.uid.toLowerCase().includes(keyword));
+      if (onlyNotBanned) filtered = filtered.filter(u => {
+        if (bansCache[u.uid]) return false;
+        const ek = emailToKey(u.email);
+        if (ek && bansCache[ek]) return false;
+        return true;
+      });
       filtered.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
-
       userCountLabel.textContent = filtered.length;
-
       if (filtered.length === 0) {
         userListContainer.innerHTML = '<p class="text-xs text-gray-400">該当するユーザーがいません。</p>';
         return;
       }
-
       filtered.forEach((u) => {
         const lastSeenDate = u.lastSeen ? new Date(u.lastSeen).toLocaleString('ja-JP') : '不明';
         const firstSeenDate = u.firstSeen ? new Date(u.firstSeen).toLocaleString('ja-JP') : '不明';
-
         const isBannedByUid = !!bansCache[u.uid];
         const ek = emailToKey(u.email);
         const isBannedByEmail = ek ? !!bansCache[ek] : false;
         const isBanned = isBannedByUid || isBannedByEmail;
-
-        const isProtected = (u.role === 'admin') || (u.role === 'owner') ||
-                            isProtectedEmail(u.email);
-
+        const isProtected = (u.role === 'admin') || (u.role === 'owner') || isProtectedEmail(u.email);
         let roleTag = '<span class="role-tag none">一般</span>';
         if (u.role === 'admin') roleTag = '<span class="role-tag admin">管理者</span>';
         else if (u.role === 'owner') roleTag = '<span class="role-tag owner">主</span>';
         else if (u.role === 'vip') roleTag = '<span class="role-tag vip">VIP</span>';
         if (isBanned) roleTag += ' <span class="role-tag banned">BAN中</span>';
-
         const row = document.createElement('div');
         row.className = 'user-row';
         row.innerHTML = `
@@ -2308,34 +1918,19 @@
                 ? `<button class="btn-mini btn-unban" data-unban-uid="${escapeHtml(u.uid)}" data-unban-email="${escapeHtml(u.email)}">解除</button>`
                 : `<button class="btn-mini btn-ban" data-ban-uid="${escapeHtml(u.uid)}" data-ban-email="${escapeHtml(u.email)}">BAN</button>`
             ) : ''}
-          </div>
-        `;
-
+          </div>`;
         row.querySelector('.btn-copy').addEventListener('click', () => {
-          navigator.clipboard.writeText(u.email).then(() => {
-            showBanner('メールアドレスをコピーしました', false);
-          }).catch(() => {
-            alert('コピーに失敗しました');
-          });
+          navigator.clipboard.writeText(u.email).then(() => showBanner('メールアドレスをコピーしました', false)).catch(() => alert('コピーに失敗しました'));
         });
-
         const banBtn = row.querySelector('.btn-ban');
-        if (banBtn) {
-          banBtn.addEventListener('click', () => {
-            handleBanAction('ban', banBtn.dataset.banUid, banBtn.dataset.banEmail);
-          });
-        }
+        if (banBtn) banBtn.addEventListener('click', () => handleBanAction('ban', banBtn.dataset.banUid, banBtn.dataset.banEmail));
         const unbanBtn = row.querySelector('.btn-unban');
-        if (unbanBtn) {
-          unbanBtn.addEventListener('click', () => {
-            handleBanAction('unban', unbanBtn.dataset.unbanUid, unbanBtn.dataset.unbanEmail);
-          });
-        }
-
+        if (unbanBtn) unbanBtn.addEventListener('click', () => handleBanAction('unban', unbanBtn.dataset.unbanUid, unbanBtn.dataset.unbanEmail));
         userListContainer.appendChild(row);
       });
     }
 
+    // 承認待ちモーダル
     const pendingModal = document.getElementById('pendingModal');
     const pendingListContainer = document.getElementById('pendingListContainer');
     const pendingCountLabel = document.getElementById('pendingCountLabel');
@@ -2345,28 +1940,19 @@
       pendingModal.classList.remove('hidden');
       renderPendingList();
     };
-
-    function closePendingModal() {
-      pendingModal.classList.add('hidden');
-    }
-
+    function closePendingModal() { pendingModal.classList.add('hidden'); }
     document.getElementById('pendingCloseBtn').addEventListener('click', closePendingModal);
-    pendingModal.addEventListener('click', (e) => {
-      if (e.target.id === 'pendingModal') closePendingModal();
-    });
+    pendingModal.addEventListener('click', (e) => { if (e.target.id === 'pendingModal') closePendingModal(); });
 
     function renderPendingList() {
       pendingListContainer.innerHTML = '';
       const entries = Object.entries(pendingCache || {});
       pendingCountLabel.textContent = entries.length;
-
       if (entries.length === 0) {
         pendingListContainer.innerHTML = '<p class="text-xs text-gray-400">承認待ちのユーザーはいません。</p>';
         return;
       }
-
       entries.sort((a, b) => (a[1].requestedAt || 0) - (b[1].requestedAt || 0));
-
       entries.forEach(([uid, p]) => {
         const date = p.requestedAt ? new Date(p.requestedAt).toLocaleString('ja-JP') : '不明';
         const row = document.createElement('div');
@@ -2380,8 +1966,7 @@
           <div class="action-btns">
             <button class="approve-btn">承認</button>
             <button class="reject-btn">拒否</button>
-          </div>
-        `;
+          </div>`;
         row.querySelector('.approve-btn').addEventListener('click', () => approveUser(uid, p));
         row.querySelector('.reject-btn').addEventListener('click', () => rejectUser(uid, p));
         pendingListContainer.appendChild(row);
@@ -2402,24 +1987,16 @@
         await remove(ref(db, `pendingUsers/${uid}`));
         showBanner('承認しました', false);
       } catch (err) {
-        console.error('承認エラー:', err);
         showBanner('承認失敗: ' + (err.code || err.message), true);
-        alert('承認に失敗しました。');
       }
     }
 
     async function rejectUser(uid, p) {
       if (!canApprove()) { alert('承認権限がありません。'); return; }
-      if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？\n\n拒否すると、その人は今後もサイトを利用できません。`)) return;
+      if (!confirm(`${p.email || 'このユーザー'} を拒否しますか？`)) return;
       try {
         const now = Date.now();
-        const data = {
-          bannedAt: now,
-          bannedBy: currentUser.email,
-          email: p.email || '',
-          uid: uid,
-          reason: '承認拒否'
-        };
+        const data = { bannedAt: now, bannedBy: currentUser.email, email: p.email || '', uid, reason: '承認拒否' };
         await set(ref(db, `bans/${uid}`), data);
         if (p.email) {
           const ek = emailToKey(p.email);
@@ -2428,18 +2005,16 @@
         await remove(ref(db, `pendingUsers/${uid}`));
         showBanner('拒否しました', false);
       } catch (err) {
-        console.error('拒否エラー:', err);
         showBanner('拒否失敗: ' + (err.code || err.message), true);
-        alert('拒否に失敗しました。');
       }
     }
 
+    // バッジ管理
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
       '#16a34a', '#0d9488', '#0284c7', '#1e40af', '#7c3aed',
       '#c026d3', '#db2777', '#475569', '#111827'
     ];
-
     function buildColorRow() {
       const row = document.getElementById('badgeColorRow');
       row.innerHTML = '';
@@ -2458,15 +2033,12 @@
         row.appendChild(sw);
       });
     }
-
     function updateBadgePreview() {
       const label = document.getElementById('badgeLabelInput').value.trim() || 'バッジ';
       const color = document.getElementById('badgeColorText').value.trim() || '#ef4444';
       const chip = document.getElementById('badgePreviewChip');
-      chip.textContent = label;
-      chip.style.background = color;
+      chip.textContent = label; chip.style.background = color;
     }
-
     function openBadgeModal(uid, email) {
       if (!canManageBadge()) { alert('バッジ管理権限がありません。'); return; }
       badgeEditingTarget = { uid, email };
@@ -2475,13 +2047,11 @@
       closeBadgeEditor();
       document.getElementById('badgeModal').classList.remove('hidden');
     }
-
     function closeBadgeModal() {
       badgeEditingTarget = null;
       badgeEditingBadgeId = null;
       document.getElementById('badgeModal').classList.add('hidden');
     }
-
     function renderBadgeList() {
       const container = document.getElementById('badgeListContainer');
       container.innerHTML = '';
@@ -2500,30 +2070,24 @@
             <span class="custom-badge" style="background:${escapeHtml(b.color || '#666')};">${escapeHtml(b.label)}</span>
           </div>
           <button class="btn-mini btn-edit" data-bid="${bid}">編集</button>
-          <button class="btn-mini btn-del" data-bid="${bid}">削除</button>
-        `;
+          <button class="btn-mini btn-del" data-bid="${bid}">削除</button>`;
         row.querySelector('.btn-edit').addEventListener('click', () => openBadgeEditor(bid));
         row.querySelector('.btn-del').addEventListener('click', async () => {
           if (!confirm(`バッジ「${b.label}」を削除しますか？`)) return;
           try {
             await remove(ref(db, `customBadges/${badgeEditingTarget.uid}/${bid}`));
             showBanner('バッジを削除しました', false);
-          } catch (err) {
-            console.error('削除エラー:', err);
-            showBanner('削除失敗: ' + (err.code || err.message), true);
-          }
+          } catch (err) { showBanner('削除失敗: ' + (err.code || err.message), true); }
         });
         container.appendChild(row);
       });
     }
-
     function openBadgeEditor(badgeId) {
       badgeEditingBadgeId = badgeId || null;
       const title = document.getElementById('badgeEditorTitle');
       const labelInput = document.getElementById('badgeLabelInput');
       const colorPicker = document.getElementById('badgeColorPicker');
       const colorText = document.getElementById('badgeColorText');
-
       if (badgeId && customBadgesCache[badgeEditingTarget.uid]?.[badgeId]) {
         const b = customBadgesCache[badgeEditingTarget.uid][badgeId];
         title.textContent = 'バッジを編集';
@@ -2536,35 +2100,24 @@
         colorPicker.value = '#ef4444';
         colorText.value = '#ef4444';
       }
-
       const cur = colorText.value.toLowerCase();
-      document.querySelectorAll('.color-swatch').forEach(el => {
-        el.classList.toggle('selected', el.dataset.color.toLowerCase() === cur);
-      });
-
+      document.querySelectorAll('.color-swatch').forEach(el => el.classList.toggle('selected', el.dataset.color.toLowerCase() === cur));
       updateBadgePreview();
       document.getElementById('badgeEditor').classList.remove('hidden');
     }
-
     function closeBadgeEditor() {
       badgeEditingBadgeId = null;
       document.getElementById('badgeEditor').classList.add('hidden');
     }
-
     document.getElementById('badgeCloseBtn').addEventListener('click', closeBadgeModal);
     document.getElementById('badgeEditorCancelBtn').addEventListener('click', closeBadgeEditor);
     document.getElementById('addBadgeBtn').addEventListener('click', () => openBadgeEditor(null));
-    document.getElementById('badgeModal').addEventListener('click', (e) => {
-      if (e.target.id === 'badgeModal') closeBadgeModal();
-    });
-
+    document.getElementById('badgeModal').addEventListener('click', (e) => { if (e.target.id === 'badgeModal') closeBadgeModal(); });
     document.getElementById('badgeLabelInput').addEventListener('input', updateBadgePreview);
     document.getElementById('badgeColorPicker').addEventListener('input', (e) => {
       const c = e.target.value;
       document.getElementById('badgeColorText').value = c;
-      document.querySelectorAll('.color-swatch').forEach(el => {
-        el.classList.toggle('selected', el.dataset.color.toLowerCase() === c.toLowerCase());
-      });
+      document.querySelectorAll('.color-swatch').forEach(el => el.classList.toggle('selected', el.dataset.color.toLowerCase() === c.toLowerCase()));
       updateBadgePreview();
     });
     document.getElementById('badgeColorText').addEventListener('input', (e) => {
@@ -2573,32 +2126,20 @@
       if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
         if (/^#[0-9a-fA-F]{6}$/.test(v)) {
           document.getElementById('badgeColorPicker').value = v;
-          document.querySelectorAll('.color-swatch').forEach(el => {
-            el.classList.toggle('selected', el.dataset.color.toLowerCase() === v.toLowerCase());
-          });
+          document.querySelectorAll('.color-swatch').forEach(el => el.classList.toggle('selected', el.dataset.color.toLowerCase() === v.toLowerCase()));
         }
         updateBadgePreview();
       }
     });
-
     document.getElementById('badgeSaveBtn').addEventListener('click', async () => {
       if (!badgeEditingTarget) return;
       if (!canManageBadge()) { alert('バッジ管理権限がありません。'); return; }
-
       const label = document.getElementById('badgeLabelInput').value.trim();
       const color = document.getElementById('badgeColorText').value.trim();
-
       if (!label) { alert('バッジ名を入力してください。'); return; }
       if (!/^#[0-9a-fA-F]{6}$/.test(color)) { alert('色は #RRGGBB の形式で入力してください。'); return; }
-
       const uid = badgeEditingTarget.uid;
-      const data = {
-        label: label,
-        color: color,
-        grantedBy: currentUser.email,
-        grantedAt: Date.now()
-      };
-
+      const data = { label, color, grantedBy: currentUser.email, grantedAt: Date.now() };
       try {
         if (badgeEditingBadgeId) {
           await update(ref(db, `customBadges/${uid}/${badgeEditingBadgeId}`), data);
@@ -2610,14 +2151,12 @@
         }
         closeBadgeEditor();
       } catch (err) {
-        console.error('バッジ保存エラー:', err);
         showBanner('保存失敗: ' + (err.code || err.message), true);
-        alert('バッジの保存に失敗しました。\n' + (err.message || ''));
       }
     });
-
     buildColorRow();
 
+    // 返信
     function onReplyClick(parentId) {
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (checkSelfBan()) return;
@@ -2625,17 +2164,13 @@
       activeReplyParentId = parentId;
       openReplyBox(parentId);
     }
-
     function openReplyBox(parentId) {
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
-
       const targetWrap = postsContainer.querySelector(`.post-tree[data-post-key="${parentId}"]`);
       if (!targetWrap) return;
       const targetCard = targetWrap.querySelector('.post-card');
       if (!targetCard) return;
-
       const parentNum = postNumberMap.get(parentId) || '?';
-
       const box = document.createElement('div');
       box.className = 'inline-reply-box';
       box.innerHTML = `
@@ -2652,11 +2187,8 @@
         <div class="flex justify-end gap-2 mt-2">
           <button class="reply-cancel-btn">キャンセル</button>
           <button class="reply-send-btn bg-red-800 hover:bg-red-900 text-white text-xs py-1.5 px-4 rounded">返信する</button>
-        </div>
-      `;
-
+        </div>`;
       targetCard.insertAdjacentElement('afterend', box);
-
       const ta = box.querySelector('.reply-textarea');
       const fileInp = box.querySelector('.reply-file');
       const cancelBtn = box.querySelector('.reply-cancel-btn');
@@ -2664,7 +2196,6 @@
       const previewBox = box.querySelector('.reply-preview');
       const previewImg = box.querySelector('.reply-preview-img');
       const previewInfo = box.querySelector('.reply-preview-info');
-
       fileInp.addEventListener('change', async () => {
         const f = fileInp.files[0];
         if (!f) { previewBox.classList.remove('show'); return; }
@@ -2673,18 +2204,9 @@
           previewImg.src = result.dataUrl;
           previewInfo.textContent = `${f.name}（${result.width}×${result.height}, ${formatSize(result.size)}）`;
           previewBox.classList.add('show');
-        } catch (err) {
-          alert(err.message);
-          fileInp.value = '';
-          previewBox.classList.remove('show');
-        }
+        } catch (err) { alert(err.message); fileInp.value = ''; previewBox.classList.remove('show'); }
       });
-
-      cancelBtn.addEventListener('click', () => {
-        activeReplyParentId = null;
-        box.remove();
-      });
-
+      cancelBtn.addEventListener('click', () => { activeReplyParentId = null; box.remove(); });
       sendBtn.addEventListener('click', async () => {
         const content = ta.value.trim();
         const file = fileInp.files[0];
@@ -2696,44 +2218,30 @@
           activeReplyParentId = null;
           box.remove();
         } catch (err) {
-          console.error(err);
           sendBtn.disabled = false;
           sendBtn.textContent = '返信する';
         }
       });
-
-      ta.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendBtn.click();
-      });
-
+      ta.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendBtn.click(); });
       ta.focus();
     }
-
     function closeReplyBox() {
       activeReplyParentId = null;
       document.querySelectorAll('.inline-reply-box').forEach(el => el.remove());
     }
-
     async function submitReply(parentId, content, file) {
       if (!currentUser) throw new Error('ログインが必要です');
       if (!currentThreadKey) throw new Error('スレッドが選択されていません');
       if (checkSelfBan()) throw new Error('BANされています');
-
       let fileData = null;
       if (file) fileData = await fileToBase64Image(file);
-
       const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
       const newPostRef = push(postsRef);
       await set(newPostRef, {
-        author: '名無しさん',
-        content: content || '',
-        createdAt: Date.now(),
-        authorEmail: currentUser.email,
-        authorUid: currentUser.uid,
-        authorRole: userRole || null,
-        badgeVisible: myBadgePublic,
-        parentId: parentId,
-        file: fileData
+        author: '名無しさん', content: content || '', createdAt: Date.now(),
+        authorEmail: currentUser.email, authorUid: currentUser.uid,
+        authorRole: userRole || null, badgeVisible: myBadgePublic,
+        parentId: parentId, file: fileData
       });
       showBanner('返信を保存しました', false);
     }
@@ -2743,27 +2251,21 @@
       if (!currentUser) { alert('ログインが必要です。'); return; }
       if (!currentThreadKey) { alert('スレッドが選択されていません。'); return; }
       if (checkSelfBan()) return;
-
       const content = document.getElementById('postContent').value.trim();
       const fileInput = document.getElementById('fileInput');
       const file = fileInput.files[0];
       const submitBtn = document.getElementById('submitBtn');
-
       if (!content && !file) { alert('コメントまたは画像を指定してください。'); return; }
-
       const originalText = submitBtn.innerText;
       submitBtn.disabled = true;
       submitBtn.innerText = file ? '画像処理中...' : '送信中...';
-
       const tempId = 'optimistic_post_' + Date.now();
       const tempPost = document.createElement('div');
       tempPost.id = tempId;
       tempPost.className = 'post-card optimistic-post';
       const optimisticIndex = allPostsCache.length + 1;
       let opBadge = '';
-      if (currentThreadOwnerUid && currentUser.uid === currentThreadOwnerUid) {
-        opBadge = `<span class="op-badge">スレ主</span>`;
-      }
+      if (currentThreadOwnerUid && currentUser.uid === currentThreadOwnerUid) opBadge = `<span class="op-badge">スレ主</span>`;
       let optimisticRoleBadge = '';
       if (myBadgePublic) {
         if (userRole === 'admin') optimisticRoleBadge = `<span class="role-post-badge admin">管理者</span>`;
@@ -2773,9 +2275,7 @@
       let optimisticCustomBadge = '';
       if (myBadgePublic && customBadgesCache[currentUser.uid]) {
         Object.values(customBadgesCache[currentUser.uid]).forEach((b) => {
-          if (b && b.label && b.color) {
-            optimisticCustomBadge += `<span class="custom-badge" style="background:${escapeHtml(b.color)};">${escapeHtml(b.label)}</span>`;
-          }
+          if (b && b.label && b.color) optimisticCustomBadge += `<span class="custom-badge" style="background:${escapeHtml(b.color)};">${escapeHtml(b.label)}</span>`;
         });
       }
       tempPost.innerHTML = `
@@ -2783,9 +2283,7 @@
           <span class="post-number">${optimisticIndex}</span>
           <span>：</span>
           <span class="post-author">名無しさん</span>
-          ${opBadge}
-          ${optimisticRoleBadge}
-          ${optimisticCustomBadge}
+          ${opBadge}${optimisticRoleBadge}${optimisticCustomBadge}
           <span>：</span>
           <span class="text-gray-500 text-xs font-normal">送信中...</span>
         </div>
@@ -2793,37 +2291,26 @@
         ${file ? `<div class="text-xs text-gray-400 mt-1">📎 ${escapeHtml(file.name)}（処理中...）</div>` : ''}`;
       postsContainer.appendChild(tempPost);
       tempPost.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
       try {
         let fileData = null;
         if (file) fileData = await fileToBase64Image(file);
-
         document.getElementById('postForm').reset();
         document.getElementById('postPreviewBox').classList.remove('show');
-
         const postsRef = ref(db, `threads/${currentThreadKey}/posts`);
         const newPostRef = push(postsRef);
         await set(newPostRef, {
-          author: '名無しさん',
-          content: content || '',
-          createdAt: Date.now(),
-          authorEmail: currentUser.email,
-          authorUid: currentUser.uid,
-          authorRole: userRole || null,
-          badgeVisible: myBadgePublic,
-          parentId: null,
-          file: fileData
+          author: '名無しさん', content: content || '', createdAt: Date.now(),
+          authorEmail: currentUser.email, authorUid: currentUser.uid,
+          authorRole: userRole || null, badgeVisible: myBadgePublic,
+          parentId: null, file: fileData
         });
-
         showBanner('書き込みを保存しました', false);
         const el = document.getElementById(tempId);
         if (el) el.remove();
       } catch (error) {
-        console.error("投稿エラー:", error);
         const el = document.getElementById(tempId);
         if (el) el.remove();
         showBanner('保存失敗: ' + (error.code || error.message || ''), true);
-        alert(`書き込みに失敗しました: ${error.message || '不明なエラー'}`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = originalText;
@@ -2832,13 +2319,11 @@
 
     window.deletePost = async function(threadKey, postKey, index) {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
-
       const hasChildren = allPostsCache.some(p => p.parentId === postKey);
       const msg = hasChildren
-        ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。\nこの操作は取り消せません。`
-        : `レス #${index} を削除しますか？\nこの操作は取り消せません。`;
+        ? `レス #${index} を削除しますか？\n※ このレスへの返信もすべて削除されます。`
+        : `レス #${index} を削除しますか？`;
       if (!confirm(msg)) return;
-
       try {
         const toDelete = collectDescendants(postKey);
         toDelete.push(postKey);
@@ -2847,22 +2332,16 @@
         }
         showBanner('レスを削除しました', false);
       } catch (err) {
-        console.error("削除エラー:", err);
         showBanner('削除失敗: ' + (err.code || err.message), true);
-        alert('削除に失敗しました。');
       }
     };
-
     function collectDescendants(parentKey) {
       const result = [];
       const stack = [parentKey];
       while (stack.length) {
         const cur = stack.pop();
         allPostsCache.forEach(p => {
-          if (p.parentId === cur) {
-            result.push(p.key);
-            stack.push(p.key);
-          }
+          if (p.parentId === cur) { result.push(p.key); stack.push(p.key); }
         });
       }
       return result;
@@ -2871,17 +2350,14 @@
     window.deleteCurrentThread = async function() {
       if (!canDelete()) { alert('削除権限がありません。'); return; }
       if (!currentThreadKey) return;
-      if (!confirm('このスレッドをすべてのレスごと削除しますか？\nこの操作は取り消せません。')) return;
-
+      if (!confirm('このスレッドをすべてのレスごと削除しますか？')) return;
       const key = currentThreadKey;
       try {
         await remove(ref(db, `threads/${key}`));
         showBanner('スレッドを削除しました', false);
         showThreadList();
       } catch (err) {
-        console.error("スレッド削除エラー:", err);
         showBanner('削除失敗: ' + (err.code || err.message), true);
-        alert('削除に失敗しました。');
       }
     };
 
@@ -2897,11 +2373,7 @@
         const snapApproved = await get(ref(db, 'approvedUsers'));
         const snapPending = await get(ref(db, 'pendingUsers'));
         const payload = {
-          _meta: {
-            exportedAt: new Date().toISOString(),
-            exportedBy: currentUser.email,
-            app: '69ch'
-          },
+          _meta: { exportedAt: new Date().toISOString(), exportedBy: currentUser.email, app: '69ch' },
           threads: snapThreads.exists() ? snapThreads.val() : {},
           customBadges: snapBadges.exists() ? snapBadges.val() : {},
           bans: snapBans.exists() ? snapBans.val() : {},
@@ -2923,9 +2395,7 @@
         URL.revokeObjectURL(url);
         showBanner('バックアップをダウンロードしました', false);
       } catch (err) {
-        console.error("バックアップエラー:", err);
         showBanner('バックアップ失敗: ' + (err.code || err.message), true);
-        alert('バックアップに失敗しました。');
       }
     };
 
@@ -2934,47 +2404,27 @@
       e.target.value = '';
       if (!file) return;
       if (!canBackup()) { alert('復元権限がありません。'); return; }
-
-      if (!confirm(
-        '【警告】\n' +
-        '選択したバックアップファイルで、現在のすべてのデータを上書きします。\n' +
-        '現在のデータは完全に失われます（バックアップを取っていない場合）。\n\n' +
-        '本当に復元しますか？'
-      )) return;
-
-      const doubleCheck = prompt('確認のため「RESTORE」と入力してください（大文字・半角）:');
-      if (doubleCheck !== 'RESTORE') {
-        alert('キャンセルしました。');
-        return;
-      }
-
+      if (!confirm('【警告】\nすべてのデータを上書きします。本当に復元しますか？')) return;
+      const doubleCheck = prompt('確認のため「RESTORE」と入力してください:');
+      if (doubleCheck !== 'RESTORE') { alert('キャンセルしました。'); return; }
       try {
         showBanner('復元中...', false);
         const text = await file.text();
         const parsed = JSON.parse(text);
-
-        let threadsData = {};
-        let badgesData = {};
-        let bansData = {};
-        let devBansData = {};
-        let knownUsersData = {};
-        let approvedData = {};
-        let pendingData = {};
-
+        let threadsData = {}, badgesData = {}, bansData = {}, devBansData = {}, knownUsersData = {}, approvedData = {}, pendingData = {};
         if (parsed && typeof parsed === 'object' && parsed.threads && typeof parsed.threads === 'object') {
           threadsData = parsed.threads;
-          if (parsed.customBadges && typeof parsed.customBadges === 'object') badgesData = parsed.customBadges;
-          if (parsed.bans && typeof parsed.bans === 'object') bansData = parsed.bans;
-          if (parsed.deviceBans && typeof parsed.deviceBans === 'object') devBansData = parsed.deviceBans;
-          if (parsed.knownUsers && typeof parsed.knownUsers === 'object') knownUsersData = parsed.knownUsers;
-          if (parsed.approvedUsers && typeof parsed.approvedUsers === 'object') approvedData = parsed.approvedUsers;
-          if (parsed.pendingUsers && typeof parsed.pendingUsers === 'object') pendingData = parsed.pendingUsers;
+          if (parsed.customBadges) badgesData = parsed.customBadges;
+          if (parsed.bans) bansData = parsed.bans;
+          if (parsed.deviceBans) devBansData = parsed.deviceBans;
+          if (parsed.knownUsers) knownUsersData = parsed.knownUsers;
+          if (parsed.approvedUsers) approvedData = parsed.approvedUsers;
+          if (parsed.pendingUsers) pendingData = parsed.pendingUsers;
         } else if (parsed && typeof parsed === 'object') {
           threadsData = parsed;
         } else {
           throw new Error('不正なバックアップファイル形式です');
         }
-
         await set(ref(db, 'threads'), threadsData);
         await set(ref(db, 'customBadges'), badgesData);
         await set(ref(db, 'bans'), bansData);
@@ -2982,14 +2432,10 @@
         await set(ref(db, 'knownUsers'), knownUsersData);
         await set(ref(db, 'approvedUsers'), approvedData);
         await set(ref(db, 'pendingUsers'), pendingData);
-
         showBanner('復元が完了しました', false);
-        alert('復元が完了しました。');
         showThreadList();
       } catch (err) {
-        console.error("復元エラー:", err);
         showBanner('復元失敗: ' + (err.code || err.message), true);
-        alert('復元に失敗しました。\n' + (err.message || ''));
       }
     });
 
@@ -3003,9 +2449,6 @@
       if (pendingUnsubscribe) pendingUnsubscribe();
       if (approvedUnsubscribe) approvedUnsubscribe();
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      console.error('未処理のPromiseエラー:', event.reason);
     });
   </script>
 </body>
