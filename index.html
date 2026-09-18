@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* ===== 既存のスタイル（変更なし） ===== */
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
@@ -417,7 +418,6 @@
       background: #1d4ed8;
     }
 
-    /* ★ 非公開画面（Frame風オーバーレイ） */
     #unpublishedOverlay {
       position: fixed; inset: 0;
       background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
@@ -518,6 +518,21 @@
       border-top-color: #ef4444;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
+    }
+
+    /* ===== 追加：右クリック禁止用のカーソル制御（任意） ===== */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* テキスト入力欄とテキストエリアは選択可能にする */
+    input, textarea, [contenteditable="true"] {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
   </style>
 </head>
@@ -892,6 +907,7 @@
   </div>
 
   <script type="module">
+    /* ===== モジュールインポート（Firebase） ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
@@ -903,6 +919,7 @@
       setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    /* ===== Firebase 設定 ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
@@ -924,6 +941,7 @@
       console.warn('永続化設定失敗:', err);
     });
 
+    /* ===== ロール定義 ===== */
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
     const ROLE_VIP_EMAILS = [
@@ -975,6 +993,7 @@
 
     let initialAuthCheckDone = false;
 
+    /* ===== DOM 取得 ===== */
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
     const threadListView = document.getElementById('threadListView');
@@ -1003,6 +1022,7 @@
     const publishBtn = document.getElementById('publishBtn');
     let bannerTimer = null;
 
+    /* ===== 権限ヘルパー ===== */
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
@@ -1215,7 +1235,6 @@
       );
     }
 
-    // ★ 非公開Frameを表示
     function showUnpublishedOverlay() {
       if (!siteStatusCache || siteStatusCache.published !== false) {
         unpublishedOverlay.classList.remove('show');
@@ -1238,7 +1257,6 @@
       unpublishedOverlay.classList.remove('show');
     }
 
-    // 「何？」ボタン
     unpGoBtn.addEventListener('click', () => {
       const url = unpGoBtn.dataset.url;
       if (url) {
@@ -1425,33 +1443,86 @@
       });
     })();
 
+    /* ============================================================
+       ★★★ 右クリック禁止 & ショートカットキー禁止 ★★★
+       ============================================================ */
+
+    // 1. 右クリック（コンテキストメニュー）を禁止
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       return false;
     });
 
+    // 2. キーボードショートカットを禁止
     document.addEventListener('keydown', (e) => {
+      // F12
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
         forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+      // Ctrl+Shift+I / J / C / K（Windows/Linux/Chrome）
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
+          e.key === 'I' || e.key === 'i' ||
+          e.key === 'J' || e.key === 'j' ||
+          e.key === 'C' || e.key === 'c' ||
+          e.key === 'K' || e.key === 'k'
+      )) {
         e.preventDefault();
         forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
+      // Ctrl+U（ソース表示）
       if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
         e.preventDefault();
         forceExit('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
-      if (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'U' || e.key === 'u')) {
+      // Mac: Cmd+Option+I / U / J / C
+      if (e.metaKey && e.altKey && (
+          e.key === 'I' || e.key === 'i' ||
+          e.key === 'U' || e.key === 'u' ||
+          e.key === 'J' || e.key === 'j' ||
+          e.key === 'C' || e.key === 'c'
+      )) {
         e.preventDefault();
         forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
         return false;
       }
+      // Shift+F10（右クリックメニューの代替）
+      if (e.shiftKey && e.key === 'F10') {
+        e.preventDefault();
+        return false;
+      }
     });
+
+    // 3. 念のため、テキスト選択やドラッグも一部制限（任意）
+    document.addEventListener('selectstart', (e) => {
+      // 入力欄などは許可
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return true;
+      }
+      e.preventDefault();
+      return false;
+    });
+    document.addEventListener('dragstart', (e) => {
+      if (e.target.tagName === 'IMG' || e.target.tagName === 'A') {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // 4. 右クリック禁止をより確実にする（mouseup でもブロック）
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 2) { // 右ボタン
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    /* ============================================================
+       ここまで右クリック・ショートカット禁止
+       ============================================================ */
 
     document.getElementById('switchAccountBtn').addEventListener('click', async () => {
       intentionalSignOut = true;
@@ -1523,7 +1594,6 @@
       return null;
     }
 
-    // ★ サイト公開状態を監視
     function initSiteStatusListener() {
       if (siteStatusUnsubscribe) siteStatusUnsubscribe();
       const ref0 = ref(db, 'siteStatus');
@@ -1535,13 +1605,11 @@
         };
         console.log('サイト公開状態更新:', siteStatusCache);
 
-        // ★ 管理者・主は非公開画面を表示しない
         if (isCurrentUserProtected()) {
           hideUnpublishedOverlay();
           return;
         }
 
-        // ★ 一般ユーザー・VIPは非公開ならFrameを被せる
         if (siteStatusCache.published === false) {
           showUnpublishedOverlay();
         } else {
@@ -1714,7 +1782,6 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
-      // ★ サイト公開状態を先に監視開始
       initSiteStatusListener();
 
       if (isCurrentUserProtected()) {
@@ -2801,7 +2868,6 @@
       }
     }
 
-    // ★ 公開設定モーダル
     const publishModal = document.getElementById('publishModal');
     const publishStatusLabel = document.getElementById('publishStatusLabel');
     const publishUrlInput = document.getElementById('publishUrlInput');
@@ -2831,7 +2897,6 @@
       if (e.target.id === 'publishModal') closePublishModal();
     });
 
-    // ★ URL保存（publishedを含めてset）
     document.getElementById('publishSaveUrlBtn').addEventListener('click', async () => {
       if (!canPublish()) { alert('公開設定権限がありません。'); return; }
       const url = publishUrlInput.value.trim();
@@ -2857,7 +2922,6 @@
       }
     });
 
-    // ★ 公開/非公開切替
     publishToggleBtn.addEventListener('click', async () => {
       if (!canPublish()) { alert('公開設定権限がありません。'); return; }
       const isPublished = siteStatusCache.published !== false;
