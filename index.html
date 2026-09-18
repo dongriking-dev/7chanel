@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* ===== 既存のスタイル（変更なし） ===== */
+    /* ===== 既存のスタイル ===== */
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
@@ -520,7 +520,6 @@
       animation: spin 0.8s linear infinite;
     }
 
-    /* 追加：右クリック禁止用のカーソル制御 */
     body {
       -webkit-user-select: none;
       -moz-user-select: none;
@@ -534,7 +533,6 @@
       user-select: text;
     }
 
-    /* ===== バッジ機能拡張用 ===== */
     .badge-feature-list {
       margin-top: 6px;
       font-size: 11px;
@@ -558,7 +556,7 @@
       color: #fff;
     }
 
-    /* ===== 掲示板（管理者・主専用）スタイル ===== */
+    /* ===== 掲示板スタイル ===== */
     #boardView {
       margin-top: 16px;
     }
@@ -616,13 +614,25 @@
     .board-publish-btn:hover { background: #92400e; }
     .board-publish-btn:disabled { background: #9ca3af; cursor: not-allowed; }
 
-    /* 掲示板投稿フォーム */
     .board-form-box {
       background: #fffbeb;
       border: 1px solid #fcd34d;
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 20px;
+    }
+    .board-form-box.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .board-readonly-note {
+      font-size: 12px;
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
     }
   </style>
 </head>
@@ -634,7 +644,7 @@
     <div class="boot-msg">アカウントを確認しています...</div>
   </div>
 
-  <!-- ★ 非公開画面（Frame風オーバーレイ） -->
+  <!-- 非公開画面 -->
   <div id="unpublishedOverlay">
     <div class="unp-bar">SECURE FRAME / SITE PAUSED</div>
     <div class="unp-center">
@@ -712,7 +722,7 @@
     </div>
   </div>
 
-  <!-- ★★★ バッジ管理モーダル（機能付き完全版・掲示板権限追加） ★★★ -->
+  <!-- バッジ管理モーダル -->
   <div id="badgeModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 620px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🏷️ バッジ管理（機能設定可能）</h3>
@@ -720,7 +730,6 @@
         対象: <span id="badgeTargetEmail" class="admin-email"></span>
       </p>
 
-      <!-- バッジ一覧 -->
       <div class="mb-3">
         <p class="text-xs font-bold text-gray-600 mb-2">現在のバッジ:</p>
         <div id="badgeListContainer">
@@ -728,10 +737,8 @@
         </div>
       </div>
 
-      <!-- 新規追加ボタン -->
       <button id="addBadgeBtn" class="add-badge-btn w-full mb-3">＋ 新しいバッジを追加</button>
 
-      <!-- エディター -->
       <div id="badgeEditor" class="editor-box hidden">
         <p class="text-xs font-bold text-gray-700 mb-2" id="badgeEditorTitle">新しいバッジ</p>
 
@@ -745,13 +752,11 @@
           <input type="text" id="badgeColorText" value="#ef4444" maxlength="7" class="flex-1 border p-2 rounded text-sm font-mono">
         </div>
 
-        <!-- プレビュー -->
         <div class="mb-3">
           <p class="text-xs text-gray-600 mb-1">プレビュー:</p>
           <span id="badgePreviewChip" class="custom-badge" style="background:#ef4444;">バッジ</span>
         </div>
 
-        <!-- ★★★ 機能設定セクション（掲示板権限追加） ★★★ -->
         <div class="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
           <p class="text-xs font-bold text-gray-700 mb-2">⚙️ バッジに付与する機能（複数選択可）</p>
           <div class="space-y-1">
@@ -789,7 +794,7 @@
             </label>
             <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
               <input type="checkbox" class="badge-feature-checkbox" value="canManageBoard" data-feature="canManageBoard">
-              <span>📋 掲示板管理権限（管理者・主限定機能）</span>
+              <span>📋 掲示板管理権限（投稿・削除）</span>
             </label>
           </div>
         </div>
@@ -921,9 +926,10 @@
           <button id="banListBtn" class="banlist-btn" onclick="openBanModal()">🚫 BAN管理</button>
           <button id="userListBtn" class="userlist-btn" onclick="openUserModal()">👥 ユーザー一覧</button>
           <button id="publishBtn" class="publish-btn" onclick="openPublishModal()">🌐 公開設定</button>
-          <button id="boardAdminBtn" class="board-publish-btn" onclick="showBoardView()">📋 掲示板</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
+        <!-- 掲示板ボタンは全ユーザー表示 -->
+        <button id="boardBtn" class="board-publish-btn" onclick="showBoardView()">📋 掲示板</button>
         <span id="userEmail" class="text-xs text-gray-500 hidden"></span>
         <button id="logoutBtn" onclick="doLogout()" class="bg-gray-500 hover:bg-gray-600 text-white text-xs py-1.5 px-3 rounded transition shadow">ログアウト</button>
         <button id="backToListBtn" onclick="showThreadList()" class="hidden bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">← スレッド一覧に戻る</button>
@@ -994,15 +1000,20 @@
       </main>
     </div>
 
-    <!-- ★★★ View 3: 掲示板（管理者・主専用） ★★★ -->
+    <!-- View 3: 掲示板（全ユーザー閲覧可能・編集は権限者のみ） -->
     <div id="boardView" class="hidden">
       <div class="flex justify-between items-center border-b pb-2 mb-4">
-        <h2 class="text-xl font-bold text-gray-700">📋 掲示板（管理者・主専用）</h2>
+        <h2 class="text-xl font-bold text-gray-700">📋 掲示板</h2>
         <button onclick="showThreadList()" class="bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">← スレッド一覧に戻る</button>
       </div>
 
-      <!-- 新規投稿フォーム -->
-      <div class="board-form-box">
+      <!-- 権限がない人への注意書き -->
+      <div id="boardReadonlyNote" class="board-readonly-note hidden">
+        📖 掲示板は閲覧のみ可能です。投稿・編集は管理者または主、および掲示板管理権限を持つユーザーのみ行えます。
+      </div>
+
+      <!-- 新規投稿フォーム（権限者のみ表示） -->
+      <div id="boardFormWrapper" class="board-form-box">
         <h3 class="text-md font-bold text-gray-700 mb-2">✏️ 新しいお知らせ・イベント投稿</h3>
         <form id="boardForm" class="space-y-3">
           <div>
@@ -1034,7 +1045,6 @@
   </div>
 
   <script type="module">
-    /* ===== モジュールインポート（Firebase） ===== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import {
@@ -1046,7 +1056,6 @@
       setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    /* ===== Firebase 設定 ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyBCoiJAnVWIOH9csEPlDyWJgfj6sSlNO2o",
       authDomain: "chaneler-52b95.firebaseapp.com",
@@ -1068,7 +1077,6 @@
       console.warn('永続化設定失敗:', err);
     });
 
-    /* ===== ロール定義 ===== */
     const ROLE_ADMIN_EMAIL = "katou.noel114514@gmail.com";
     const ROLE_OWNER_EMAIL = "18107@v.nakijin.ed.jp";
     const ROLE_VIP_EMAILS = [
@@ -1079,7 +1087,7 @@
 
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
-    const IMAGE_MAX_BASE64_SIZE = 200 * 1024; // 200KB
+    const IMAGE_MAX_BASE64_SIZE = 200 * 1024;
 
     let currentUser = null;
     let userRole = null;
@@ -1095,7 +1103,7 @@
     let approvedUnsubscribe = null;
     let selfApprovalUnsubscribe = null;
     let siteStatusUnsubscribe = null;
-    let boardUnsubscribe = null; // 掲示板用
+    let boardUnsubscribe = null;
 
     let activeReplyParentId = null;
     let allPostsCache = [];
@@ -1121,13 +1129,10 @@
 
     let initialAuthCheckDone = false;
 
-    // 掲示板キャッシュ
     let boardCache = {};
 
-    /* ===== 権限キャッシュ（バッジ機能） ===== */
     let badgeFeaturePermissions = {};
 
-    /* ===== DOM 取得 ===== */
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
     const threadListView = document.getElementById('threadListView');
@@ -1157,7 +1162,6 @@
     const publishBtn = document.getElementById('publishBtn');
     let bannerTimer = null;
 
-    /* ===== 権限ヘルパー（基本ロール） ===== */
     function canDelete() {
       return userRole === 'admin' || userRole === 'owner' || userRole === 'vip';
     }
@@ -1180,11 +1184,13 @@
     function canPublish() {
       return userRole === 'admin' || userRole === 'owner';
     }
+    // 掲示板の編集権限（管理者・主 or バッジ権限）
     function canManageBoard() {
-      return userRole === 'admin' || userRole === 'owner';
+      if (userRole === 'admin' || userRole === 'owner') return true;
+      if (currentUser && currentUser.uid && hasBadgeFeature(currentUser.uid, 'canManageBoard')) return true;
+      return false;
     }
 
-    /* ===== バッジ機能権限チェック ===== */
     function hasBadgeFeature(uid, feature) {
       if (!uid || !feature) return false;
       return !!(badgeFeaturePermissions[uid] && badgeFeaturePermissions[uid][feature]);
@@ -1596,9 +1602,6 @@
       });
     })();
 
-    /* ============================================================
-       ★★★ 右クリック禁止 & ショートカットキー禁止 ★★★
-       ============================================================ */
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       return false;
@@ -1661,9 +1664,6 @@
       }
     });
 
-    /* ============================================================
-       バッジ機能権限の監視とキャッシュ
-       ============================================================ */
     let badgeFeatureUnsubscribe = null;
 
     function initBadgeFeatureListener() {
@@ -1674,9 +1674,25 @@
         console.log('バッジ機能権限更新:', badgeFeaturePermissions);
         if (currentThreadKey) renderPostsFromCache();
         updateAdminControlsVisibility();
+        updateBoardEditability();
       }, (err) => {
         console.error('バッジ機能権限監視エラー:', err);
       });
+    }
+
+    // 掲示板の編集可否UIを更新
+    function updateBoardEditability() {
+      const formWrapper = document.getElementById('boardFormWrapper');
+      const readonlyNote = document.getElementById('boardReadonlyNote');
+      if (!formWrapper || !readonlyNote) return;
+      if (canManageBoard()) {
+        formWrapper.classList.remove('hidden');
+        formWrapper.classList.remove('disabled');
+        readonlyNote.classList.add('hidden');
+      } else {
+        formWrapper.classList.add('hidden');
+        readonlyNote.classList.remove('hidden');
+      }
     }
 
     function updateAdminControlsVisibility() {
@@ -1684,7 +1700,7 @@
         adminControls.classList.remove('hidden');
         return;
       }
-      const anyFeature = ['canBackup','canBan','canApprove','canPublish','canManageBadge','canManageBoard'].some(f =>
+      const anyFeature = ['canBackup','canBan','canApprove','canPublish','canManageBadge'].some(f =>
         canDo(f)
       );
       if (anyFeature) {
@@ -1694,7 +1710,6 @@
       }
     }
 
-    /* ===== 掲示板リスナー ===== */
     function initBoardListener() {
       if (boardUnsubscribe) boardUnsubscribe();
       const boardRef = ref(db, 'board');
@@ -1726,42 +1741,41 @@
         const date = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '不明';
         const card = document.createElement('div');
         card.className = 'board-card';
+        const canEdit = canManageBoard();
         card.innerHTML = `
           <div class="flex justify-between items-start gap-2">
             <div>
               <div class="board-title">${escapeHtml(item.title || '（無題）')}</div>
               <div class="board-meta">${date} ／ ${escapeHtml(item.authorEmail || '不明')}</div>
             </div>
-            <button class="board-delete-btn" data-key="${key}">削除</button>
+            ${canEdit ? `<button class="board-delete-btn" data-key="${key}">削除</button>` : ''}
           </div>
           ${item.content ? `<div class="board-body">${formatContent(item.content)}</div>` : ''}
           ${item.file ? `<div class="board-img">${buildFileHtml(item.file)}</div>` : ''}
         `;
         const delBtn = card.querySelector('.board-delete-btn');
-        delBtn.addEventListener('click', async () => {
-          if (!canManageBoard() && !canDo('canManageBoard')) {
-            alert('掲示板管理権限がありません。');
-            return;
-          }
-          if (!confirm('この投稿を削除しますか？')) return;
-          try {
-            await remove(ref(db, `board/${key}`));
-            showBanner('掲示板投稿を削除しました', false);
-          } catch (err) {
-            console.error('掲示板削除エラー:', err);
-            showBanner('削除失敗: ' + (err.code || err.message), true);
-          }
-        });
+        if (delBtn) {
+          delBtn.addEventListener('click', async () => {
+            if (!canManageBoard()) {
+              alert('掲示板管理権限がありません。');
+              return;
+            }
+            if (!confirm('この投稿を削除しますか？')) return;
+            try {
+              await remove(ref(db, `board/${key}`));
+              showBanner('掲示板投稿を削除しました', false);
+            } catch (err) {
+              console.error('掲示板削除エラー:', err);
+              showBanner('削除失敗: ' + (err.code || err.message), true);
+            }
+          });
+        }
         container.appendChild(card);
       });
     }
 
-    // 掲示板表示
+    // 掲示板表示（全ユーザー可能）
     window.showBoardView = function() {
-      if (!canManageBoard() && !canDo('canManageBoard')) {
-        alert('掲示板の閲覧権限がありません。');
-        return;
-      }
       threadListView.classList.add('hidden');
       threadDetailView.classList.add('hidden');
       boardView.classList.remove('hidden');
@@ -1769,7 +1783,7 @@
       currentThreadKey = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '';
-      // リスナー開始・描画
+      updateBoardEditability();
       initBoardListener();
       renderBoardList();
     };
@@ -1778,7 +1792,7 @@
     document.getElementById('boardForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) { alert('ログインが必要です。'); return; }
-      if (!canManageBoard() && !canDo('canManageBoard')) {
+      if (!canManageBoard()) {
         alert('掲示板管理権限がありません。');
         return;
       }
@@ -1822,12 +1836,9 @@
       }
     });
 
-    // 画像プレビュー（掲示板）
     document.getElementById('boardFileInput').addEventListener('change', () => {
       updatePreview(document.getElementById('boardFileInput'), 'boardPreviewBox', 'boardPreviewImg', 'boardPreviewInfo');
     });
-
-    /* ===== 以降、既存のFirebase処理 ===== */
 
     document.getElementById('switchAccountBtn').addEventListener('click', async () => {
       intentionalSignOut = true;
@@ -2162,6 +2173,7 @@
       }
 
       updateAdminControlsVisibility();
+      updateBoardEditability();
 
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
@@ -2183,7 +2195,6 @@
       initKnownUsersListener();
       initPendingListener();
       registerMyFingerprint();
-      // 掲示板リスナーは管理者・主のみだが常時開始（データ取得のみ）
       initBoardListener();
     });
 
@@ -3263,7 +3274,7 @@
       }
     });
 
-    /* ===== バッジ管理（完全版・機能付き・掲示板権限追加） ===== */
+    /* ===== バッジ管理 ===== */
 
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
