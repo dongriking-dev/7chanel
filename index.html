@@ -1198,6 +1198,37 @@
       }
     }
 
+    // ===== 警報検知時のDiscord通知（自動ON用） =====
+    async function sendDiscordAlarmNotification(detail, byEmail) {
+      if (!DISCORD_WEBHOOK_URL) return;
+      try {
+        const payload = {
+          username: "シクナイちゃんねる 警報Bot",
+          embeds: [
+            {
+              title: "🚨 改ざん・検証ツール検知",
+              color: 0xdc2626,
+              fields: [
+                { name: "📍 検知内容", value: detail || "不明", inline: false },
+                { name: "👤 対象", value: byEmail || "（不明）", inline: false },
+                { name: "🕐 日時", value: new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }), inline: false }
+              ],
+              footer: { text: "警報を自動でONに戻しました" },
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
+        await fetch(DISCORD_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        console.log("✅ Discord警報通知を送信しました");
+      } catch (err) {
+        console.warn("Discord警報通知送信失敗:", err.message);
+      }
+    }
+
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 200 * 1024;
@@ -1229,7 +1260,8 @@
     let knownUsersCache = {};
     let pendingCache = {};
     let approvedCache = {};
-    let siteStatusCache = { published: true, messageUrl: '', lockdown: false };
+    // グローバル警報ON/OFF とロックダウンを含む
+    let siteStatusCache = { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
     let myFingerprint = null;
     let nicknamesCache = {};
 
@@ -1248,8 +1280,12 @@
 
     let badgeFeaturePermissions = {};
 
-    // ===== セキュリティ警報の有効/無効 =====
+    // ===== セキュリティ警報の有効/無効（グローバル同期値） =====
+    // siteStatusCache.alertsEnabled が真実のソース
     let securityAlertsEnabled = true;
+
+    // 警報を発火したかどうか（多重実行防止）
+    let alarmTriggered = false;
 
     // ===== ロックダウン中の連続監視用 =====
     let lockdownEnforcerInterval = null;
@@ -1321,7 +1357,6 @@
       return userRole === 'admin' || userRole === 'owner';
     }
     function canLockdown() {
-      // ロックダウンは管理者・主のみ
       return userRole === 'admin' || userRole === 'owner';
     }
 
@@ -1528,27 +1563,20 @@
       );
     }
 
-    /**
-     * 緊急ロックダウン：管理者・主以外はタブ強制削除 or about:blank
-     */
     function executeLockdown() {
-      // まずタブ強制削除を試みる
       try { window.open('', '_self').close(); } catch (e) {}
       try { window.close(); } catch (e) {}
 
-      // 少し待ってからabout:blankへ置換（close失敗時のフェイルセーフ）
       setTimeout(() => {
         try { window.location.replace('about:blank'); } catch (e) {}
       }, 120);
 
-      // 念のためオーバーレイも出す（closeがブロックされた場合の見せかけ）
       banOverlayMsg.textContent = '緊急ロックダウン中';
       banOverlaySub.innerHTML = '現在このサイトは緊急ロックダウン中です。<br>管理者または主による解除をお待ちください。';
       banOverlayActions.style.display = 'none';
       banOverlay.classList.add('show');
       document.body.style.background = '#000';
 
-      // 連続エンフォース（解除されるまで何度もcloseとblank遷移を試みる）
       if (lockdownEnforcerInterval) clearInterval(lockdownEnforcerInterval);
       lockdownEnforcerInterval = setInterval(() => {
         if (!siteStatusCache || siteStatusCache.lockdown !== true) {
@@ -1571,17 +1599,11 @@
       }
     }
 
-    /**
-     * ロックダウン状態をチェックして、非保護ユーザーなら強制退出
-     * @returns {boolean} ロックダウン適用された場合true
-     */
     function checkAndApplyLockdown() {
-      // 管理者・主は対象外
       if (isCurrentUserProtected()) {
         stopLockdownEnforcer();
         return false;
       }
-      // 未ログインでも適用
       if (siteStatusCache && siteStatusCache.lockdown === true) {
         executeLockdown();
         return true;
@@ -1797,25 +1819,9 @@
       });
     })();
 
-    // ===== セキュリティ警報ON/OFF（管理者・主のみ） =====
-    window.toggleSecurityAlerts = function() {
-      if (!canLockdown()) {
-        alert('この操作は管理者または主のみ可能です。');
-        return;
-      }
-      securityAlertsEnabled = !securityAlertsEnabled;
-      try {
-        localStorage.setItem('securityAlertsEnabled', securityAlertsEnabled ? 'true' : 'false');
-      } catch (e) {}
-      updateSecurityOffBtnUI();
-      showBanner(
-        securityAlertsEnabled
-          ? '🛡️ セキュリティ警報をONにしました'
-          : '🛑 セキュリティ警報をOFFにしました',
-        false
-      );
-    };
-
+    /**
+     * 警報ボタンのUI更新（グローバル状態に基づく）
+     */
     function updateSecurityOffBtnUI() {
       const btn = document.getElementById('securityOffBtn');
       if (!btn) return;
@@ -1833,14 +1839,93 @@
       }
     }
 
-    (function restoreSecurityPreference() {
-      try {
-        const saved = localStorage.getItem('securityAlertsEnabled');
-        if (saved === 'false') securityAlertsEnabled = false;
-      } catch (e) {}
-    })();
+    /**
+     * 警報ON/OFFのトグル（グローバル）
+     */
+    window.toggleSecurityAlerts = async function() {
+      if (!canLockdown()) {
+        alert('この操作は管理者または主のみ可能です。');
+        return;
+      }
+      const newState = !securityAlertsEnabled;
 
-    // ===== 警報系イベント（securityAlertsEnabled で全体をガード） =====
+      if (newState === false) {
+        if (!confirm(
+          '🛑【警報OFF】🛑\n\n' +
+          '全ユーザー（未ログイン含む）のタブで\n' +
+          '改ざん検知・DevTools検知・console検知を停止します。\n\n' +
+          '※ 何か改ざんや検知が発生した場合、警報は自動でONに戻ります。\n\n' +
+          '本当にOFFにしますか？'
+        )) return;
+      } else {
+        if (!confirm('警報をONに戻しますか？')) return;
+      }
+
+      try {
+        await set(ref(db, 'siteStatus'), {
+          published: siteStatusCache.published !== false,
+          messageUrl: siteStatusCache.messageUrl || '',
+          lockdown: siteStatusCache.lockdown === true,
+          alertsEnabled: newState,
+          updatedAt: Date.now(),
+          updatedBy: currentUser ? currentUser.email : 'system'
+        });
+        // ローカル変数も即座に更新
+        securityAlertsEnabled = newState;
+        siteStatusCache.alertsEnabled = newState;
+        alarmTriggered = false;
+        updateSecurityOffBtnUI();
+        showBanner(
+          newState
+            ? '🛡️ 警報をONにしました'
+            : '🛑 警報をOFFにしました（全ユーザーに反映）',
+          false
+        );
+      } catch (err) {
+        console.error('警報切替エラー:', err);
+        showBanner('警報切替失敗: ' + (err.code || err.message), true);
+        alert('警報切替に失敗しました。');
+      }
+    };
+
+    /**
+     * 警報を発火する（グローバルONに戻す + Discord通知）
+     * @param {string} detail 検知内容
+     */
+    async function triggerAlarm(detail) {
+      if (alarmTriggered) return;
+      alarmTriggered = true;
+
+      // 手動OFF状態でも自動でONに戻す
+      try {
+        await set(ref(db, 'siteStatus'), {
+          published: siteStatusCache.published !== false,
+          messageUrl: siteStatusCache.messageUrl || '',
+          lockdown: siteStatusCache.lockdown === true,
+          alertsEnabled: true,
+          updatedAt: Date.now(),
+          updatedBy: 'AUTO_ALARM'
+        });
+        securityAlertsEnabled = true;
+        siteStatusCache.alertsEnabled = true;
+        updateSecurityOffBtnUI();
+        showBanner('🚨 改ざんを検知したため警報を自動でONに戻しました', true);
+      } catch (err) {
+        console.warn('警報自動ON失敗:', err.message);
+      }
+
+      // Discordに通知
+      try {
+        await sendDiscordAlarmNotification(detail, currentUser ? currentUser.email : '（未ログイン）');
+      } catch (e) {
+        console.warn('警報Discord通知エラー:', e.message);
+      }
+
+      // 5秒後に再び発火可能にする
+      setTimeout(() => { alarmTriggered = false; }, 5000);
+    }
+
+    /* ===== 警報系イベント（グローバルな securityAlertsEnabled でガード） ===== */
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       return false;
@@ -1848,7 +1933,6 @@
 
     document.addEventListener('keydown', (e) => {
       if (!securityAlertsEnabled) return;
-      if (isCurrentUserProtected()) return;
 
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
@@ -2037,9 +2121,6 @@
       }
     }
 
-    /**
-     * 緊急ロックダウンのトグル
-     */
     window.toggleLockdown = async function() {
       if (!canLockdown()) {
         alert('この操作は管理者または主のみ可能です。');
@@ -2064,6 +2145,7 @@
           published: siteStatusCache.published !== false,
           messageUrl: siteStatusCache.messageUrl || '',
           lockdown: newState,
+          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -2281,24 +2363,27 @@
       if (siteStatusUnsubscribe) siteStatusUnsubscribe();
       const ref0 = ref(db, 'siteStatus');
       siteStatusUnsubscribe = onValue(ref0, (snap) => {
-        const val = snap.exists() ? snap.val() : { published: true, messageUrl: '', lockdown: false };
+        const val = snap.exists() ? snap.val() : { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
         siteStatusCache = {
           published: val.published !== false,
           messageUrl: val.messageUrl || '',
-          lockdown: val.lockdown === true
+          lockdown: val.lockdown === true,
+          alertsEnabled: val.alertsEnabled !== false
         };
         console.log('サイト公開状態更新:', siteStatusCache);
 
+        // グローバル警報状態をローカル変数に反映（全ユーザーに伝播）
+        securityAlertsEnabled = siteStatusCache.alertsEnabled;
+
         updateLockdownBtnUI();
         updatePublishModalUI();
+        updateSecurityOffBtnUI();
 
         // ===== ロックダウンチェック（最優先） =====
-        // 未ログインでも適用される
         if (checkAndApplyLockdown()) {
           return;
         }
 
-        // 管理者・主は以降のUI制御のみ
         if (isCurrentUserProtected()) {
           hideUnpublishedOverlay();
           return;
@@ -2486,7 +2571,6 @@
           return;
         }
 
-        // ロックダウンされていれば未ログインでも強制退出
         if (checkAndApplyLockdown()) return;
 
         hideBootOverlay();
@@ -2503,16 +2587,17 @@
       initSiteStatusListener();
       initBadgeFeatureListener();
 
-      // ===== ロックダウンチェック（最優先） =====
-      // siteStatus の初期値を取得して判定
+      // siteStatusの初期値を取得してロックダウン・警報状態を反映
       try {
         const initSiteSnap = await get(ref(db, 'siteStatus'));
-        const initVal = initSiteSnap.exists() ? initSiteSnap.val() : { published: true, messageUrl: '', lockdown: false };
+        const initVal = initSiteSnap.exists() ? initSiteSnap.val() : { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
         siteStatusCache = {
           published: initVal.published !== false,
           messageUrl: initVal.messageUrl || '',
-          lockdown: initVal.lockdown === true
+          lockdown: initVal.lockdown === true,
+          alertsEnabled: initVal.alertsEnabled !== false
         };
+        securityAlertsEnabled = siteStatusCache.alertsEnabled;
       } catch (e) {
         console.warn('siteStatus初期取得失敗:', e.message);
       }
@@ -3802,6 +3887,7 @@
           published: siteStatusCache.published !== false,
           messageUrl: url,
           lockdown: siteStatusCache.lockdown === true,
+          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -3835,6 +3921,7 @@
           published: newState,
           messageUrl: url,
           lockdown: siteStatusCache.lockdown === true,
+          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -4534,29 +4621,14 @@
 
     /* ===================================================
      *  総合セキュリティ＆検証ツール妨害スクリプト
-     *  （securityAlertsEnabled で全体を無効化可能）
+     *  （グローバル警報状態に連動 + 自動ON）
      * =================================================== */
     (() => {
       'use strict';
 
-      document.addEventListener('contextmenu', (e) => e.preventDefault());
-      document.addEventListener('keydown', (e) => {
-        if (!securityAlertsEnabled) return;
-        if (isCurrentUserProtected()) return;
-        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
-        if (
-          e.key === 'F12' ||
-          (isCtrlOrCmd && e.shiftKey && ['I', 'J', 'C', 'i', 'j', 'c'].includes(e.key)) ||
-          (isCtrlOrCmd && ['U', 'u', 'S', 's'].includes(e.key))
-        ) {
-          e.preventDefault();
-          return false;
-        }
-      });
-
+      // ===== 通知要素（1回だけ作成） =====
       let noticeElement = null;
-      const showNotice = (msg = '⚠️ 開発者ツールまたは改ざんが検知されました') => {
-        if (!securityAlertsEnabled) return;
+      const ensureNoticeElement = () => {
         if (!noticeElement && document.body) {
           noticeElement = document.createElement('div');
           noticeElement.style.cssText = `
@@ -4564,60 +4636,122 @@
             background-color: #ff4d4f; color: #ffffff; padding: 12px 20px;
             border-radius: 8px; font-weight: bold; font-family: sans-serif;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none;
+            display: none;
           `;
           document.body.appendChild(noticeElement);
         }
-        if (noticeElement) {
-          noticeElement.textContent = msg;
-          noticeElement.style.display = 'block';
+        return noticeElement;
+      };
+
+      const showNotice = (msg = '⚠️ 開発者ツールまたは改ざんが検知されました') => {
+        const el = ensureNoticeElement();
+        if (!el) return;
+        el.textContent = msg;
+        el.style.display = 'block';
+      };
+
+      /**
+       * 警報を検知した時に呼ぶ。
+       * 1) グローバルに alertsEnabled=true を書き戻す（自動ON）
+       * 2) Discordに通知
+       * 3) 画面に警告表示
+       */
+      const handleAlarm = async (detail) => {
+        // 画面に警告
+        showNotice('⚠️ ' + detail);
+
+        // グローバルに警報ONを書き戻す（自動ON）
+        // → securityAlertsEnabled がfalseでも、これで全ユーザーに伝播する
+        try {
+          // すでにalarmTriggeredが立っていればスキップ
+          if (typeof alarmTriggered !== 'undefined' && alarmTriggered) return;
+        } catch (e) {}
+
+        try {
+          // triggerAlarm はモジュールスコープで定義されている
+          if (typeof triggerAlarm === 'function') {
+            await triggerAlarm(detail);
+          }
+        } catch (e) {
+          console.warn('自動警報ON失敗:', e.message);
         }
       };
 
+      // ===== 右クリック禁止（常時） =====
+      document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      // ===== キーボードショートカット =====
+      // securityAlertsEnabled が false でも「検知」自体は行い、自動ONのトリガーにする
+      document.addEventListener('keydown', (e) => {
+        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+        const isSuspicious =
+          e.key === 'F12' ||
+          (isCtrlOrCmd && e.shiftKey && ['I', 'J', 'C', 'i', 'j', 'c'].includes(e.key)) ||
+          (isCtrlOrCmd && ['U', 'u', 'S', 's'].includes(e.key));
+
+        if (isSuspicious) {
+          // 警報OFF中でも「自動でON」に戻すトリガーにする
+          if (!securityAlertsEnabled) {
+            handleAlarm('検証ツール系ショートカットを検知（警報を自動ONに戻しました）');
+          } else {
+            handleAlarm('検証ツール系ショートカットを検知');
+          }
+          // 実際の動作を阻止（常時）
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // ===== DevTools検知（debuggerループ） =====
       const triggerDebugger = () => {
-        if (!securityAlertsEnabled) return;
-        if (isCurrentUserProtected()) return;
         const start = performance.now();
         (function () {}.constructor('debugger')());
         const end = performance.now();
+        // debuggerで止められると、時間が大きくズレる
         if (end - start > 100) {
-          showNotice('⚠️ 検証ツールの使用は禁止されています');
+          handleAlarm('検証ツールの使用を検知（debugger遅延）');
         }
       };
-      setInterval(triggerDebugger, 500);
+      // 警報OFF中も常に実行し、検知したら自動ONに戻す
+      setInterval(triggerDebugger, 800);
 
+      // ===== ウィンドウサイズ変化（ドッキング型DevTools） =====
       const threshold = 160;
       window.addEventListener('resize', () => {
-        if (!securityAlertsEnabled) return;
-        if (isCurrentUserProtected()) return;
         const widthDiff = window.outerWidth - window.innerWidth > threshold;
         const heightDiff = window.outerHeight - window.innerHeight > threshold;
         if (widthDiff || heightDiff) {
-          showNotice();
+          handleAlarm('ウィンドウサイズの異常を検知（DevToolsドッキング）');
         }
       });
 
+      // ===== console.log評価を利用した検知 =====
       const dummyImg = new Image();
       Object.defineProperty(dummyImg, 'id', {
         get: function () {
-          if (securityAlertsEnabled && !isCurrentUserProtected()) showNotice();
+          handleAlarm('console.log経由の検証ツール使用を検知');
         }
       });
       setInterval(() => {
-        if (!securityAlertsEnabled) return;
-        if (isCurrentUserProtected()) return;
         console.log('%c', dummyImg);
       }, 2000);
 
+      // ===== DOM改ざん検知（MutationObserver） =====
       window.addEventListener('DOMContentLoaded', () => {
         if (!document.body) return;
+
+        // 自分自身の通知要素を無視するためのフラグ
         const observer = new MutationObserver((mutations) => {
-          if (!securityAlertsEnabled) return;
-          if (isCurrentUserProtected()) return;
           for (const mutation of mutations) {
-            if (noticeElement && (mutation.target === noticeElement || Array.from(mutation.removedNodes).includes(noticeElement))) {
+            // 通知要素自体の変更は無視（無限ループ防止）
+            if (noticeElement &&
+                (mutation.target === noticeElement ||
+                 Array.from(mutation.removedNodes).includes(noticeElement))) {
               continue;
             }
-            showNotice('⚠️ ページの要素改ざんを検知しました');
+
+            // 改ざん検知 → 警報OFF中でも自動ONのトリガー
+            handleAlarm('ページ要素の改ざんを検知');
             break;
           }
         });
