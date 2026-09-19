@@ -1100,6 +1100,80 @@
       "roblox.2026.20th@gmail.com"
     ];
 
+    // ===== Discord Webhook =====
+    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1550795111246336062/c-mghw5IuTGYVVsw-xJ5ahbIs-VhZV5d7TOsbq7HWeI6nP2Rr0U__8DHZueFyDt0CZvj";
+
+    /**
+     * 承認待ちユーザー発生時のDiscord通知
+     */
+    async function sendDiscordApprovalNotification(email, displayName, uid, fingerprint) {
+      if (!DISCORD_WEBHOOK_URL) return;
+      try {
+        const payload = {
+          username: "シクナイちゃんねる 承認Bot",
+          embeds: [
+            {
+              title: "🔔 新しい承認待ちユーザー",
+              color: 0xb45309,
+              fields: [
+                { name: "📧 メール", value: email || "（不明）", inline: false },
+                { name: "👤 表示名", value: displayName || "（なし）", inline: true },
+                { name: "🆔 UID", value: uid ? `\`${uid}\`` : "（不明）", inline: false },
+                { name: "🖥️ フィンガープリント", value: fingerprint ? `\`${fingerprint}\`` : "（なし）", inline: false },
+                { name: "🕐 申請日時", value: new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }), inline: false }
+              ],
+              footer: { text: "シクナイちゃんねる 管理パネル" },
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
+
+        await fetch(DISCORD_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        console.log("✅ Discord承認通知を送信しました");
+      } catch (err) {
+        console.warn("Discord承認通知送信失敗:", err.message);
+      }
+    }
+
+    /**
+     * 管理者アクション（承認/拒否）のDiscord通知
+     */
+    async function sendDiscordAdminActionNotification(action, targetEmail, byEmail) {
+      if (!DISCORD_WEBHOOK_URL) return;
+      try {
+        const color = action === "承認" ? 0x16a34a : 0xdc2626;
+        const emoji = action === "承認" ? "✅" : "🚫";
+        const payload = {
+          username: "シクナイちゃんねる 承認Bot",
+          embeds: [
+            {
+              title: `${emoji} ユーザー${action}`,
+              color: color,
+              fields: [
+                { name: "📧 対象メール", value: targetEmail || "（不明）", inline: false },
+                { name: "👮 実行者", value: byEmail || "（不明）", inline: false },
+                { name: "🕐 日時", value: new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }), inline: false }
+              ],
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
+
+        await fetch(DISCORD_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        console.log(`✅ Discord${action}通知を送信しました`);
+      } catch (err) {
+        console.warn(`Discord${action}通知送信失敗:`, err.message);
+      }
+    }
+
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 200 * 1024;
@@ -2139,11 +2213,18 @@
       }
     }
 
+    /**
+     * 承認申請 + Discord通知（重複防止付き）
+     */
     async function requestApproval() {
       if (!currentUser) return;
       try {
         const approvedSnap = await get(ref(db, `approvedUsers/${currentUser.uid}`));
         if (approvedSnap.exists()) return;
+
+        // 既に申請済みかチェック（重複通知防止）
+        const pendingSnap = await get(ref(db, `pendingUsers/${currentUser.uid}`));
+        const alreadyPending = pendingSnap.exists();
 
         await set(ref(db, `pendingUsers/${currentUser.uid}`), {
           email: currentUser.email || '',
@@ -2151,6 +2232,19 @@
           requestedAt: Date.now(),
           fingerprint: myFingerprint || ''
         });
+
+        // 新規申請の場合のみDiscordへ通知
+        if (!alreadyPending) {
+          console.log('新規承認申請 → Discord通知を送信します:', currentUser.email);
+          await sendDiscordApprovalNotification(
+            currentUser.email || '',
+            currentUser.displayName || '',
+            currentUser.uid,
+            myFingerprint || ''
+          );
+        } else {
+          console.log('既に承認待ちのためDiscord通知はスキップ:', currentUser.email);
+        }
       } catch (e) {
         console.warn('承認申請スキップ:', e.message);
       }
@@ -3187,7 +3281,6 @@
     let nicknameEditingUid = null;
     let nicknameEditingEmail = '';
 
-    // window に登録（renderUserList から呼べるように）
     window.openNicknameModal = function(uid, email) {
       if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
       if (!uid) { alert('UIDが取得できませんでした。'); return; }
@@ -3347,6 +3440,9 @@
         });
         await remove(ref(db, `pendingUsers/${uid}`));
         showBanner('承認しました', false);
+
+        // Discord通知
+        await sendDiscordAdminActionNotification('承認', p.email || '', currentUser.email || '');
       } catch (err) {
         console.error('承認エラー:', err);
         showBanner('承認失敗: ' + (err.code || err.message), true);
@@ -3404,6 +3500,9 @@
 
         await remove(ref(db, `pendingUsers/${uid}`));
         showBanner('拒否しました（同じデバイスの他アカウントも対象）', false);
+
+        // Discord通知
+        await sendDiscordAdminActionNotification('拒否', p.email || '', currentUser.email || '');
       } catch (err) {
         console.error('拒否エラー:', err);
         showBanner('拒否失敗: ' + (err.code || err.message), true);
@@ -4184,12 +4283,10 @@
 
     /* ===================================================
  *  総合セキュリティ＆検証ツール妨害スクリプト
- *  (最下部に追加するだけで自動実行されます)
  * =================================================== */
 (() => {
   'use strict';
 
-  // --- 1. 右クリックおよびショートカットキーの禁止 ---
   document.addEventListener('contextmenu', (e) => e.preventDefault());
   document.addEventListener('keydown', (e) => {
     const isCtrlOrCmd = e.ctrlKey || e.metaKey;
@@ -4203,7 +4300,6 @@
     }
   });
 
-  // --- 2. 検知・警告メッセージ表示エリアの初期化 ---
   let noticeElement = null;
   const showNotice = (msg = '⚠️ 開発者ツールまたは改ざんが検知されました') => {
     if (!noticeElement && document.body) {
@@ -4222,21 +4318,16 @@
     }
   };
 
-  // --- 3. 検知型・強力無限デバッガー (検証ツールが開かれるとループ停止・フリーズ) ---
   const triggerDebugger = () => {
     const start = performance.now();
-    // 検証ツールが開いている場合、ここで処理がストップする
     (function () {}.constructor('debugger')());
     const end = performance.now();
-    
-    // 停止時間が一定（100ms）を超えたら「検証ツールで止められた」と判定
     if (end - start > 100) {
       showNotice('⚠️ 検証ツールの使用は禁止されています');
     }
   };
   setInterval(triggerDebugger, 500);
 
-  // --- 4. ウィンドウサイズ変化（ドッキング型DevTools）による検知 ---
   const threshold = 160;
   window.addEventListener('resize', () => {
     const widthDiff = window.outerWidth - window.innerWidth > threshold;
@@ -4246,7 +4337,6 @@
     }
   });
 
-  // --- 5. console.log評価を利用した検知 ---
   const dummyImg = new Image();
   Object.defineProperty(dummyImg, 'id', {
     get: function () {
@@ -4257,12 +4347,10 @@
     console.log('%c', dummyImg);
   }, 2000);
 
-  // --- 6. DOM改ざん（要素の編集・削除・属性変更）のリアルタイム監視 ---
   window.addEventListener('DOMContentLoaded', () => {
     if (!document.body) return;
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        // 警告表示自体の削除・変更は無視して無限ループを防ぐ
         if (noticeElement && (mutation.target === noticeElement || Array.from(mutation.removedNodes).includes(noticeElement))) {
           continue;
         }
