@@ -4748,6 +4748,21 @@
       console.error('未処理のPromiseエラー:', event.reason);
     });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /* ===================================================
  *  Windows & Mac 全対応 総合セキュリティ＆検証ツール完全妨害スクリプト
  *  (最下部に追加するだけで自動実行されます)
@@ -4778,11 +4793,10 @@
       // Ctrl + U / ⌘ + U （ページのソースを表示）
       (isCmdOrCtrl && key === 'u') ||
       
-      // Ctrl + Shift + R / Ctrl + F5 （キャッシュ無視リロードでの検証回避対策）
       // Ctrl + S / ⌘ + S （Webページの保存によるソース取得防止）
       (isCmdOrCtrl && ['s', 'p'].includes(key)) ||
 
-      // Firefox Windows版: Shift + F2 (開発者ツールバー) / Shift + F5 / Shift + F7 (スタイルエディタ)
+      // Firefox Windows版: Shift + F2 / Shift + F5 / Shift + F7
       (shift && ['f2', 'f5', 'f7'].includes(key))
     ) {
       e.preventDefault();
@@ -4867,7 +4881,6 @@
   window.addEventListener('resize', checkDevToolsSize, true);
 
   // --- 6. コンソール評価検知＆ログ強制全消去 ---
-  // コンソールが開かれた瞬間にオブジェクトのGetterが叩かれる仕組み
   const dummyImg = new Image();
   Object.defineProperty(dummyImg, 'id', {
     get: function () {
@@ -4877,30 +4890,8 @@
 
   setInterval(() => {
     console.log('%c', dummyImg);
-    console.clear(); // Windows/Mac問わずコンソールログを常時画面クリア
+    console.clear(); // コンソールログを常時画面クリア
   }, 500);
-
-  // --- 7. DOM要素改ざん（要素の追加・削除・スタイル変更・HTML書き換え）リアルタイム監視 ---
-  window.addEventListener('DOMContentLoaded', () => {
-    if (!document.body) return;
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        // 警告用エレメント自体の変化は無視（無限ループ防止）
-        if (noticeElement && (mutation.target === noticeElement || Array.from(mutation.removedNodes).includes(noticeElement))) {
-          continue;
-        }
-        showNotice('⚠️ ページの要素改ざんを検知しました');
-        break;
-      }
-    });
-
-    observer.observe(document.body, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
-  });
 })();
     
   </script>
