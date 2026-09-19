@@ -135,17 +135,6 @@
     }
     .publish-btn.unpublished:hover { background: #15803d; }
 
-    /* セキュリティ警報OFFボタン */
-    .security-off-btn {
-      background: #374151; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
-    }
-    .security-off-btn:hover { background: #1f2937; }
-    .security-off-btn.active {
-      background: #6b7280;
-      box-shadow: inset 0 0 0 2px #fbbf24;
-    }
-
     /* 緊急ロックダウンボタン */
     .lockdown-btn {
       background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 14px;
@@ -979,7 +968,6 @@
           <button id="banListBtn" class="banlist-btn hidden" onclick="openBanModal()">🚫 BAN管理</button>
           <button id="userListBtn" class="userlist-btn hidden" onclick="openUserModal()">👥 ユーザー一覧</button>
           <button id="publishBtn" class="publish-btn hidden" onclick="openPublishModal()">🌐 公開設定</button>
-          <button id="securityOffBtn" class="security-off-btn hidden" onclick="toggleSecurityAlerts()">🛑 警報OFF</button>
           <input type="file" id="restoreInput" accept="application/json,.json" class="hidden">
         </div>
         <button id="boardBtn" class="board-publish-btn" onclick="showBoardView()">📋 掲示板</button>
@@ -1198,37 +1186,6 @@
       }
     }
 
-    // ===== 警報検知時のDiscord通知（自動ON用） =====
-    async function sendDiscordAlarmNotification(detail, byEmail) {
-      if (!DISCORD_WEBHOOK_URL) return;
-      try {
-        const payload = {
-          username: "シクナイちゃんねる 警報Bot",
-          embeds: [
-            {
-              title: "🚨 改ざん・検証ツール検知",
-              color: 0xdc2626,
-              fields: [
-                { name: "📍 検知内容", value: detail || "不明", inline: false },
-                { name: "👤 対象", value: byEmail || "（不明）", inline: false },
-                { name: "🕐 日時", value: new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }), inline: false }
-              ],
-              footer: { text: "警報を自動でONに戻しました" },
-              timestamp: new Date().toISOString()
-            }
-          ]
-        };
-        await fetch(DISCORD_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        console.log("✅ Discord警報通知を送信しました");
-      } catch (err) {
-        console.warn("Discord警報通知送信失敗:", err.message);
-      }
-    }
-
     const IMAGE_MAX_WIDTH = 1280;
     const IMAGE_QUALITY = 0.75;
     const IMAGE_MAX_BASE64_SIZE = 200 * 1024;
@@ -1260,8 +1217,8 @@
     let knownUsersCache = {};
     let pendingCache = {};
     let approvedCache = {};
-    // グローバル警報ON/OFF とロックダウンを含む
-    let siteStatusCache = { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
+    // lockdown を含む
+    let siteStatusCache = { published: true, messageUrl: '', lockdown: false };
     let myFingerprint = null;
     let nicknamesCache = {};
 
@@ -1279,13 +1236,6 @@
     let boardCache = {};
 
     let badgeFeaturePermissions = {};
-
-    // ===== セキュリティ警報の有効/無効（グローバル同期値） =====
-    // siteStatusCache.alertsEnabled が真実のソース
-    let securityAlertsEnabled = true;
-
-    // 警報を発火したかどうか（多重実行防止）
-    let alarmTriggered = false;
 
     // ===== ロックダウン中の連続監視用 =====
     let lockdownEnforcerInterval = null;
@@ -1819,155 +1769,10 @@
       });
     })();
 
-    /**
-     * 警報ボタンのUI更新（グローバル状態に基づく）
-     */
-    function updateSecurityOffBtnUI() {
-      const btn = document.getElementById('securityOffBtn');
-      if (!btn) return;
-      if (!canLockdown()) {
-        btn.classList.add('hidden');
-        return;
-      }
-      btn.classList.remove('hidden');
-      if (securityAlertsEnabled) {
-        btn.textContent = '🛑 警報OFF';
-        btn.classList.remove('active');
-      } else {
-        btn.textContent = '🟢 警報ON';
-        btn.classList.add('active');
-      }
-    }
-
-    /**
-     * 警報ON/OFFのトグル（グローバル）
-     */
-    window.toggleSecurityAlerts = async function() {
-      if (!canLockdown()) {
-        alert('この操作は管理者または主のみ可能です。');
-        return;
-      }
-      const newState = !securityAlertsEnabled;
-
-      if (newState === false) {
-        if (!confirm(
-          '🛑【警報OFF】🛑\n\n' +
-          '全ユーザー（未ログイン含む）のタブで\n' +
-          '改ざん検知・DevTools検知・console検知を停止します。\n\n' +
-          '※ 何か改ざんや検知が発生した場合、警報は自動でONに戻ります。\n\n' +
-          '本当にOFFにしますか？'
-        )) return;
-      } else {
-        if (!confirm('警報をONに戻しますか？')) return;
-      }
-
-      try {
-        await set(ref(db, 'siteStatus'), {
-          published: siteStatusCache.published !== false,
-          messageUrl: siteStatusCache.messageUrl || '',
-          lockdown: siteStatusCache.lockdown === true,
-          alertsEnabled: newState,
-          updatedAt: Date.now(),
-          updatedBy: currentUser ? currentUser.email : 'system'
-        });
-        // ローカル変数も即座に更新
-        securityAlertsEnabled = newState;
-        siteStatusCache.alertsEnabled = newState;
-        alarmTriggered = false;
-        updateSecurityOffBtnUI();
-        showBanner(
-          newState
-            ? '🛡️ 警報をONにしました'
-            : '🛑 警報をOFFにしました（全ユーザーに反映）',
-          false
-        );
-      } catch (err) {
-        console.error('警報切替エラー:', err);
-        showBanner('警報切替失敗: ' + (err.code || err.message), true);
-        alert('警報切替に失敗しました。');
-      }
-    };
-
-    /**
-     * 警報を発火する（グローバルONに戻す + Discord通知）
-     * @param {string} detail 検知内容
-     */
-    async function triggerAlarm(detail) {
-      if (alarmTriggered) return;
-      alarmTriggered = true;
-
-      // 手動OFF状態でも自動でONに戻す
-      try {
-        await set(ref(db, 'siteStatus'), {
-          published: siteStatusCache.published !== false,
-          messageUrl: siteStatusCache.messageUrl || '',
-          lockdown: siteStatusCache.lockdown === true,
-          alertsEnabled: true,
-          updatedAt: Date.now(),
-          updatedBy: 'AUTO_ALARM'
-        });
-        securityAlertsEnabled = true;
-        siteStatusCache.alertsEnabled = true;
-        updateSecurityOffBtnUI();
-        showBanner('🚨 改ざんを検知したため警報を自動でONに戻しました', true);
-      } catch (err) {
-        console.warn('警報自動ON失敗:', err.message);
-      }
-
-      // Discordに通知
-      try {
-        await sendDiscordAlarmNotification(detail, currentUser ? currentUser.email : '（未ログイン）');
-      } catch (e) {
-        console.warn('警報Discord通知エラー:', e.message);
-      }
-
-      // 5秒後に再び発火可能にする
-      setTimeout(() => { alarmTriggered = false; }, 5000);
-    }
-
-    /* ===== 警報系イベント（グローバルな securityAlertsEnabled でガード） ===== */
+    // ===== 右クリック・選択・ドラッグ禁止（警報なし、静かに防止） =====
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       return false;
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (!securityAlertsEnabled) return;
-
-      if (e.key === 'F12' || e.keyCode === 123) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (
-          e.key === 'I' || e.key === 'i' ||
-          e.key === 'J' || e.key === 'j' ||
-          e.key === 'C' || e.key === 'c' ||
-          e.key === 'K' || e.key === 'k'
-      )) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
-        e.preventDefault();
-        forceExit('警告', 'ソースコードの表示は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if (e.metaKey && e.altKey && (
-          e.key === 'I' || e.key === 'i' ||
-          e.key === 'U' || e.key === 'u' ||
-          e.key === 'J' || e.key === 'j' ||
-          e.key === 'C' || e.key === 'c'
-      )) {
-        e.preventDefault();
-        forceExit('警告', '開発者ツールの使用は禁止されています。<br>このセッションは終了されました。', false);
-        return false;
-      }
-      if (e.shiftKey && e.key === 'F10') {
-        e.preventDefault();
-        return false;
-      }
     });
 
     document.addEventListener('selectstart', (e) => {
@@ -2056,7 +1861,6 @@
       const banListBtn = document.getElementById('banListBtn');
       const userListBtn = document.getElementById('userListBtn');
       const publishBtnEl = document.getElementById('publishBtn');
-      const securityOffBtn = document.getElementById('securityOffBtn');
 
       const showPending = canApprove();
       const showBackup = canBackup();
@@ -2092,13 +1896,6 @@
 
       if (showPublish) publishBtnEl.classList.remove('hidden');
       else publishBtnEl.classList.add('hidden');
-
-      if (showLockdown) {
-        securityOffBtn.classList.remove('hidden');
-        updateSecurityOffBtnUI();
-      } else {
-        securityOffBtn.classList.add('hidden');
-      }
 
       const anyVisible = showPending || showBackup || showBan || showPublish || showLockdown;
       if (anyVisible) {
@@ -2145,7 +1942,6 @@
           published: siteStatusCache.published !== false,
           messageUrl: siteStatusCache.messageUrl || '',
           lockdown: newState,
-          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -2363,21 +2159,16 @@
       if (siteStatusUnsubscribe) siteStatusUnsubscribe();
       const ref0 = ref(db, 'siteStatus');
       siteStatusUnsubscribe = onValue(ref0, (snap) => {
-        const val = snap.exists() ? snap.val() : { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
+        const val = snap.exists() ? snap.val() : { published: true, messageUrl: '', lockdown: false };
         siteStatusCache = {
           published: val.published !== false,
           messageUrl: val.messageUrl || '',
-          lockdown: val.lockdown === true,
-          alertsEnabled: val.alertsEnabled !== false
+          lockdown: val.lockdown === true
         };
         console.log('サイト公開状態更新:', siteStatusCache);
 
-        // グローバル警報状態をローカル変数に反映（全ユーザーに伝播）
-        securityAlertsEnabled = siteStatusCache.alertsEnabled;
-
         updateLockdownBtnUI();
         updatePublishModalUI();
-        updateSecurityOffBtnUI();
 
         // ===== ロックダウンチェック（最優先） =====
         if (checkAndApplyLockdown()) {
@@ -2587,17 +2378,15 @@
       initSiteStatusListener();
       initBadgeFeatureListener();
 
-      // siteStatusの初期値を取得してロックダウン・警報状態を反映
+      // siteStatusの初期値を取得してロックダウン状態を反映
       try {
         const initSiteSnap = await get(ref(db, 'siteStatus'));
-        const initVal = initSiteSnap.exists() ? initSiteSnap.val() : { published: true, messageUrl: '', lockdown: false, alertsEnabled: true };
+        const initVal = initSiteSnap.exists() ? initSiteSnap.val() : { published: true, messageUrl: '', lockdown: false };
         siteStatusCache = {
           published: initVal.published !== false,
           messageUrl: initVal.messageUrl || '',
-          lockdown: initVal.lockdown === true,
-          alertsEnabled: initVal.alertsEnabled !== false
+          lockdown: initVal.lockdown === true
         };
-        securityAlertsEnabled = siteStatusCache.alertsEnabled;
       } catch (e) {
         console.warn('siteStatus初期取得失敗:', e.message);
       }
@@ -3887,7 +3676,6 @@
           published: siteStatusCache.published !== false,
           messageUrl: url,
           lockdown: siteStatusCache.lockdown === true,
-          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -3921,7 +3709,6 @@
           published: newState,
           messageUrl: url,
           lockdown: siteStatusCache.lockdown === true,
-          alertsEnabled: securityAlertsEnabled,
           updatedAt: Date.now(),
           updatedBy: currentUser.email
         });
@@ -4618,152 +4405,6 @@
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
     });
-
-    /* ===================================================
-     *  総合セキュリティ＆検証ツール妨害スクリプト
-     *  （グローバル警報状態に連動 + 自動ON）
-     * =================================================== */
-    (() => {
-      'use strict';
-
-      // ===== 通知要素（1回だけ作成） =====
-      let noticeElement = null;
-      const ensureNoticeElement = () => {
-        if (!noticeElement && document.body) {
-          noticeElement = document.createElement('div');
-          noticeElement.style.cssText = `
-            position: fixed; top: 20px; right: 20px; z-index: 2147483647;
-            background-color: #ff4d4f; color: #ffffff; padding: 12px 20px;
-            border-radius: 8px; font-weight: bold; font-family: sans-serif;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none;
-            display: none;
-          `;
-          document.body.appendChild(noticeElement);
-        }
-        return noticeElement;
-      };
-
-      const showNotice = (msg = '⚠️ 開発者ツールまたは改ざんが検知されました') => {
-        const el = ensureNoticeElement();
-        if (!el) return;
-        el.textContent = msg;
-        el.style.display = 'block';
-      };
-
-      /**
-       * 警報を検知した時に呼ぶ。
-       * 1) グローバルに alertsEnabled=true を書き戻す（自動ON）
-       * 2) Discordに通知
-       * 3) 画面に警告表示
-       */
-      const handleAlarm = async (detail) => {
-        // 画面に警告
-        showNotice('⚠️ ' + detail);
-
-        // グローバルに警報ONを書き戻す（自動ON）
-        // → securityAlertsEnabled がfalseでも、これで全ユーザーに伝播する
-        try {
-          // すでにalarmTriggeredが立っていればスキップ
-          if (typeof alarmTriggered !== 'undefined' && alarmTriggered) return;
-        } catch (e) {}
-
-        try {
-          // triggerAlarm はモジュールスコープで定義されている
-          if (typeof triggerAlarm === 'function') {
-            await triggerAlarm(detail);
-          }
-        } catch (e) {
-          console.warn('自動警報ON失敗:', e.message);
-        }
-      };
-
-      // ===== 右クリック禁止（常時） =====
-      document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-      // ===== キーボードショートカット =====
-      // securityAlertsEnabled が false でも「検知」自体は行い、自動ONのトリガーにする
-      document.addEventListener('keydown', (e) => {
-        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
-        const isSuspicious =
-          e.key === 'F12' ||
-          (isCtrlOrCmd && e.shiftKey && ['I', 'J', 'C', 'i', 'j', 'c'].includes(e.key)) ||
-          (isCtrlOrCmd && ['U', 'u', 'S', 's'].includes(e.key));
-
-        if (isSuspicious) {
-          // 警報OFF中でも「自動でON」に戻すトリガーにする
-          if (!securityAlertsEnabled) {
-            handleAlarm('検証ツール系ショートカットを検知（警報を自動ONに戻しました）');
-          } else {
-            handleAlarm('検証ツール系ショートカットを検知');
-          }
-          // 実際の動作を阻止（常時）
-          e.preventDefault();
-          return false;
-        }
-      });
-
-      // ===== DevTools検知（debuggerループ） =====
-      const triggerDebugger = () => {
-        const start = performance.now();
-        (function () {}.constructor('debugger')());
-        const end = performance.now();
-        // debuggerで止められると、時間が大きくズレる
-        if (end - start > 100) {
-          handleAlarm('検証ツールの使用を検知（debugger遅延）');
-        }
-      };
-      // 警報OFF中も常に実行し、検知したら自動ONに戻す
-      setInterval(triggerDebugger, 800);
-
-      // ===== ウィンドウサイズ変化（ドッキング型DevTools） =====
-      const threshold = 160;
-      window.addEventListener('resize', () => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
-        if (widthDiff || heightDiff) {
-          handleAlarm('ウィンドウサイズの異常を検知（DevToolsドッキング）');
-        }
-      });
-
-      // ===== console.log評価を利用した検知 =====
-      const dummyImg = new Image();
-      Object.defineProperty(dummyImg, 'id', {
-        get: function () {
-          handleAlarm('console.log経由の検証ツール使用を検知');
-        }
-      });
-      setInterval(() => {
-        console.log('%c', dummyImg);
-      }, 2000);
-
-      // ===== DOM改ざん検知（MutationObserver） =====
-      window.addEventListener('DOMContentLoaded', () => {
-        if (!document.body) return;
-
-        // 自分自身の通知要素を無視するためのフラグ
-        const observer = new MutationObserver((mutations) => {
-          for (const mutation of mutations) {
-            // 通知要素自体の変更は無視（無限ループ防止）
-            if (noticeElement &&
-                (mutation.target === noticeElement ||
-                 Array.from(mutation.removedNodes).includes(noticeElement))) {
-              continue;
-            }
-
-            // 改ざん検知 → 警報OFF中でも自動ONのトリガー
-            handleAlarm('ページ要素の改ざんを検知');
-            break;
-          }
-        });
-
-        observer.observe(document.body, {
-          attributes: true,
-          childList: true,
-          subtree: true,
-          characterData: true
-        });
-      });
-    })();
   </script>
 </body>
 </html>
