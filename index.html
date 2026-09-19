@@ -4347,17 +4347,6 @@
     console.log('%c', dummyImg);
   }, 2000);
 
-  window.addEventListener('DOMContentLoaded', () => {
-    if (!document.body) return;
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (noticeElement && (mutation.target === noticeElement || Array.from(mutation.removedNodes).includes(noticeElement))) {
-          continue;
-        }
-        showNotice('⚠️ ページの要素改ざんを検知しました');
-        break;
-      }
-    });
 
     observer.observe(document.body, {
       attributes: true,
