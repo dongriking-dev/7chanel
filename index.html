@@ -166,6 +166,80 @@
       animation: pulseRed 1.2s infinite;
     }
 
+    /* ===== 手動警報トースト（画面右上） ===== */
+    #alarmToast {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 99999;
+      max-width: 380px;
+      min-width: 280px;
+      background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%);
+      border: 3px solid #fde047;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 30px rgba(220,38,38,0.6);
+      color: #fff;
+      font-family: sans-serif;
+      padding: 14px 16px;
+      display: none;
+      animation: alarmToastSlide 0.4s ease-out, alarmToastPulse 1.8s infinite;
+      pointer-events: auto;
+    }
+    #alarmToast.show { display: block; }
+    @keyframes alarmToastSlide {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes alarmToastPulse {
+      0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 30px rgba(220,38,38,0.6); }
+      50% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 45px rgba(253,224,71,0.8); }
+    }
+    #alarmToast .alarm-toast-head {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(253,224,71,0.4);
+      padding-bottom: 6px;
+    }
+    #alarmToast .alarm-toast-icon {
+      font-size: 24px;
+      animation: alarmIconShake 0.6s infinite;
+      filter: drop-shadow(0 0 8px #fde047);
+    }
+    @keyframes alarmIconShake {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(12deg); }
+    }
+    #alarmToast .alarm-toast-title {
+      font-size: 15px; font-weight: 900;
+      letter-spacing: 0.1em;
+      color: #fde047;
+      text-shadow: 0 0 10px rgba(253,224,71,0.8);
+    }
+    #alarmToast .alarm-toast-body {
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    #alarmToast .alarm-toast-body .row {
+      display: flex; gap: 6px;
+      margin-bottom: 4px;
+    }
+    #alarmToast .alarm-toast-body .label {
+      color: #fde047; font-weight: 700;
+      white-space: nowrap;
+    }
+    #alarmToast .alarm-toast-body .value {
+      color: #fff;
+      word-break: break-word;
+    }
+    #alarmToast .alarm-toast-footer {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #fecaca;
+      font-family: monospace;
+      text-align: right;
+      opacity: 0.8;
+    }
+
     .post-card {
       background: #fff;
       border: 1px solid #d1d5db;
@@ -465,71 +539,6 @@
       background: #1d4ed8;
     }
 
-    /* ===== 手動警報オーバーレイ ===== */
-    #alarmOverlay {
-      position: fixed; inset: 0;
-      background: repeating-linear-gradient(
-        45deg,
-        #7f1d1d,
-        #7f1d1d 20px,
-        #991b1b 20px,
-        #991b1b 40px
-      );
-      z-index: 999999;
-      display: none;
-      align-items: center; justify-content: center;
-      color: #fff; font-family: sans-serif;
-      flex-direction: column; padding: 20px;
-      text-align: center;
-      box-shadow: inset 0 0 200px rgba(0,0,0,0.9);
-    }
-    #alarmOverlay.show { display: flex; }
-    #alarmOverlay .alarm-icon {
-      font-size: 96px;
-      animation: alarmBlink 0.8s infinite;
-      margin-bottom: 16px;
-      filter: drop-shadow(0 0 20px #fde047);
-    }
-    @keyframes alarmBlink {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.1); }
-    }
-    #alarmOverlay .alarm-title {
-      font-size: 36px; font-weight: 900;
-      letter-spacing: 0.2em;
-      text-shadow: 0 0 20px #fde047, 0 0 40px #fbbf24;
-      margin-bottom: 12px;
-    }
-    #alarmOverlay .alarm-body {
-      font-size: 18px;
-      background: rgba(0,0,0,0.5);
-      padding: 16px 24px; border-radius: 8px;
-      border: 2px solid #fde047;
-      max-width: 560px;
-      line-height: 1.7;
-      margin-top: 8px;
-    }
-    #alarmOverlay .alarm-body .label {
-      color: #fde047; font-weight: 700;
-    }
-    #alarmOverlay .alarm-footer {
-      margin-top: 28px;
-      font-size: 12px;
-      color: #fecaca;
-      font-family: monospace;
-      letter-spacing: 0.1em;
-    }
-    #alarmOverlay .alarm-pulse {
-      position: absolute; inset: 0;
-      background: radial-gradient(circle, rgba(239,68,68,0.4) 0%, transparent 70%);
-      animation: alarmPulse 1.5s infinite;
-      pointer-events: none;
-    }
-    @keyframes alarmPulse {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 0.8; }
-    }
-
     #unpublishedOverlay {
       position: fixed; inset: 0;
       background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
@@ -746,17 +755,23 @@
     <div class="boot-msg">アカウントを確認しています...</div>
   </div>
 
-  <!-- ===== 手動警報オーバーレイ ===== -->
-  <div id="alarmOverlay">
-    <div class="alarm-pulse"></div>
-    <div class="alarm-icon">🚨</div>
-    <div class="alarm-title">警 報 発 令 中</div>
-    <div class="alarm-body">
-      <div><span class="label">発令者:</span> <span id="alarmIssuer">管理者</span></div>
-      <div><span class="label">理由:</span> <span id="alarmReason">緊急対応</span></div>
-      <div style="margin-top:10px; font-size:14px;">管理者または主による解除をお待ちください。</div>
+  <!-- ===== 手動警報トースト（画面右上） ===== -->
+  <div id="alarmToast">
+    <div class="alarm-toast-head">
+      <span class="alarm-toast-icon">🚨</span>
+      <span class="alarm-toast-title">警 報 発 令 中</span>
     </div>
-    <div class="alarm-footer">SYSTEM ALARM / シクナイちゃんねる 緊急警報</div>
+    <div class="alarm-toast-body">
+      <div class="row">
+        <span class="label">理由:</span>
+        <span class="value" id="alarmToastReason">緊急対応</span>
+      </div>
+      <div class="row">
+        <span class="label">発令者:</span>
+        <span class="value" id="alarmToastIssuer">管理者</span>
+      </div>
+    </div>
+    <div class="alarm-toast-footer">SYSTEM ALARM / シクナイちゃんねる</div>
   </div>
 
   <div id="unpublishedOverlay">
@@ -839,7 +854,7 @@
     <div class="modal-content" style="max-width: 520px; border-top: 6px solid #b91c1c;">
       <h3 class="text-lg font-bold text-red-800 mb-1">🚨 手動警報を発令</h3>
       <p class="text-xs text-gray-500 mb-4">
-        全ユーザー（未ログイン含む）の画面に警報オーバーレイを表示します。<br>
+        全ユーザー（未ログイン含む）の画面右上に警報トーストを表示します。<br>
         管理者・主は影響を受けません。
       </p>
       <label class="block text-xs text-gray-600 mb-1">発令理由（任意・全員に表示されます）:</label>
@@ -1407,9 +1422,9 @@
     const unpublishedSub = document.getElementById('unpublishedSub');
     const unpGoBtn = document.getElementById('unpGoBtn');
     const publishBtn = document.getElementById('publishBtn');
-    const alarmOverlay = document.getElementById('alarmOverlay');
-    const alarmIssuer = document.getElementById('alarmIssuer');
-    const alarmReasonEl = document.getElementById('alarmReason');
+    const alarmToast = document.getElementById('alarmToast');
+    const alarmToastReason = document.getElementById('alarmToastReason');
+    const alarmToastIssuer = document.getElementById('alarmToastIssuer');
     let bannerTimer = null;
 
     function canDelete() {
@@ -1707,30 +1722,30 @@
       return false;
     }
 
-    // ===== 手動警報の表示制御 =====
-    function showAlarmOverlay() {
+    // ===== 手動警報の表示制御（右上トースト） =====
+    function showAlarmToast() {
       if (!siteStatusCache || siteStatusCache.alarm !== true) {
-        alarmOverlay.classList.remove('show');
+        alarmToast.classList.remove('show');
         return;
       }
-      alarmIssuer.textContent = siteStatusCache.alarmBy || '管理者';
-      alarmReasonEl.textContent = siteStatusCache.alarmReason || '緊急対応';
-      alarmOverlay.classList.add('show');
+      alarmToastReason.textContent = siteStatusCache.alarmReason || '緊急対応';
+      alarmToastIssuer.textContent = siteStatusCache.alarmBy || '管理者';
+      alarmToast.classList.add('show');
     }
-    function hideAlarmOverlay() {
-      alarmOverlay.classList.remove('show');
+    function hideAlarmToast() {
+      alarmToast.classList.remove('show');
     }
     function checkAndApplyAlarm() {
       // 管理者・主は影響を受けない
       if (isCurrentUserProtected()) {
-        hideAlarmOverlay();
+        hideAlarmToast();
         return false;
       }
       if (siteStatusCache && siteStatusCache.alarm === true) {
-        showAlarmOverlay();
+        showAlarmToast();
         return true;
       }
-      hideAlarmOverlay();
+      hideAlarmToast();
       return false;
     }
 
@@ -2121,7 +2136,7 @@
       }
       // すでに警報中なら解除確認
       if (siteStatusCache.alarm === true) {
-        if (!confirm('🚨 警報を解除しますか？\n\n全ユーザーの警報オーバーレイが消えます。')) return;
+        if (!confirm('🚨 警報を解除しますか？\n\n全ユーザーの警報トーストが消えます。')) return;
         releaseAlarm();
         return;
       }
@@ -2148,7 +2163,7 @@
 
       if (!confirm(
         '🚨【手動警報を発令】🚨\n\n' +
-        '全ユーザー（未ログイン含む）の画面に警報オーバーレイを表示します。\n' +
+        '全ユーザー（未ログイン含む）の画面右上に警報トーストを表示します。\n' +
         '管理者・主は影響を受けません。\n\n' +
         '本当に発令しますか？'
       )) return;
@@ -2425,7 +2440,7 @@
       try { await signOut(auth); } catch (e) { console.error(e); }
       banOverlay.classList.remove('show');
       hideUnpublishedOverlay();
-      hideAlarmOverlay();
+      hideAlarmToast();
       document.body.style.background = '';
       showLoginView();
       hideBootOverlay();
@@ -2467,11 +2482,8 @@
           return;
         }
 
-        // ===== 手動警報チェック =====
-        // 手動警報も最優先（公開状態より上に）
-        if (checkAndApplyAlarm()) {
-          // 警報中は他オーバーレイの制御は不要
-        }
+        // ===== 手動警報チェック（トースト表示） =====
+        checkAndApplyAlarm();
 
         if (isCurrentUserProtected()) {
           hideUnpublishedOverlay();
@@ -2702,6 +2714,7 @@
         initDeviceBansListener();
         initApprovedListener();
         hideUnpublishedOverlay();
+        checkAndApplyAlarm();
       } else {
         const isDeviceBanned = await checkAndApplyDeviceBan(user, myFingerprint);
         if (isDeviceBanned) {
@@ -2714,6 +2727,7 @@
         initBansListener();
         initDeviceBansListener();
         initApprovedListener();
+        checkAndApplyAlarm();
       }
 
       try {
