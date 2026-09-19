@@ -3052,7 +3052,6 @@
         lastFingerprint: (u && u.lastFingerprint) || ''
       }));
 
-      // メールアドレスが空のユーザーでも、approvedUsers/pendingUsers から補完
       Object.entries(approvedCache || {}).forEach(([uid, u]) => {
         if (!list.find(x => x.uid === uid)) {
           list.push({
@@ -3162,7 +3161,7 @@
         const nickBtn = row.querySelector('.btn-nickname');
         if (nickBtn) {
           nickBtn.addEventListener('click', () => {
-            openNicknameModal(nickBtn.dataset.nickUid, nickBtn.dataset.nickEmail);
+            window.openNicknameModal(nickBtn.dataset.nickUid, nickBtn.dataset.nickEmail);
           });
         }
 
@@ -3187,61 +3186,100 @@
     let nicknameEditingUid = null;
     let nicknameEditingEmail = '';
 
+    // window に登録（renderUserList から呼べるように）
     window.openNicknameModal = function(uid, email) {
       if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
+      if (!uid) { alert('UIDが取得できませんでした。'); return; }
       nicknameEditingUid = uid;
       nicknameEditingEmail = email || '';
-      document.getElementById('nicknameTargetEmail').textContent = email || '（メール不明）';
+      const targetEl = document.getElementById('nicknameTargetEmail');
+      if (targetEl) targetEl.textContent = email || '（メール不明）';
       const existing = nicknamesCache[uid];
-      document.getElementById('nicknameInput').value = (existing && existing.nickname) || '';
+      const inputEl = document.getElementById('nicknameInput');
+      if (inputEl) inputEl.value = (existing && existing.nickname) || '';
       document.getElementById('nicknameModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('nicknameInput').focus(), 100);
+      setTimeout(() => { if (inputEl) inputEl.focus(); }, 100);
     };
 
     function closeNicknameModal() {
       nicknameEditingUid = null;
       nicknameEditingEmail = '';
-      document.getElementById('nicknameModal').classList.add('hidden');
+      const m = document.getElementById('nicknameModal');
+      if (m) m.classList.add('hidden');
     }
 
-    document.getElementById('nicknameCancelBtn').addEventListener('click', closeNicknameModal);
-    document.getElementById('nicknameModal').addEventListener('click', (e) => {
-      if (e.target.id === 'nicknameModal') closeNicknameModal();
-    });
+    (function initNicknameModalEvents() {
+      const cancelBtn = document.getElementById('nicknameCancelBtn');
+      const modal = document.getElementById('nicknameModal');
+      const saveBtn = document.getElementById('nicknameSaveBtn');
+      const delBtn = document.getElementById('nicknameDeleteBtn');
 
-    document.getElementById('nicknameSaveBtn').addEventListener('click', async () => {
-      if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
-      if (!nicknameEditingUid) return;
-      const nickname = document.getElementById('nicknameInput').value.trim();
-      if (!nickname) { alert('ニックネームを入力してください。'); return; }
-      try {
-        await set(ref(db, `nicknames/${nicknameEditingUid}`), {
-          nickname: nickname,
-          email: nicknameEditingEmail,
-          updatedAt: Date.now(),
-          updatedBy: currentUser.email
+      if (cancelBtn) cancelBtn.addEventListener('click', closeNicknameModal);
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target.id === 'nicknameModal') closeNicknameModal();
         });
-        showBanner('ニックネームを保存しました', false);
-        closeNicknameModal();
-      } catch (err) {
-        console.error('ニックネーム保存エラー:', err);
-        showBanner('保存失敗: ' + (err.code || err.message), true);
       }
-    });
 
-    document.getElementById('nicknameDeleteBtn').addEventListener('click', async () => {
-      if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
-      if (!nicknameEditingUid) return;
-      if (!confirm('このニックネームを削除しますか？')) return;
-      try {
-        await remove(ref(db, `nicknames/${nicknameEditingUid}`));
-        showBanner('ニックネームを削除しました', false);
-        closeNicknameModal();
-      } catch (err) {
-        console.error('ニックネーム削除エラー:', err);
-        showBanner('削除失敗: ' + (err.code || err.message), true);
+      if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+          if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
+          if (!currentUser) { alert('ログインが必要です。'); return; }
+          if (!nicknameEditingUid) { alert('対象ユーザーが選択されていません。'); return; }
+          const nickname = (document.getElementById('nicknameInput').value || '').trim();
+          if (!nickname) { alert('ニックネームを入力してください。'); return; }
+          if (nickname.length > 20) { alert('ニックネームは20文字以内で入力してください。'); return; }
+
+          saveBtn.disabled = true;
+          const originalText = saveBtn.textContent;
+          saveBtn.textContent = '保存中...';
+
+          try {
+            await set(ref(db, `nicknames/${nicknameEditingUid}`), {
+              nickname: nickname,
+              email: nicknameEditingEmail,
+              updatedAt: Date.now(),
+              updatedBy: currentUser.email
+            });
+            showBanner('ニックネームを保存しました', false);
+            closeNicknameModal();
+          } catch (err) {
+            console.error('ニックネーム保存エラー:', err);
+            showBanner('保存失敗: ' + (err.code || err.message || '不明なエラー'), true);
+            alert('保存に失敗しました。\n' + (err.message || ''));
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }
+        });
       }
-    });
+
+      if (delBtn) {
+        delBtn.addEventListener('click', async () => {
+          if (!canSetNickname()) { alert('ニックネーム設定権限がありません。'); return; }
+          if (!currentUser) { alert('ログインが必要です。'); return; }
+          if (!nicknameEditingUid) return;
+          if (!confirm('このニックネームを削除しますか？')) return;
+
+          delBtn.disabled = true;
+          const originalText = delBtn.textContent;
+          delBtn.textContent = '削除中...';
+
+          try {
+            await remove(ref(db, `nicknames/${nicknameEditingUid}`));
+            showBanner('ニックネームを削除しました', false);
+            closeNicknameModal();
+          } catch (err) {
+            console.error('ニックネーム削除エラー:', err);
+            showBanner('削除失敗: ' + (err.code || err.message || '不明なエラー'), true);
+            alert('削除に失敗しました。\n' + (err.message || ''));
+          } finally {
+            delBtn.disabled = false;
+            delBtn.textContent = originalText;
+          }
+        });
+      }
+    })();
 
     const pendingModal = document.getElementById('pendingModal');
     const pendingListContainer = document.getElementById('pendingListContainer');
