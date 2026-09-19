@@ -898,7 +898,6 @@
         </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <!-- 各管理ボタンを個別に制御 -->
         <div id="adminControls" class="hidden flex gap-2 flex-wrap">
           <button id="pendingBtn" class="pending-btn hidden" onclick="openPendingModal()">🔔 承認待ち <span id="pendingBadgeCount">0</span></button>
           <button id="backupBtn" class="backup-btn hidden" onclick="doBackup()">💾 バックアップ</button>
@@ -1660,10 +1659,8 @@
       });
     }
 
-    // 自分のバッジ表示切替の表示制御
     function updateMyBadgeToggleVisibility() {
       if (!currentUser) return;
-      // 管理者・主・VIP・カスタムバッジを持つ人に表示
       const hasCustomBadge = currentUser.uid && customBadgesCache[currentUser.uid] &&
                              Object.keys(customBadgesCache[currentUser.uid]).length > 0;
       if (userRole === 'admin' || userRole === 'owner' || userRole === 'vip' || hasCustomBadge) {
@@ -1680,7 +1677,6 @@
       if (!formWrapper || !readonlyNote) return;
       if (canManageBoard()) {
         formWrapper.classList.remove('hidden');
-        formWrapper.classList.remove('disabled');
         readonlyNote.classList.add('hidden');
       } else {
         formWrapper.classList.add('hidden');
@@ -1688,8 +1684,10 @@
       }
     }
 
-    // 各管理ボタンを個別に更新
+    // 各管理ボタンを個別に更新（重要）
     function updateAdminControlsVisibility() {
+      if (!currentUser) return;
+
       const pendingBtn = document.getElementById('pendingBtn');
       const backupBtn = document.getElementById('backupBtn');
       const restoreBtn = document.getElementById('restoreBtn');
@@ -1697,10 +1695,15 @@
       const userListBtn = document.getElementById('userListBtn');
       const publishBtn = document.getElementById('publishBtn');
 
-      if (canApprove()) pendingBtn.classList.remove('hidden');
+      const showPending = canApprove();
+      const showBackup = canBackup();
+      const showBan = canBan();
+      const showPublish = canPublish();
+
+      if (showPending) pendingBtn.classList.remove('hidden');
       else pendingBtn.classList.add('hidden');
 
-      if (canBackup()) {
+      if (showBackup) {
         backupBtn.classList.remove('hidden');
         restoreBtn.classList.remove('hidden');
       } else {
@@ -1708,7 +1711,7 @@
         restoreBtn.classList.add('hidden');
       }
 
-      if (canBan()) {
+      if (showBan) {
         banListBtn.classList.remove('hidden');
         userListBtn.classList.remove('hidden');
       } else {
@@ -1716,12 +1719,10 @@
         userListBtn.classList.add('hidden');
       }
 
-      if (canPublish()) publishBtn.classList.remove('hidden');
+      if (showPublish) publishBtn.classList.remove('hidden');
       else publishBtn.classList.add('hidden');
 
-      // いずれかの管理ボタンが表示されていれば adminControls を表示
-      const anyVisible = [pendingBtn, backupBtn, restoreBtn, banListBtn, userListBtn, publishBtn]
-        .some(btn => !btn.classList.contains('hidden'));
+      const anyVisible = showPending || showBackup || showBan || showPublish;
       if (anyVisible) {
         adminControls.classList.remove('hidden');
       } else {
@@ -1962,6 +1963,7 @@
         customBadgesCache = snap.exists() ? snap.val() : {};
         if (currentThreadKey) renderPostsFromCache();
         updateMyBadgeToggleVisibility();
+        updateAdminControlsVisibility(); // バッジ付与後に管理ボタンも更新
       }, (err) => {
         console.error('カスタムバッジ監視エラー:', err);
       });
@@ -2158,7 +2160,6 @@
 
       userApproved = true;
 
-      // バッジ表示トグル（管理者・主・VIP・カスタムバッジ持ちに表示）
       updateMyBadgeToggleVisibility();
 
       if (canViewEmail()) {
@@ -2186,8 +2187,10 @@
         userEmailSpan.className = 'text-xs text-purple-700 font-bold';
       }
 
+      // 初期描画（バッジ機能権限がまだ来ていない場合があるため、遅延も設定）
       updateAdminControlsVisibility();
       updateBoardEditability();
+      setTimeout(updateAdminControlsVisibility, 500);
 
       if (selfApprovalUnsubscribe) selfApprovalUnsubscribe();
       selfApprovalUnsubscribe = onValue(ref(db, `approvedUsers/${user.uid}`), (snap) => {
