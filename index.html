@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* ===== 既存スタイル（変更なし） ===== */
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
@@ -744,6 +745,69 @@
       padding: 8px 12px;
       margin-bottom: 16px;
     }
+
+    /* ===== 新着管理関連スタイル（追加） ===== */
+    .thread-item-unread {
+      background: #fffbeb !important;
+      border-left: 4px solid #f59e0b !important;
+    }
+    .thread-new-badge {
+      background: #f59e0b;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      white-space: nowrap;
+      animation: pulseOrange 1.6s infinite;
+    }
+    @keyframes pulseOrange {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
+      50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+    }
+    .unread-count-badge {
+      background: #dc2626;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+    .post-new-badge {
+      background: #f59e0b;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+      animation: pulseOrange 1.6s infinite;
+    }
+    .unread-only-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #374151;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .unread-only-wrap input { cursor: pointer; }
+    .thread-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
@@ -1118,7 +1182,16 @@
       </section>
 
       <main>
-        <h2 class="text-xl font-bold border-b pb-1 mb-4 text-gray-700">スレッド一覧</h2>
+        <div class="thread-list-header">
+          <h2 class="text-xl font-bold text-gray-700 flex items-center gap-2">
+            スレッド一覧
+            <span id="unreadCountLabel" class="unread-count-badge hidden">0</span>
+          </h2>
+          <label class="unread-only-wrap" id="unreadOnlyWrap" title="まだ開いていないスレッドだけを表示します">
+            <input type="checkbox" id="unreadOnlyCheck">
+            <span>🆕 新着のみ表示</span>
+          </label>
+        </div>
         <div id="threadsContainer" class="space-y-2 threads-scroll pr-1">
           <p class="text-gray-500 text-sm"><span class="loading-spinner"></span> スレッドを読み込み中...</p>
         </div>
@@ -1389,6 +1462,84 @@
     let badgeFeaturePermissions = {};
 
     let lockdownEnforcerInterval = null;
+
+    // ===== 新着管理用（追加） =====
+    let readThreadsCache = {};        // { threadKey: lastReadAt }
+    let allThreadsCache = [];         // ソート済みスレッド一覧
+    let unreadOnlyFilter = false;     // 新着のみ表示フィルタ
+
+    function readStorageKey(email) {
+      return 'readThreads_' + (email || 'anonymous');
+    }
+    function loadReadThreads(email) {
+      try {
+        const raw = localStorage.getItem(readStorageKey(email));
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+        return {};
+      } catch (e) {
+        console.warn('既読情報読み込み失敗:', e.message);
+        return {};
+      }
+    }
+    function saveReadThreads(email, obj) {
+      try {
+        localStorage.setItem(readStorageKey(email), JSON.stringify(obj || {}));
+      } catch (e) {
+        console.warn('既読情報保存失敗:', e.message);
+      }
+    }
+    function markThreadAsRead(threadKey) {
+      if (!threadKey) return;
+      readThreadsCache[threadKey] = Date.now();
+      if (currentUser) {
+        saveReadThreads(currentUser.email, readThreadsCache);
+      }
+      // 一覧を再描画して新着バッジを消す
+      if (!threadListView.classList.contains('hidden')) {
+        renderThreadsList();
+      }
+      updateUnreadCountLabel();
+    }
+    function isThreadUnread(thread) {
+      if (!thread || !thread.key) return false;
+      const lastRead = readThreadsCache[thread.key];
+      if (!lastRead) return true; // 一度も開いていない
+      // スレッド作成/最終更新が既読時刻より後なら未読
+      const lastActivity = thread.lastActivityAt || thread.createdAt || 0;
+      return lastActivity > lastRead;
+    }
+    function getUnreadPostCount(thread) {
+      if (!thread || !thread.posts) return 0;
+      const lastRead = readThreadsCache[thread.key];
+      if (!lastRead) {
+        // 一度も開いていない場合は全レスを新着扱い（ただし自分の投稿は除外）
+        let cnt = 0;
+        Object.values(thread.posts).forEach(p => {
+          if (p && p.authorUid !== (currentUser && currentUser.uid)) cnt++;
+        });
+        return cnt;
+      }
+      let cnt = 0;
+      Object.values(thread.posts).forEach(p => {
+        if (!p) return;
+        if (p.authorUid === (currentUser && currentUser.uid)) return;
+        if ((p.createdAt || 0) > lastRead) cnt++;
+      });
+      return cnt;
+    }
+    function updateUnreadCountLabel() {
+      const label = document.getElementById('unreadCountLabel');
+      if (!label) return;
+      const unreadCount = allThreadsCache.filter(t => isThreadUnread(t)).length;
+      if (unreadCount > 0) {
+        label.textContent = unreadCount;
+        label.classList.remove('hidden');
+      } else {
+        label.classList.add('hidden');
+      }
+    }
 
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
@@ -2444,6 +2595,10 @@
 
     window.doLogout = async function() {
       intentionalSignOut = true;
+      // 既読情報を保存
+      if (currentUser) {
+        saveReadThreads(currentUser.email, readThreadsCache);
+      }
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       if (threadsUnsubscribe) { threadsUnsubscribe(); threadsUnsubscribe = null; }
       if (badgesUnsubscribe) { badgesUnsubscribe(); badgesUnsubscribe = null; }
@@ -2704,6 +2859,9 @@
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
+      // ===== 既読情報を読み込み（追加） =====
+      readThreadsCache = loadReadThreads(user.email);
+
       initSiteStatusListener();
       initBadgeFeatureListener();
 
@@ -2765,10 +2923,7 @@
       userApproved = true;
 
       updateMyBadgeToggleVisibility();
-
-      // ★ 修正: 役割・権限ベースでトグルを表示
       updateEmailToggleVisibility();
-
       renderRoleBadge(userRole);
 
       userEmailSpan.classList.add('hidden');
@@ -2883,6 +3038,12 @@
       updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
+    // 新着のみフィルタのチェックボックス
+    document.getElementById('unreadOnlyCheck').addEventListener('change', (e) => {
+      unreadOnlyFilter = e.target.checked;
+      renderThreadsList();
+    });
+
     window.showThreadList = function() {
       threadListView.classList.remove('hidden');
       threadDetailView.classList.add('hidden');
@@ -2894,6 +3055,8 @@
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
+      // 一覧を再描画（新着状態を反映）
+      if (allThreadsCache.length > 0) renderThreadsList();
     };
 
     function openThread(threadKey, title, createdAt, authorEmail, authorUid) {
@@ -2917,6 +3080,9 @@
       threadDetailView.classList.remove('hidden');
       boardView.classList.add('hidden');
       backToListBtn.classList.remove('hidden');
+
+      // ===== スレッドを開いた瞬間に既読化（追加） =====
+      markThreadAsRead(threadKey);
 
       loadPosts(threadKey);
     }
@@ -3009,37 +3175,33 @@
 
       threadsUnsubscribe = onValue(q, (snapshot) => {
         setConnection(true);
-        threadsContainer.innerHTML = '';
 
         if (!snapshot.exists()) {
+          allThreadsCache = [];
           threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
+          updateUnreadCountLabel();
           return;
         }
 
         const threads = [];
         snapshot.forEach((child) => {
-          threads.push({ key: child.key, ...child.val() });
+          const val = child.val() || {};
+          const posts = val.posts || {};
+          let lastActivityAt = val.createdAt || 0;
+          Object.values(posts).forEach(p => {
+            if (p && p.createdAt && p.createdAt > lastActivityAt) lastActivityAt = p.createdAt;
+          });
+          threads.push({
+            key: child.key,
+            ...val,
+            posts: posts,
+            lastActivityAt: lastActivityAt
+          });
         });
         threads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-        threads.forEach((thread) => {
-          let date = '日時不明';
-          if (thread.createdAt) {
-            try { date = new Date(thread.createdAt).toLocaleString('ja-JP'); }
-            catch (e) { date = '日時不明'; }
-          }
-
-          const item = document.createElement('div');
-          item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm';
-          item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail, thread.authorUid);
-          item.innerHTML = `
-            <div class="flex-1 min-w-0">
-              <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
-              <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
-            </div>
-            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
-          threadsContainer.appendChild(item);
-        });
+        allThreadsCache = threads;
+        renderThreadsList();
       }, (error) => {
         console.error("スレッド一覧の取得エラー:", error);
         setConnection(false);
@@ -3048,6 +3210,55 @@
           'Realtime Database のルールを確認してください。</p>';
         showBanner('読み込み失敗: ' + (error.code || error.message), true);
       });
+    }
+
+    // ===== スレッド一覧描画（新着対応・追加） =====
+    function renderThreadsList() {
+      threadsContainer.innerHTML = '';
+
+      if (!allThreadsCache || allThreadsCache.length === 0) {
+        threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">スレッドがありません。新しく作成してください。</p>';
+        updateUnreadCountLabel();
+        return;
+      }
+
+      let list = allThreadsCache;
+      if (unreadOnlyFilter) {
+        list = list.filter(t => isThreadUnread(t));
+      }
+
+      if (list.length === 0) {
+        threadsContainer.innerHTML = '<p class="text-gray-500 text-sm">新着スレッドはありません。</p>';
+        updateUnreadCountLabel();
+        return;
+      }
+
+      list.forEach((thread) => {
+        let date = '日時不明';
+        if (thread.createdAt) {
+          try { date = new Date(thread.createdAt).toLocaleString('ja-JP'); }
+          catch (e) { date = '日時不明'; }
+        }
+
+        const unread = isThreadUnread(thread);
+        const unreadPosts = getUnreadPostCount(thread);
+
+        const item = document.createElement('div');
+        item.className = 'bg-white p-3 border border-gray-300 rounded hover:bg-amber-50 cursor-pointer transition flex justify-between items-center shadow-sm' +
+          (unread ? ' thread-item-unread' : '');
+        item.onclick = () => openThread(thread.key, thread.title, date, thread.authorEmail, thread.authorUid);
+        item.innerHTML = `
+          <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+            ${unread ? `<span class="thread-new-badge">🆕 新着</span>` : ''}
+            <span class="font-bold text-blue-900 break-words">${escapeHtml(thread.title)}</span>
+            <span class="text-xs text-gray-400 ml-2 whitespace-nowrap">(${date})</span>
+            ${unreadPosts > 0 ? `<span class="unread-count-badge">+${unreadPosts}</span>` : ''}
+          </div>
+          <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full ml-2 whitespace-nowrap">開く</span>`;
+        threadsContainer.appendChild(item);
+      });
+
+      updateUnreadCountLabel();
     }
 
     function loadPosts(threadKey) {
@@ -3182,6 +3393,16 @@
 
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
 
+      // ===== 新着レス判定（追加） =====
+      let newPostBadge = '';
+      if (post.createdAt && currentThreadKey) {
+        const lastRead = readThreadsCache[currentThreadKey];
+        const isOwnPost = currentUser && post.authorUid === currentUser.uid;
+        if (lastRead && post.createdAt > lastRead && !isOwnPost) {
+          newPostBadge = `<span class="post-new-badge">🆕 新着</span>`;
+        }
+      }
+
       let adminInfo = '';
       if (canViewEmail()) {
         adminInfo = `<span class="admin-email">${escapeHtml(post.authorEmail || 'メール不明')}</span>`;
@@ -3213,6 +3434,7 @@
       postDiv.innerHTML = `
         <div class="font-bold text-gray-700 mb-1 flex flex-wrap items-baseline gap-x-1 items-center">
           <span class="post-number">${number}</span>
+          ${newPostBadge}
           <span>：</span>
           <span class="post-author">${escapeHtml(post.author || '名無しさん')}</span>
           ${opBadge}
@@ -4729,6 +4951,10 @@
     });
 
     window.addEventListener('beforeunload', () => {
+      // 既読情報を保存
+      if (currentUser) {
+        saveReadThreads(currentUser.email, readThreadsCache);
+      }
       if (postsUnsubscribe) postsUnsubscribe();
       if (threadsUnsubscribe) threadsUnsubscribe();
       if (badgesUnsubscribe) badgesUnsubscribe();
@@ -4747,21 +4973,6 @@
     window.addEventListener('unhandledrejection', (event) => {
       console.error('未処理のPromiseエラー:', event.reason);
     });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     /* ===================================================
  *  Windows & Mac 全対応 総合セキュリティ＆検証ツール完全妨害スクリプト
@@ -4893,7 +5104,7 @@
     console.clear(); // コンソールログを常時画面クリア
   }, 500);
 })();
-    
+
   </script>
 </body>
 </html>
