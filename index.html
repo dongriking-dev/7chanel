@@ -2934,7 +2934,7 @@
         userEmailSpan.className = 'text-xs text-red-700 font-bold';
       } else if (userRole === 'owner') {
         userEmailSpan.classList.remove('hidden');
-        userEmailSpan.textContent = user.email + '（主）';
+        userEmailSpan.textContent = user.email + '（࿉）';
         userEmailSpan.className = 'text-xs text-blue-700 font-bold';
       } else if (userRole === 'vip') {
         userEmailSpan.classList.remove('hidden');
@@ -3347,7 +3347,7 @@
       if (post.badgeVisible === false) return '';
       const role = post.authorRole;
       if (role === 'admin') return `<span class="role-post-badge admin">管理者</span>`;
-      if (role === 'owner') return `<span class="role-post-badge owner">主</span>`;
+      if (role === 'owner') return `<span class="role-post-badge owner">࿉</span>`;
       if (role === 'vip')   return `<span class="role-post-badge vip">VIP</span>`;
       return '';
     }
@@ -3876,7 +3876,7 @@
 
         let roleTag = '<span class="role-tag none">一般</span>';
         if (u.role === 'admin') roleTag = '<span class="role-tag admin">管理者</span>';
-        else if (u.role === 'owner') roleTag = '<span class="role-tag owner">主</span>';
+        else if (u.role === 'owner') roleTag = '<span class="role-tag owner">࿉</span>';
         else if (u.role === 'vip') roleTag = '<span class="role-tag vip">VIP</span>';
         if (isBanned) roleTag += ' <span class="role-tag banned">BAN中</span>';
 
@@ -4678,7 +4678,7 @@
       let optimisticRoleBadge = '';
       if (myBadgePublic) {
         if (userRole === 'admin') optimisticRoleBadge = `<span class="role-post-badge admin">管理者</span>`;
-        else if (userRole === 'owner') optimisticRoleBadge = `<span class="role-post-badge owner">主</span>`;
+        else if (userRole === 'owner') optimisticRoleBadge = `<span class="role-post-badge owner">࿉</span>`;
         else if (userRole === 'vip') optimisticRoleBadge = `<span class="role-post-badge vip">VIP</span>`;
       }
       let optimisticCustomBadge = '';
