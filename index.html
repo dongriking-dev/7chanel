@@ -26,7 +26,7 @@ UXw&J+<;;;;;;;;;;;;>;;;>+?TYUXwgJ+d@@@H@H@H@@@H@H@M@@HmgmHHHkHWWXZXuuXUUWyWWHWHH
 YUX&&+++<:;;;;;;;;;;;>>><>+zTYUUUW@H@@H@@@H@@H@@@ggkWyWuuXrttl===?=?zlz11???===l=lOwXWpHkqggHHx~.~.......~.~...~..~.~.~~.~..~...~.~.~..~..~~.~.~.~...~
 ;<<>><><zTTTUGgJ++<:;;;;;;;;;>>>=d@@@@@@H@H@@@@@@gHbfVXXuzrtll==??1==z?==z<??===zllrr0XWpWH@HH$~..~.~.~.......~.~.~.~..~..~.~.~..~.~.~..~...~...~.~.~.
 ;;;;;;;;;;;;;;;<>>+7TYUXa+J++;;<uX@@H@@H@@@@@@@@gHHbpfWZuzvrlll=======z=?<>>>>?>?zltrvvzUWWggH$_.....~..~.~.~..~.~..~..~.~.~.~.~..~..~~.~~.~..~~..~..~
-TT9Xa&J++<<:;;;;;:;;;;;<>>>>?zTTUH@@@@H@@@@@gggg@mkkWWyZZuzrOOOzll========z?????=zzOOrrvzuXHgH$_..~....~.~.~..~..~..~.~...~...~.~..~...~..~.~..~..~..~
+TT9Xa&J++<<:;;;;;:;;;;;<>>>>?zTTUH@@@@H@@@@@gggg@mkkWWyZZuzrOOOzll========z?????=zzOOrrvzuXHgH$_..~....~.~.~..~..~.~...~...~.~..~...~..~.~..~..~..~
 ;;>;><>>>?7YYUXagJ++;;;;;;>;;;<>1XHH@@@@@@@@HHgmgmHHWXZZZZuzwwwwOlz=?<????????????>?=ltOrvXH@Ht_~.~.~.~..~...~..~..~..~.~.~.~..~.~..~~..~...~..~.~.~..
 ;;;;;;;;;;;;>>>;>>>>z7TYUSA+J++<<ZH@@@@H@@@@mgmHHWXZZZZyyyXWWVWkyszzz1?>;;<<<<<<<~<>?zzzwrwHgKC~..........~...~..~.~.~...~..~.~.~.~..~..~.~.~~..~..~.~
 CTTUUa&J++<;;;;;;;;;;>;>>>>>>>+?O0H@@H@@@@@ggggHWZZuuZyyyWWWWWUWHHHHWXXwzz<(_--(++zwkXkWXykWH$~....~...~.~..~..~..~...~.~..~...~..~..~~..~.~.~..~.~.~~
@@ -38,7 +38,7 @@ zOTYU0a&&+++;;;;;;;;;;;;>>>>>>;;+dWWZXwXWHHg@@HVyZZZZuzrrrrwAQQkkkXAzttl=?>>>=tr
 +zOVTTVu&++++<<;;;:;;;;;;;;>>>>>1wuOuUWUUyyWqWyZZZuuuzrOOlllllll=l==??lltttOlrrtzzzzOtllzttt:...~...~..~.~.~.~.~.~..~...~.~..~.~..~~...~..~.~...~..~..
 ;;;;;;;;>>>;>+?7TYUXa+++++;;;;;;>zXwy0OOZwZWHVZZZZuuzvtl==1lllllll===?=lrrrtltrrll=1=z=lllttI~..~.~..~....~...~...~..~.~...~..~..~..~..~..~.~.~...~.~.
 ++<:;:;;;;;;;;;;;;;;;;<<>+1C7YUXAswXUAzwzwXWWWZZZuzzzvttO??<===1=???<?zwzzwOzlOOZz====llllllO_.~....~..~.~..~...~..~..~..~..~..~..~..~..~....~.~.~...~
-<+1OTYYUAa&++++;;:;::;;;;;;;;;>;;<zWkwZUXkXVVyyyZZzzvvrrtz?><+??<;;>+yuwzrOz<<<ztz;<>+1=llltt>...~....~..~...~..~..~.~.~..~..~..~..~..~..~.~....~.~.~.
+<+1OTYYUAa&++++;;:;::;;;;;;;;;>;;<zWkwZUXkXVVyyyZZzzvvrrtz?><+??<;;>+yuwzrOz<<<ztz;<>+1=llltt>...~....~...~..~...~..~..~.~.~..~..~..~..~..~.~....~.~.~.
 ;;:;;;;;<;;;<>+1OTYYUAa+J++<;;:;;;;?ZZ0OtwXfVyyZZZuzzzzvrll?<:;><<+zwXrOOOwOzzzzOOz><;>?==ltt:..~...~...~..~..~..~~..~.~.~.~..~..~..~..~..~.~~...~..~.
 +++;:::::::;;::;:;;;;<<;;>><17TYYUAaJXuwOtwfffyZZZZuuuzzrt=?<<>>><?zOVXXUUUWXkXHkwI??;;?==ttv.~..~...~..~..~.~..~..~..~...~.~..~..~..~..~..~..~.~..~..
 >>+1CTTYUAw&+J++<<:;:;;:;;;;;;;;;>>>>>?TWWWHpWyZZZuuuzzzrtl=?>>?>>>?11tOtwVOz1OrOl?>>>>1=lzO!..~..~.~.~.~.~.~..~.~.~~..~.~..~.~.~..~..~.~..~..~~..~.~~
@@ -699,6 +699,51 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       letter-spacing: 0.05em;
     }
 
+    /* ===== メンテナンス中の間に表示する画像 ===== */
+    #unpublishedOverlay .unp-image {
+      margin: 16px auto 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #unpublishedOverlay .unp-image img {
+      max-width: min(280px, 70vw);
+      max-height: 220px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 12px;
+      border: 3px solid #78350f;
+      box-shadow: 0 6px 18px rgba(120, 53, 15, 0.35), 0 0 0 3px rgba(255,255,255,0.6) inset;
+      background: #fff;
+      padding: 4px;
+    }
+
+    /* ===== 右上固定画像 ===== */
+    #cornerImage {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 99990;
+      pointer-events: none;
+      display: block;
+    }
+    #cornerImage img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+      border-radius: 8px;
+      background: transparent;
+    }
+    @media (max-width: 640px) {
+      #cornerImage img {
+        width: 60px;
+        height: 60px;
+      }
+    }
+
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
@@ -895,6 +940,13 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
+  <!-- ===== 右上固定画像 ===== -->
+  <div id="cornerImage">
+    <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz"
+         alt="corner image"
+         referrerpolicy="no-referrer">
+  </div>
+
   <div id="bootOverlay">
     <div class="boot-spinner"></div>
     <div class="boot-msg">アカウントを確認しています...</div>
@@ -923,6 +975,12 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
     <div class="unp-bar">SECURE FRAME / SITE PAUSED</div>
     <div class="unp-center">
       <div class="unp-msg">メンテナンス中...</div>
+      <!-- ===== メンテナンス中... と 現在メンテナンス中です。 の間に表示する画像 ===== -->
+      <div class="unp-image">
+        <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz"
+             alt="maintenance image"
+             referrerpolicy="no-referrer">
+      </div>
       <div class="unp-sub" id="unpublishedSub">現在メンテナンス中です。<br>もうしばらくお待ちください。</div>
       <div class="unp-action">
         <button class="unp-go-btn" id="unpGoBtn">了解</button>
