@@ -719,28 +719,28 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       padding: 4px;
     }
 
-    /* ===== 右上固定画像 ===== */
+    /* ===== 左上固定画像 ===== */
     #cornerImage {
       position: fixed;
       top: 12px;
-      right: 12px;
+      left: 12px;
       z-index: 99990;
       pointer-events: none;
       display: block;
     }
     #cornerImage img {
-      width: 84px;
-      height: 84px;
+      width: 120px;
+      height: 120px;
       object-fit: contain;
       display: block;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
-      border-radius: 8px;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4));
+      border-radius: 10px;
       background: transparent;
     }
     @media (max-width: 640px) {
       #cornerImage img {
-        width: 60px;
-        height: 60px;
+        width: 80px;
+        height: 80px;
       }
     }
 
@@ -940,7 +940,7 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
-  <!-- ===== 右上固定画像 ===== -->
+  <!-- ===== 左上固定画像 ===== -->
   <div id="cornerImage">
     <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz"
          alt="corner image"
@@ -1722,20 +1722,11 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       return canDo('canBackup');
     }
 
-    /**
-     * 投稿のメールアドレスを「実際に表示するか」
-     * → myEmailVisible も考慮する
-     */
     function canViewEmail() {
       if (!canToggleEmailVisibility()) return false;
       return myEmailVisible === true;
     }
 
-    /**
-     * 「メールアドレスを表示」トグルの表示可否
-     * → 役割・権限のみで判定（myEmailVisible は見ない）
-     *   admin/owner は常に表示、それ以外は canViewEmail 権限を持つ場合のみ
-     */
     function canToggleEmailVisibility() {
       if (userRole === 'admin' || userRole === 'owner') return true;
       return canDo('canViewEmail');
@@ -2293,7 +2284,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
         updateAdminControlsVisibility();
         updateBoardEditability();
         updateMyBadgeToggleVisibility();
-        // バッジ機能で canViewEmail が変わる可能性があるのでトグルも更新
         updateEmailToggleVisibility();
       }, (err) => {
         console.error('バッジ機能権限監視エラー:', err);
@@ -2326,10 +2316,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       }
     }
 
-    /**
-     * 「メールアドレスを表示」トグルの表示/非表示を更新
-     * → 役割・権限ベース（myEmailVisible は見ない）
-     */
     function updateEmailToggleVisibility() {
       if (!currentUser) {
         emailToggleWrap.classList.add('hidden');
@@ -2736,7 +2722,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
 
     window.doLogout = async function() {
       intentionalSignOut = true;
-      // 既読情報を保存
       if (currentUser) {
         saveReadThreads(currentUser.email, readThreadsCache);
       }
@@ -3000,7 +2985,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       myEmailVisible = loadEmailVisibility(user.email);
       myFingerprint = generateFingerprint();
 
-      // ===== 既読情報を読み込み（追加） =====
       readThreadsCache = loadReadThreads(user.email);
 
       initSiteStatusListener();
@@ -3179,7 +3163,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       updatePreview(document.getElementById('fileInput'), 'postPreviewBox', 'postPreviewImg', 'postPreviewInfo');
     });
 
-    // 新着のみフィルタのチェックボックス
     document.getElementById('unreadOnlyCheck').addEventListener('change', (e) => {
       unreadOnlyFilter = e.target.checked;
       renderThreadsList();
@@ -3196,7 +3179,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       activeReplyParentId = null;
       if (postsUnsubscribe) { postsUnsubscribe(); postsUnsubscribe = null; }
       postsContainer.innerHTML = '<p class="text-gray-500 text-sm">読み込み中...</p>';
-      // 一覧を再描画（新着状態を反映）
       if (allThreadsCache.length > 0) renderThreadsList();
     };
 
@@ -3222,7 +3204,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       boardView.classList.add('hidden');
       backToListBtn.classList.remove('hidden');
 
-      // ===== スレッドを開いた瞬間に既読化（追加） =====
       markThreadAsRead(threadKey);
 
       loadPosts(threadKey);
@@ -3353,7 +3334,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       });
     }
 
-    // ===== スレッド一覧描画（新着対応・追加） =====
     function renderThreadsList() {
       threadsContainer.innerHTML = '';
 
@@ -3534,7 +3514,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
 
       const isProtected = post.authorUid && isProtectedUid(post.authorUid);
 
-      // ===== 新着レス判定（追加） =====
       let newPostBadge = '';
       if (post.createdAt && currentThreadKey) {
         const lastRead = readThreadsCache[currentThreadKey];
@@ -4084,7 +4063,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
       });
     }
 
-    /* ===== ニックネーム管理 ===== */
     let nicknameEditingUid = null;
     let nicknameEditingEmail = '';
 
@@ -4425,8 +4403,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
         alert('公開設定に失敗しました。');
       }
     });
-
-    /* ===== バッジ管理 ===== */
 
     const COLOR_PRESETS = [
       '#7c2d12', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
@@ -5092,7 +5068,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
     });
 
     window.addEventListener('beforeunload', () => {
-      // 既読情報を保存
       if (currentUser) {
         saveReadThreads(currentUser.email, readThreadsCache);
       }
@@ -5122,7 +5097,6 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
 (() => {
   'use strict';
 
-  // 1. 印刷時にページ内容を完全非表示にするCSSを動的追加
   const style = document.createElement('style');
   style.textContent = `
     @media print {
@@ -5134,16 +5108,14 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
   `;
   document.head.appendChild(style);
 
-  // 2. 右クリック（コンテキストメニュー）禁止
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
   }, true);
 
-  // 3. ショートカットキー無効化
   const disableDevShortcuts = (e) => {
-    const meta = e.metaKey; // Mac Command (⌘)
-    const ctrl = e.ctrlKey; // Windows / Linux Ctrl
-    const alt = e.altKey;   // Mac Option (⌥) / Alt
+    const meta = e.metaKey;
+    const ctrl = e.ctrlKey;
+    const alt = e.altKey;
     const shift = e.shiftKey;
     const key = e.key.toLowerCase();
 
@@ -5166,12 +5138,10 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
   window.addEventListener('keyup', disableDevShortcuts, true);
   window.addEventListener('keypress', disableDevShortcuts, true);
 
-  // 4. 検証ツール検知時に about:blank へリダイレクトする処理
   const redirectToBlank = () => {
     window.location.href = 'about:blank';
   };
 
-  // 4-A. 画面サイズ変化（ドッキング型DevTools）の検知
   const threshold = 160;
   window.addEventListener('resize', () => {
     const isOpened = (window.outerWidth - window.innerWidth > threshold) || 
@@ -5181,13 +5151,10 @@ mmmmmmqqqqqqqqqqqmgggqqqmqqmqqqqmmqkkqqmmmgqmqqqqqqqqqqqqqqqqkqqqqkqqqqqqqqqqqqq
     }
   }, true);
 
-  // 4-B. デバッガー（Console/Sources）検知
   setInterval(() => {
     const start = performance.now();
     (function () {}.constructor('debugger')());
     const end = performance.now();
-    
-    // 検証ツールが開いていて処理が一時停止（100ms以上）した場合
     if (end - start > 100) {
       redirectToBlank();
     }
