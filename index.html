@@ -7,7 +7,6 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='8' fill='%23d97706'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='%23f59e0b'/%3E%3Crect x='14' y='18' width='36' height='36' rx='2' fill='%23ffffff' transform='rotate(-4 32 36)'/%3E%3Cpath d='M20 28h24M20 35h24M20 42h16' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round' transform='rotate(-4 32 36)'/%3E%3Ccircle cx='32' cy='14' r='4' fill='%23ef4444'/%3E%3Ccircle cx='31' cy='13' r='1.5' fill='%23fca5a5'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* ===== 既存スタイル（変更なし） ===== */
     .threads-scroll { max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
     .post-number { font-weight: 700; color: #991b1b; }
     .post-author { color: #15803d; font-weight: 600; }
@@ -30,140 +29,51 @@
       transition: transform 0.3s; transform: translateY(-100%);
     }
     #statusBanner.show { transform: translateY(0); }
-    .admin-badge {
-      background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 6px;
-    }
-    .owner-badge {
-      background: #1e40af; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 6px;
-    }
-    .vip-badge {
-      background: #7c3aed; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 6px;
-    }
-    .op-badge {
-      background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: 700;
-    }
-    .role-post-badge {
-      color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: 700;
-    }
+    .admin-badge { background: #7c2d12; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+    .owner-badge { background: #1e40af; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+    .vip-badge { background: #7c3aed; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+    .op-badge { background: #b45309; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; font-weight: 700; }
+    .role-post-badge { color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; font-weight: 700; }
     .role-post-badge.admin { background: #7c2d12; }
     .role-post-badge.owner { background: #1e40af; }
     .role-post-badge.vip   { background: #7c3aed; }
-    .custom-badge {
-      color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: 700;
-      display: inline-block;
-    }
-    .admin-email {
-      background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px;
-      border-radius: 4px; font-family: monospace;
-    }
-    .delete-btn {
-      background: #dc2626; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .custom-badge { color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; font-weight: 700; display: inline-block; }
+    .admin-email { background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+    .delete-btn { background: #dc2626; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .delete-btn:hover { background: #b91c1c; }
     .delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-    .reply-btn {
-      background: #2563eb; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .reply-btn { background: #2563eb; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .reply-btn:hover { background: #1d4ed8; }
-    .badge-manage-btn {
-      background: #a16207; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .badge-manage-btn { background: #a16207; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .badge-manage-btn:hover { background: #854d0e; }
-    .ban-btn {
-      background: #111827; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .ban-btn { background: #111827; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .ban-btn:hover { background: #374151; }
-    .banned-mark {
-      background: #991b1b; color: #fff; font-size: 10px; padding: 2px 6px;
-      border-radius: 4px; margin-left: 4px; font-weight: 700;
-    }
-    .reply-cancel-btn {
-      background: #6b7280; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .banned-mark { background: #991b1b; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; font-weight: 700; }
+    .reply-cancel-btn { background: #6b7280; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .reply-cancel-btn:hover { background: #4b5563; }
-    .backup-btn {
-      background: #059669; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
-    }
+    .backup-btn { background: #059669; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
     .backup-btn:hover { background: #047857; }
-    .restore-btn {
-      background: #0891b2; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
-    }
+    .restore-btn { background: #0891b2; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
     .restore-btn:hover { background: #0e7490; }
-    .banlist-btn {
-      background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
-    }
+    .banlist-btn { background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
     .banlist-btn:hover { background: #991b1b; }
-    .userlist-btn {
-      background: #0369a1; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 600;
-    }
+    .userlist-btn { background: #0369a1; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
     .userlist-btn:hover { background: #075985; }
-    .pending-btn {
-      background: #b45309; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
-      position: relative;
-    }
+    .pending-btn { background: #b45309; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 700; position: relative; }
     .pending-btn:hover { background: #92400e; }
-    .pending-btn.has-pending {
-      background: #dc2626;
-      animation: pulseRed 1.5s infinite;
-    }
-    @keyframes pulseRed {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
-      50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
-    }
-    .publish-btn {
-      background: #7c3aed; color: #fff; font-size: 11px; padding: 6px 12px;
-      border-radius: 4px; cursor: pointer; border: none; font-weight: 700;
-    }
+    .pending-btn.has-pending { background: #dc2626; animation: pulseRed 1.5s infinite; }
+    @keyframes pulseRed { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); } 50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } }
+    .publish-btn { background: #7c3aed; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-weight: 700; }
     .publish-btn:hover { background: #6d28d9; }
-    .publish-btn.unpublished {
-      background: #16a34a;
-    }
+    .publish-btn.unpublished { background: #16a34a; }
     .publish-btn.unpublished:hover { background: #15803d; }
-
-    .lockdown-btn {
-      background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 14px;
-      border-radius: 4px; cursor: pointer; border: 2px solid #fbbf24;
-      font-weight: 900; letter-spacing: 0.05em;
-      animation: pulseDark 1.8s infinite;
-    }
+    .lockdown-btn { background: #7f1d1d; color: #fff; font-size: 11px; padding: 6px 14px; border-radius: 4px; cursor: pointer; border: 2px solid #fbbf24; font-weight: 900; letter-spacing: 0.05em; animation: pulseDark 1.8s infinite; }
     .lockdown-btn:hover { background: #991b1b; }
-    .lockdown-btn.active {
-      background: #dc2626;
-      border-color: #fef2f2;
-      animation: pulseRed 1.2s infinite;
-    }
-    @keyframes pulseDark {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.6); }
-      50% { box-shadow: 0 0 0 6px rgba(251,191,36,0); }
-    }
-
-    .alarm-btn {
-      background: #b91c1c; color: #fff; font-size: 11px; padding: 6px 14px;
-      border-radius: 4px; cursor: pointer; border: 2px solid #fde047;
-      font-weight: 900; letter-spacing: 0.05em;
-    }
+    .lockdown-btn.active { background: #dc2626; border-color: #fef2f2; animation: pulseRed 1.2s infinite; }
+    @keyframes pulseDark { 0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.6); } 50% { box-shadow: 0 0 0 6px rgba(251,191,36,0); } }
+    .alarm-btn { background: #b91c1c; color: #fff; font-size: 11px; padding: 6px 14px; border-radius: 4px; cursor: pointer; border: 2px solid #fde047; font-weight: 900; letter-spacing: 0.05em; }
     .alarm-btn:hover { background: #dc2626; }
-    .alarm-btn.active {
-      background: #7c2d12;
-      border-color: #fca5a5;
-      animation: pulseRed 1.2s infinite;
-    }
+    .alarm-btn.active { background: #7c2d12; border-color: #fca5a5; animation: pulseRed 1.2s infinite; }
 
     #alarmToast {
       position: fixed; top: 16px; right: 16px; z-index: 99999;
@@ -177,280 +87,78 @@
       pointer-events: auto;
     }
     #alarmToast.show { display: block; }
-    @keyframes alarmToastSlide {
-      from { transform: translateX(120%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes alarmToastPulse {
-      0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 30px rgba(220,38,38,0.6); }
-      50% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 45px rgba(253,224,71,0.8); }
-    }
-    #alarmToast .alarm-toast-head {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 8px;
-      border-bottom: 1px solid rgba(253,224,71,0.4);
-      padding-bottom: 6px;
-    }
-    #alarmToast .alarm-toast-icon {
-      font-size: 24px;
-      animation: alarmIconShake 0.6s infinite;
-      filter: drop-shadow(0 0 8px #fde047);
-    }
-    @keyframes alarmIconShake {
-      0%, 100% { transform: rotate(-12deg); }
-      50% { transform: rotate(12deg); }
-    }
-    #alarmToast .alarm-toast-title {
-      font-size: 15px; font-weight: 900;
-      letter-spacing: 0.1em;
-      color: #fde047;
-      text-shadow: 0 0 10px rgba(253,224,71,0.8);
-    }
-    #alarmToast .alarm-toast-body {
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    #alarmToast .alarm-toast-body .row {
-      display: flex; gap: 6px;
-      margin-bottom: 4px;
-    }
-    #alarmToast .alarm-toast-body .label {
-      color: #fde047; font-weight: 700;
-      white-space: nowrap;
-    }
-    #alarmToast .alarm-toast-body .value {
-      color: #fff;
-      word-break: break-word;
-    }
-    #alarmToast .alarm-toast-footer {
-      margin-top: 8px;
-      font-size: 10px;
-      color: #fecaca;
-      font-family: monospace;
-      text-align: right;
-      opacity: 0.8;
-    }
+    @keyframes alarmToastSlide { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes alarmToastPulse { 0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 30px rgba(220,38,38,0.6); } 50% { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 45px rgba(253,224,71,0.8); } }
+    #alarmToast .alarm-toast-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(253,224,71,0.4); padding-bottom: 6px; }
+    #alarmToast .alarm-toast-icon { font-size: 24px; animation: alarmIconShake 0.6s infinite; filter: drop-shadow(0 0 8px #fde047); }
+    @keyframes alarmIconShake { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+    #alarmToast .alarm-toast-title { font-size: 15px; font-weight: 900; letter-spacing: 0.1em; color: #fde047; text-shadow: 0 0 10px rgba(253,224,71,0.8); }
+    #alarmToast .alarm-toast-body { font-size: 12px; line-height: 1.6; }
+    #alarmToast .alarm-toast-body .row { display: flex; gap: 6px; margin-bottom: 4px; }
+    #alarmToast .alarm-toast-body .label { color: #fde047; font-weight: 700; white-space: nowrap; }
+    #alarmToast .alarm-toast-body .value { color: #fff; word-break: break-word; }
+    #alarmToast .alarm-toast-footer { margin-top: 8px; font-size: 10px; color: #fecaca; font-family: monospace; text-align: right; opacity: 0.8; }
 
-    .post-card {
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 12px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-    .post-card.banned-post {
-      opacity: 0.5;
-      border-left: 3px solid #111827;
-    }
-    .post-children {
-      margin-left: 20px;
-      padding-left: 12px;
-      border-left: 2px solid #fbbf24;
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .post-card { background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .post-card.banned-post { opacity: 0.5; border-left: 3px solid #111827; }
+    .post-children { margin-left: 20px; padding-left: 12px; border-left: 2px solid #fbbf24; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
     .post-tree { display: flex; flex-direction: column; gap: 8px; }
-    .inline-reply-box {
-      margin-top: 8px;
-      padding: 10px;
-      background: #fffbeb;
-      border: 1px dashed #fbbf24;
-      border-radius: 6px;
-    }
-    .inline-reply-box textarea {
-      width: 100%;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      padding: 6px;
-      font-size: 13px;
-      outline: none;
-      resize: vertical;
-      min-height: 60px;
-    }
-    .inline-reply-box textarea:focus {
-      border-color: #ef4444;
-      box-shadow: 0 0 0 2px rgba(239,68,68,0.15);
-    }
-    .reply-target-label {
-      font-size: 11px;
-      color: #92400e;
-      background: #fef3c7;
-      padding: 2px 8px;
-      border-radius: 4px;
-      display: inline-block;
-      margin-bottom: 6px;
-    }
-    .post-file {
-      margin-top: 8px;
-      padding: 8px;
-      border: 1px solid #e5e7eb;
-      background: #f9fafb;
-      border-radius: 6px;
-    }
-    .post-file img {
-      max-height: 320px;
-      max-width: 100%;
-      border-radius: 4px;
-      border: 1px solid #e5e7eb;
-      display: block;
-      margin-bottom: 4px;
-    }
-    .post-file a {
-      font-size: 12px;
-      color: #2563eb;
-      text-decoration: underline;
-      word-break: break-all;
-    }
-    input[type="file"]::file-selector-button {
-      background-color: #e5e7eb;
-      border: 1px solid #d1d5db;
-      border-radius: 0.375rem;
-      padding: 0.25rem 0.75rem;
-      font-size: 0.75rem;
-      margin-right: 0.5rem;
-      cursor: pointer;
-    }
+    .inline-reply-box { margin-top: 8px; padding: 10px; background: #fffbeb; border: 1px dashed #fbbf24; border-radius: 6px; }
+    .inline-reply-box textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 6px; font-size: 13px; outline: none; resize: vertical; min-height: 60px; }
+    .inline-reply-box textarea:focus { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
+    .reply-target-label { font-size: 11px; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+    .post-file { margin-top: 8px; padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 6px; }
+    .post-file img { max-height: 320px; max-width: 100%; border-radius: 4px; border: 1px solid #e5e7eb; display: block; margin-bottom: 4px; }
+    .post-file a { font-size: 12px; color: #2563eb; text-decoration: underline; word-break: break-all; }
+    input[type="file"]::file-selector-button { background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.25rem 0.75rem; font-size: 0.75rem; margin-right: 0.5rem; cursor: pointer; }
     input[type="file"]::file-selector-button:hover { background-color: #d1d5db; }
-    .preview-box {
-      margin-top: 8px;
-      padding: 8px;
-      border: 1px dashed #cbd5e1;
-      border-radius: 6px;
-      background: #f8fafc;
-      display: none;
-    }
+    .preview-box { margin-top: 8px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; display: none; }
     .preview-box.show { display: block; }
     .preview-box img { max-height: 160px; border-radius: 4px; }
     .preview-info { font-size: 11px; color: #64748b; margin-top: 4px; }
-    .badge-toggle-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: #374151;
-      margin-left: 6px;
-      background: #f3f4f6;
-      padding: 3px 8px;
-      border-radius: 4px;
-      border: 1px solid #e5e7eb;
-      cursor: pointer;
-      user-select: none;
-    }
+    .badge-toggle-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #374151; margin-left: 6px; background: #f3f4f6; padding: 3px 8px; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer; user-select: none; }
     .badge-toggle-wrap input { cursor: pointer; }
 
-    .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 10000; padding: 16px;
-    }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 16px; }
     .modal-backdrop.hidden { display: none; }
-    .modal-content {
-      background: #fff; border-radius: 8px; padding: 20px;
-      max-width: 560px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      max-height: 90vh; overflow-y: auto;
-    }
-    .color-swatch-row {
-      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
-    }
-    .color-swatch {
-      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
-      border: 2px solid transparent;
-    }
-    .color-swatch.selected {
-      border-color: #111827;
-      box-shadow: 0 0 0 2px #fff inset;
-    }
-    .badge-list-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;
-      background: #f9fafb; margin-bottom: 6px;
-    }
+    .modal-content { background: #fff; border-radius: 8px; padding: 20px; max-width: 560px; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .color-swatch-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .color-swatch { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+    .color-swatch.selected { border-color: #111827; box-shadow: 0 0 0 2px #fff inset; }
+    .badge-list-item { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; margin-bottom: 6px; }
     .badge-list-item .badge-chip-wrap { flex: 1; min-width: 0; }
-    .badge-list-item .btn-mini {
-      font-size: 11px; padding: 3px 8px; border-radius: 4px;
-      border: none; cursor: pointer; color: #fff;
-    }
+    .badge-list-item .btn-mini { font-size: 11px; padding: 3px 8px; border-radius: 4px; border: none; cursor: pointer; color: #fff; }
     .badge-list-item .btn-edit { background: #2563eb; }
     .badge-list-item .btn-edit:hover { background: #1d4ed8; }
     .badge-list-item .btn-del { background: #dc2626; }
     .badge-list-item .btn-del:hover { background: #b91c1c; }
-    .add-badge-btn {
-      background: #16a34a; color: #fff; font-size: 12px;
-      padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer;
-      font-weight: 600;
-    }
+    .add-badge-btn { background: #16a34a; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; }
     .add-badge-btn:hover { background: #15803d; }
-    .editor-box {
-      border: 1px solid #fbbf24; background: #fffbeb;
-      border-radius: 6px; padding: 12px; margin-top: 10px;
-    }
+    .editor-box { border: 1px solid #fbbf24; background: #fffbeb; border-radius: 6px; padding: 12px; margin-top: 10px; }
     .editor-box.hidden { display: none; }
 
-    .ban-list-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px; border: 1px solid #fecaca; border-radius: 6px;
-      background: #fef2f2; margin-bottom: 6px;
-      font-size: 12px;
-    }
+    .ban-list-row { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #fecaca; border-radius: 6px; background: #fef2f2; margin-bottom: 6px; font-size: 12px; }
     .ban-list-row .info { flex: 1; min-width: 0; }
-    .ban-list-row .info .email-line {
-      font-family: monospace; font-size: 11px;
-      color: #991b1b; word-break: break-all;
-    }
-    .ban-list-row .info .meta-line {
-      font-size: 10px; color: #6b7280; margin-top: 2px;
-      word-break: break-all;
-    }
-    .ban-list-row .unban-btn {
-      background: #16a34a; color: #fff; font-size: 11px;
-      padding: 4px 10px; border-radius: 4px; border: none;
-      cursor: pointer; white-space: nowrap;
-    }
+    .ban-list-row .info .email-line { font-family: monospace; font-size: 11px; color: #991b1b; word-break: break-all; }
+    .ban-list-row .info .meta-line { font-size: 10px; color: #6b7280; margin-top: 2px; word-break: break-all; }
+    .ban-list-row .unban-btn { background: #16a34a; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; }
     .ban-list-row .unban-btn:hover { background: #15803d; }
 
-    .user-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px;
-      background: #f9fafb; margin-bottom: 6px; font-size: 12px;
-    }
+    .user-row { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; margin-bottom: 6px; font-size: 12px; }
     .user-row .info { flex: 1; min-width: 0; }
-    .user-row .email-line {
-      font-family: monospace; font-size: 12px;
-      color: #1e40af; word-break: break-all; font-weight: 600;
-    }
-    .user-row .nickname-line {
-      font-size: 12px; margin-top: 2px;
-      color: #1d4ed8; font-weight: 700;
-      word-break: break-all;
-    }
-    .user-row .nickname-line .nickname-value {
-      background: #dbeafe; color: #1e3a8a;
-      padding: 1px 6px; border-radius: 4px;
-      display: inline-block;
-    }
-    .user-row .nickname-line .nickname-empty {
-      color: #9ca3af; font-weight: 400;
-    }
-    .user-row .meta-line {
-      font-size: 10px; color: #6b7280; margin-top: 2px;
-      word-break: break-all;
-    }
-    .user-row .role-tag {
-      font-size: 10px; padding: 2px 6px; border-radius: 4px;
-      color: #fff; font-weight: 700;
-    }
+    .user-row .email-line { font-family: monospace; font-size: 12px; color: #1e40af; word-break: break-all; font-weight: 600; }
+    .user-row .nickname-line { font-size: 12px; margin-top: 2px; color: #1d4ed8; font-weight: 700; word-break: break-all; }
+    .user-row .nickname-line .nickname-value { background: #dbeafe; color: #1e3a8a; padding: 1px 6px; border-radius: 4px; display: inline-block; }
+    .user-row .nickname-line .nickname-empty { color: #9ca3af; font-weight: 400; }
+    .user-row .meta-line { font-size: 10px; color: #6b7280; margin-top: 2px; word-break: break-all; }
+    .user-row .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; color: #fff; font-weight: 700; }
     .user-row .role-tag.admin { background: #7c2d12; }
     .user-row .role-tag.owner { background: #1e40af; }
     .user-row .role-tag.vip   { background: #7c3aed; }
     .user-row .role-tag.none  { background: #6b7280; }
     .user-row .role-tag.banned { background: #991b1b; }
     .user-row .action-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; }
-    .user-row .btn-mini {
-      font-size: 10px; padding: 3px 8px; border-radius: 4px;
-      border: none; cursor: pointer; color: #fff; white-space: nowrap;
-    }
+    .user-row .btn-mini { font-size: 10px; padding: 3px 8px; border-radius: 4px; border: none; cursor: pointer; color: #fff; white-space: nowrap; }
     .user-row .btn-ban { background: #111827; }
     .user-row .btn-ban:hover { background: #374151; }
     .user-row .btn-unban { background: #16a34a; }
@@ -460,396 +168,93 @@
     .user-row .btn-nickname { background: #1d4ed8; }
     .user-row .btn-nickname:hover { background: #1e3a8a; }
 
-    .user-search-input {
-      width: 100%; border: 1px solid #d1d5db; padding: 8px;
-      border-radius: 6px; font-size: 13px; margin-bottom: 10px;
-      outline: none;
-    }
-    .user-search-input:focus {
-      border-color: #0369a1;
-      box-shadow: 0 0 0 2px rgba(3,105,161,0.15);
-    }
+    .user-search-input { width: 100%; border: 1px solid #d1d5db; padding: 8px; border-radius: 6px; font-size: 13px; margin-bottom: 10px; outline: none; }
+    .user-search-input:focus { border-color: #0369a1; box-shadow: 0 0 0 2px rgba(3,105,161,0.15); }
 
-    .pending-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px; border: 1px solid #fcd34d; border-radius: 6px;
-      background: #fffbeb; margin-bottom: 6px; font-size: 12px;
-    }
+    .pending-row { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #fcd34d; border-radius: 6px; background: #fffbeb; margin-bottom: 6px; font-size: 12px; }
     .pending-row .info { flex: 1; min-width: 0; }
-    .pending-row .email-line {
-      font-family: monospace; font-size: 12px;
-      color: #92400e; word-break: break-all; font-weight: 700;
-    }
-    .pending-row .meta-line {
-      font-size: 10px; color: #6b7280; margin-top: 2px;
-      word-break: break-all;
-    }
-    .pending-row .approve-btn {
-      background: #16a34a; color: #fff; font-size: 11px;
-      padding: 4px 10px; border-radius: 4px; border: none;
-      cursor: pointer; white-space: nowrap; font-weight: 700;
-    }
+    .pending-row .email-line { font-family: monospace; font-size: 12px; color: #92400e; word-break: break-all; font-weight: 700; }
+    .pending-row .meta-line { font-size: 10px; color: #6b7280; margin-top: 2px; word-break: break-all; }
+    .pending-row .approve-btn { background: #16a34a; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; font-weight: 700; }
     .pending-row .approve-btn:hover { background: #15803d; }
-    .pending-row .reject-btn {
-      background: #dc2626; color: #fff; font-size: 11px;
-      padding: 4px 10px; border-radius: 4px; border: none;
-      cursor: pointer; white-space: nowrap; font-weight: 700;
-    }
+    .pending-row .reject-btn { background: #dc2626; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; font-weight: 700; }
     .pending-row .reject-btn:hover { background: #b91c1c; }
 
-    #banOverlay {
-      position: fixed; inset: 0; background: #000;
-      z-index: 99999; display: none;
-      align-items: center; justify-content: center;
-      color: #fff; text-align: center; font-family: sans-serif;
-      flex-direction: column; padding: 20px;
-    }
+    #banOverlay { position: fixed; inset: 0; background: #000; z-index: 99999; display: none; align-items: center; justify-content: center; color: #fff; text-align: center; font-family: sans-serif; flex-direction: column; padding: 20px; }
     #banOverlay.show { display: flex; }
-    #banOverlay .ban-msg {
-      font-size: 24px; font-weight: bold;
-      letter-spacing: 0.1em;
-    }
-    #banOverlay .ban-sub {
-      font-size: 14px; margin-top: 16px; color: #fca5a5;
-      line-height: 1.6; max-width: 400px;
-    }
-    #banOverlay .ban-actions {
-      margin-top: 24px;
-      display: flex; gap: 12px; flex-wrap: wrap;
-      justify-content: center;
-    }
-    #banOverlay .ban-actions button {
-      font-size: 13px; padding: 10px 20px; border-radius: 6px;
-      border: none; cursor: pointer; font-weight: 600;
-      font-family: sans-serif;
-    }
-    #banOverlay .btn-switch-account {
-      background: #2563eb; color: #fff;
-    }
-    #banOverlay .btn-switch-account:hover {
-      background: #1d4ed8;
-    }
+    #banOverlay .ban-msg { font-size: 24px; font-weight: bold; letter-spacing: 0.1em; }
+    #banOverlay .ban-sub { font-size: 14px; margin-top: 16px; color: #fca5a5; line-height: 1.6; max-width: 400px; }
+    #banOverlay .ban-actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    #banOverlay .ban-actions button { font-size: 13px; padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-family: sans-serif; }
+    #banOverlay .btn-switch-account { background: #2563eb; color: #fff; }
+    #banOverlay .btn-switch-account:hover { background: #1d4ed8; }
 
-    #unpublishedOverlay {
-      position: fixed; inset: 0;
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      z-index: 99998;
-      display: none;
-      flex-direction: column;
-      border: 8px solid #78350f;
-      box-shadow: inset 0 0 60px rgba(120, 53, 15, 0.3);
-      box-sizing: border-box;
-      overflow: auto;
-    }
+    #unpublishedOverlay { position: fixed; inset: 0; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); z-index: 99998; display: none; flex-direction: column; border: 8px solid #78350f; box-shadow: inset 0 0 60px rgba(120, 53, 15, 0.3); box-sizing: border-box; overflow: auto; }
     #unpublishedOverlay.show { display: flex; }
+    #unpublishedOverlay .unp-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; font-family: sans-serif; color: #78350f; }
+    #unpublishedOverlay .unp-bar { background: #78350f; color: #fde68a; font-size: 11px; padding: 6px 14px; font-family: monospace; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; }
+    #unpublishedOverlay .unp-bar::before { content: "🔒"; font-size: 12px; }
+    #unpublishedOverlay .unp-msg { font-size: 48px; font-weight: bold; letter-spacing: 0.05em; text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.1); margin-bottom: 8px; }
+    #unpublishedOverlay .unp-sub { font-size: 15px; margin-top: 16px; color: #92400e; line-height: 1.8; max-width: 480px; }
+    #unpublishedOverlay .unp-action { margin-top: 36px; }
+    #unpublishedOverlay .unp-go-btn { background: #78350f; color: #fff; font-size: 20px; padding: 16px 56px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; font-family: sans-serif; box-shadow: 0 5px 0 #451a03; transition: transform 0.1s, box-shadow 0.1s; letter-spacing: 0.1em; }
+    #unpublishedOverlay .unp-go-btn:hover { background: #451a03; }
+    #unpublishedOverlay .unp-go-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #451a03; }
+    #unpublishedOverlay .unp-footer { margin-top: 24px; font-size: 11px; color: #a16207; font-family: monospace; letter-spacing: 0.05em; }
+    #unpublishedOverlay .unp-image { margin: 16px auto 8px; display: flex; align-items: center; justify-content: center; }
+    #unpublishedOverlay .unp-image img { max-width: min(280px, 70vw); max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 12px; border: 3px solid #78350f; box-shadow: 0 6px 18px rgba(120, 53, 15, 0.35), 0 0 0 3px rgba(255,255,255,0.6) inset; background: #fff; padding: 4px; }
 
-    #unpublishedOverlay .unp-center {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      text-align: center;
-      font-family: sans-serif;
-      color: #78350f;
-    }
-
-    #unpublishedOverlay .unp-bar {
-      background: #78350f;
-      color: #fde68a;
-      font-size: 11px;
-      padding: 6px 14px;
-      font-family: monospace;
-      letter-spacing: 0.1em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    #unpublishedOverlay .unp-bar::before {
-      content: "🔒";
-      font-size: 12px;
-    }
-
-    #unpublishedOverlay .unp-msg {
-      font-size: 48px; font-weight: bold;
-      letter-spacing: 0.05em;
-      text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.1);
-      margin-bottom: 8px;
-    }
-    #unpublishedOverlay .unp-sub {
-      font-size: 15px; margin-top: 16px; color: #92400e;
-      line-height: 1.8; max-width: 480px;
-    }
-    #unpublishedOverlay .unp-action {
-      margin-top: 36px;
-    }
-    #unpublishedOverlay .unp-go-btn {
-      background: #78350f; color: #fff;
-      font-size: 20px; padding: 16px 56px; border-radius: 10px;
-      border: none; cursor: pointer; font-weight: 700;
-      font-family: sans-serif;
-      box-shadow: 0 5px 0 #451a03;
-      transition: transform 0.1s, box-shadow 0.1s;
-      letter-spacing: 0.1em;
-    }
-    #unpublishedOverlay .unp-go-btn:hover {
-      background: #451a03;
-    }
-    #unpublishedOverlay .unp-go-btn:active {
-      transform: translateY(3px);
-      box-shadow: 0 2px 0 #451a03;
-    }
-    #unpublishedOverlay .unp-footer {
-      margin-top: 24px;
-      font-size: 11px;
-      color: #a16207;
-      font-family: monospace;
-      letter-spacing: 0.05em;
-    }
-
-    #unpublishedOverlay .unp-image {
-      margin: 16px auto 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #unpublishedOverlay .unp-image img {
-      max-width: min(280px, 70vw);
-      max-height: 220px;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      border-radius: 12px;
-      border: 3px solid #78350f;
-      box-shadow: 0 6px 18px rgba(120, 53, 15, 0.35), 0 0 0 3px rgba(255,255,255,0.6) inset;
-      background: #fff;
-      padding: 4px;
-    }
-
-    #cornerImage {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 99990;
-      pointer-events: none;
-      display: block;
-    }
-    #cornerImage img {
-      width: 120px;
-      height: 120px;
-      object-fit: contain;
-      display: block;
-      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4));
-      border-radius: 10px;
-      background: transparent;
-    }
-    @media (max-width: 640px) {
-      #cornerImage img {
-        width: 80px;
-        height: 80px;
-      }
-    }
+    #cornerImage { position: fixed; top: 12px; left: 12px; z-index: 99990; pointer-events: none; display: block; }
+    #cornerImage img { width: 120px; height: 120px; object-fit: contain; display: block; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4)); border-radius: 10px; background: transparent; }
+    @media (max-width: 640px) { #cornerImage img { width: 80px; height: 80px; } }
 
     #siteRules { transition: box-shadow 0.2s; }
     #siteRules.collapsed #rulesContent { display: none; }
     #siteRules.collapsed #rulesToggleIcon { transform: rotate(-90deg); }
     #rulesToggleIcon { transition: transform 0.2s; display: inline-block; }
 
-    #bootOverlay {
-      position: fixed; inset: 0; background: #111827;
-      z-index: 99997; display: flex;
-      align-items: center; justify-content: center;
-      color: #fff; font-family: sans-serif;
-      flex-direction: column; gap: 16px;
-    }
+    #bootOverlay { position: fixed; inset: 0; background: #111827; z-index: 99997; display: flex; align-items: center; justify-content: center; color: #fff; font-family: sans-serif; flex-direction: column; gap: 16px; }
     #bootOverlay.hidden { display: none; }
-    #bootOverlay .boot-msg {
-      font-size: 14px; color: #9ca3af;
-    }
-    #bootOverlay .boot-spinner {
-      width: 40px; height: 40px;
-      border: 3px solid #374151;
-      border-top-color: #ef4444;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
+    #bootOverlay .boot-msg { font-size: 14px; color: #9ca3af; }
+    #bootOverlay .boot-spinner { width: 40px; height: 40px; border: 3px solid #374151; border-top-color: #ef4444; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-    body {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-    }
-    input, textarea, [contenteditable="true"] {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
-    }
+    body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    input, textarea, [contenteditable="true"] { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
 
-    .badge-feature-list {
-      margin-top: 6px;
-      font-size: 11px;
-      color: #4b5563;
-      background: #f3f4f6;
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid #e5e7eb;
-    }
-    .badge-feature-list .feat-tag {
-      display: inline-block;
-      background: #e5e7eb;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      margin: 2px;
-      font-size: 10px;
-      font-weight: 600;
-    }
-    .badge-feature-list .feat-tag.active {
-      background: #16a34a;
-      color: #fff;
-    }
+    .badge-feature-list { margin-top: 6px; font-size: 11px; color: #4b5563; background: #f3f4f6; padding: 6px 8px; border-radius: 4px; border: 1px solid #e5e7eb; }
+    .badge-feature-list .feat-tag { display: inline-block; background: #e5e7eb; padding: 2px 8px; border-radius: 9999px; margin: 2px; font-size: 10px; font-weight: 600; }
+    .badge-feature-list .feat-tag.active { background: #16a34a; color: #fff; }
 
     #boardView { margin-top: 16px; }
-    .board-card {
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      border-left: 4px solid #b45309;
-    }
-    .board-card .board-title {
-      font-weight: 700;
-      color: #78350f;
-      font-size: 18px;
-    }
-    .board-card .board-meta {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 2px;
-    }
-    .board-card .board-body {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #1f2937;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+    .board-card { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #b45309; }
+    .board-card .board-title { font-weight: 700; color: #78350f; font-size: 18px; }
+    .board-card .board-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .board-card .board-body { margin-top: 8px; font-size: 14px; color: #1f2937; white-space: pre-wrap; word-break: break-word; }
     .board-card .board-img { margin-top: 10px; }
-    .board-card .board-img img {
-      max-height: 360px;
-      max-width: 100%;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
-    }
-    .board-card .board-img a {
-      font-size: 12px;
-      color: #2563eb;
-      text-decoration: underline;
-      word-break: break-all;
-    }
-    .board-delete-btn {
-      background: #dc2626; color: #fff; font-size: 11px; padding: 3px 10px;
-      border-radius: 4px; cursor: pointer; border: none;
-    }
+    .board-card .board-img img { max-height: 360px; max-width: 100%; border-radius: 6px; border: 1px solid #e5e7eb; }
+    .board-card .board-img a { font-size: 12px; color: #2563eb; text-decoration: underline; word-break: break-all; }
+    .board-delete-btn { background: #dc2626; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; border: none; }
     .board-delete-btn:hover { background: #b91c1c; }
-
-    .board-publish-btn {
-      background: #b45309; color: #fff; font-size: 12px; padding: 8px 18px;
-      border-radius: 6px; border: none; cursor: pointer; font-weight: 700;
-    }
+    .board-publish-btn { background: #b45309; color: #fff; font-size: 12px; padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; }
     .board-publish-btn:hover { background: #92400e; }
     .board-publish-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .board-form-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    .board-readonly-note { font-size: 12px; color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; }
 
-    .board-form-box {
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-    .board-readonly-note {
-      font-size: 12px;
-      color: #92400e;
-      background: #fef3c7;
-      border: 1px solid #fcd34d;
-      border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 16px;
-    }
-
-    .thread-item-unread {
-      background: #fffbeb !important;
-      border-left: 4px solid #f59e0b !important;
-    }
-    .thread-new-badge {
-      background: #f59e0b;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      white-space: nowrap;
-      animation: pulseOrange 1.6s infinite;
-    }
-    @keyframes pulseOrange {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
-      50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
-    }
-    .unread-count-badge {
-      background: #dc2626;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 1px 7px;
-      border-radius: 9999px;
-      white-space: nowrap;
-    }
-    .post-new-badge {
-      background: #f59e0b;
-      color: #fff;
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 4px;
-      margin-left: 4px;
-      animation: pulseOrange 1.6s infinite;
-    }
-    .unread-only-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #374151;
-      background: #fef3c7;
-      border: 1px solid #fcd34d;
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      user-select: none;
-    }
+    .thread-item-unread { background: #fffbeb !important; border-left: 4px solid #f59e0b !important; }
+    .thread-new-badge { background: #f59e0b; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; animation: pulseOrange 1.6s infinite; }
+    @keyframes pulseOrange { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.7); } 50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); } }
+    .unread-count-badge { background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9999px; white-space: nowrap; }
+    .post-new-badge { background: #f59e0b; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; animation: pulseOrange 1.6s infinite; }
+    .unread-only-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #374151; background: #fef3c7; border: 1px solid #fcd34d; padding: 4px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
     .unread-only-wrap input { cursor: pointer; }
-    .thread-list-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-      border-bottom: 1px solid #e5e7eb;
-      padding-bottom: 6px;
-      margin-bottom: 12px;
-    }
+    .thread-list-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 max-w-4xl mx-auto">
 
   <div id="cornerImage">
-    <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz"
-         alt="corner image"
-         referrerpolicy="no-referrer">
+    <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz" alt="corner image" referrerpolicy="no-referrer">
   </div>
 
   <div id="bootOverlay">
@@ -863,14 +268,8 @@
       <span class="alarm-toast-title">警 報 発 令 中</span>
     </div>
     <div class="alarm-toast-body">
-      <div class="row">
-        <span class="label">理由:</span>
-        <span class="value" id="alarmToastReason">緊急対応</span>
-      </div>
-      <div class="row">
-        <span class="label">発令者:</span>
-        <span class="value" id="alarmToastIssuer">管理者</span>
-      </div>
+      <div class="row"><span class="label">理由:</span><span class="value" id="alarmToastReason">緊急対応</span></div>
+      <div class="row"><span class="label">発令者:</span><span class="value" id="alarmToastIssuer">管理者</span></div>
     </div>
     <div class="alarm-toast-footer">SYSTEM ALARM / シクナイちゃんねる</div>
   </div>
@@ -880,30 +279,23 @@
     <div class="unp-center">
       <div class="unp-msg">メンテナンス中...</div>
       <div class="unp-image">
-        <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz"
-             alt="maintenance image"
-             referrerpolicy="no-referrer">
+        <img src="https://lh3.googleusercontent.com/d/1AYPB48tOtoLlq-1gfUgpGmE1HTPonDYz" alt="maintenance image" referrerpolicy="no-referrer">
       </div>
       <div class="unp-sub" id="unpublishedSub">現在メンテナンス中です。<br>もうしばらくお待ちください。</div>
-      <div class="unp-action">
-        <button class="unp-go-btn" id="unpGoBtn">了解</button>
-      </div>
+      <div class="unp-action"><button class="unp-go-btn" id="unpGoBtn">了解</button></div>
       <div class="unp-footer">© シクナイちゃんねる / overlay mode</div>
     </div>
   </div>
 
   <div id="siteRules" class="collapsed bg-white border-2 border-red-800 rounded-lg shadow mb-4 overflow-hidden">
-    <button id="rulesToggleBtn"
-      class="w-full bg-red-900 hover:bg-red-800 text-white text-left px-4 py-3 flex items-center justify-between transition">
-      <span class="font-bold text-base flex items-center gap-2">
-        📜 シクナイちゃんねる 利用ルール
-      </span>
+    <button id="rulesToggleBtn" class="w-full bg-red-900 hover:bg-red-800 text-white text-left px-4 py-3 flex items-center justify-between transition">
+      <span class="font-bold text-base flex items-center gap-2">📜 シクナイちゃんねる 利用ルール</span>
       <span id="rulesToggleIcon" class="text-xl">▼</span>
     </button>
     <div id="rulesContent" class="px-4 py-4 text-sm text-gray-800 leading-relaxed">
       <ol class="list-decimal list-inside space-y-2">
         <li><strong class="text-red-900">Googleログイン必須</strong><br>当サイトのご利用にはGoogleアカウントでのログインが必要です。投稿は匿名で表示されます。</li>
-        <li><strong class="text-red-900">初回ログインは承認制</strong><br>初めて当サイトを利用する場合、管理者または主による承認が必要です。承認されるまでサイトをご利用いただけません。</li>
+        <li><strong class="text-red-900">初回ログインは承認制</strong><br>初めて当サイトを利用する場合、管理者または主による承認が必要です。</li>
         <li><strong class="text-red-900">禁止事項</strong>
           <ul class="list-disc list-inside ml-4 mt-1 space-y-1 text-gray-700">
             <li>他の利用者への誹謗中傷・脅迫・嫌がらせ</li>
@@ -962,14 +354,10 @@
   <div id="badgeModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 620px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🏷️ バッジ管理</h3>
-      <p class="text-xs text-gray-500 mb-4">
-        対象: <span id="badgeTargetEmail" class="admin-email"></span>
-      </p>
+      <p class="text-xs text-gray-500 mb-4">対象: <span id="badgeTargetEmail" class="admin-email"></span></p>
       <div class="mb-3">
         <p class="text-xs font-bold text-gray-600 mb-2">現在のバッジ:</p>
-        <div id="badgeListContainer">
-          <p class="text-xs text-gray-400">（なし）</p>
-        </div>
+        <div id="badgeListContainer"><p class="text-xs text-gray-400">（なし）</p></div>
       </div>
       <button id="addBadgeBtn" class="add-badge-btn w-full mb-3">＋ 新しいバッジを追加</button>
       <div id="badgeEditor" class="editor-box hidden">
@@ -1011,9 +399,25 @@
     </div>
   </div>
 
+  <!-- ===== BAN管理モーダル（全BAN強制解除ボタン追加） ===== -->
   <div id="banModal" class="modal-backdrop hidden">
     <div class="modal-content">
       <h3 class="text-lg font-bold text-gray-800 mb-1">🚫 BANユーザー管理</h3>
+
+      <!-- 🔧 NEW: 全BAN強制解除 -->
+      <div class="p-3 border-2 border-red-700 bg-red-100 rounded mb-4">
+        <p class="text-xs font-bold text-red-800 mb-2">🔓 全BAN強制解除（管理者・主のみ）</p>
+        <p class="text-xs text-red-700 mb-2">
+          現在BANされている<span class="font-bold">全ユーザー</span>のBANを一括解除します。<br>
+          <span class="font-bold">bans / deviceBans を完全に空にします。</span><br>
+          この操作は取り消せません。
+        </p>
+        <button id="forceUnbanAllBtn"
+          class="bg-red-800 hover:bg-red-900 text-white text-sm py-3 px-4 rounded font-bold w-full border-2 border-red-950">
+          🔓 全BAN強制解除する
+        </button>
+      </div>
+
       <div class="p-3 border border-red-200 bg-red-50 rounded mb-4">
         <p class="text-xs font-bold text-red-700 mb-2">新規BAN</p>
         <label class="block text-xs text-gray-600 mb-1">メールアドレス（必須）:</label>
@@ -1026,18 +430,18 @@
         </label>
         <button id="banAddBtn" class="bg-red-800 hover:bg-red-900 text-white text-xs py-2 px-4 rounded font-bold w-full">このメールアドレスをBANする</button>
       </div>
+
       <div>
         <p class="text-xs font-bold text-gray-600 mb-2">現在BANされているユーザー:</p>
-        <div id="banListContainer">
-          <p class="text-xs text-gray-400">（読み込み中...）</p>
-        </div>
+        <div id="banListContainer"><p class="text-xs text-gray-400">（読み込み中...）</p></div>
       </div>
-      <!-- 🔧 FIX: 誤BAN掃除ボタン -->
+
       <div class="mt-4 pt-3 border-t border-gray-200">
         <p class="text-xs font-bold text-gray-600 mb-2">🛠️ 誤BAN修復ツール</p>
         <p class="text-xs text-gray-500 mb-2">自動連鎖（SYSTEM_DEVICE_LINK）で登録されたBANのうち、元のBANが既に解除されているものを一括削除します。</p>
         <button id="cleanupAutoBansBtn" class="bg-amber-700 hover:bg-amber-800 text-white text-xs py-2 px-4 rounded font-bold w-full">🧹 自動連鎖BANをクリーンアップ</button>
       </div>
+
       <div class="flex justify-end mt-4">
         <button id="banCloseBtn" class="reply-cancel-btn">閉じる</button>
       </div>
@@ -1051,31 +455,19 @@
       <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
         <p class="text-xs text-gray-600">合計: <span id="userCountLabel" class="font-bold">0</span> 人</p>
         <div class="flex items-center gap-3 flex-wrap">
-          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-            <input type="checkbox" id="userShowOnlyNotBanned">
-            <span>BANされていない人のみ</span>
-          </label>
-          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-            <input type="checkbox" id="userShowOnlyNicknamed">
-            <span>ニックネーム設定済みのみ</span>
-          </label>
+          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer"><input type="checkbox" id="userShowOnlyNotBanned"><span>BANされていない人のみ</span></label>
+          <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer"><input type="checkbox" id="userShowOnlyNicknamed"><span>ニックネーム設定済みのみ</span></label>
         </div>
       </div>
-      <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;">
-        <p class="text-xs text-gray-400">（読み込み中...）</p>
-      </div>
-      <div class="flex justify-end mt-4">
-        <button id="userCloseBtn" class="reply-cancel-btn">閉じる</button>
-      </div>
+      <div id="userListContainer" style="max-height: 55vh; overflow-y: auto;"><p class="text-xs text-gray-400">（読み込み中...）</p></div>
+      <div class="flex justify-end mt-4"><button id="userCloseBtn" class="reply-cancel-btn">閉じる</button></div>
     </div>
   </div>
 
   <div id="nicknameModal" class="modal-backdrop hidden">
     <div class="modal-content" style="max-width: 480px;">
       <h3 class="text-lg font-bold text-gray-800 mb-1">✏️ ニックネーム設定</h3>
-      <p class="text-xs text-gray-500 mb-4">
-        対象: <span id="nicknameTargetEmail" class="admin-email"></span>
-      </p>
+      <p class="text-xs text-gray-500 mb-4">対象: <span id="nicknameTargetEmail" class="admin-email"></span></p>
       <label class="block text-xs text-gray-600 mb-1">ニックネーム（最大20文字）:</label>
       <input type="text" id="nicknameInput" maxlength="20" class="w-full border p-2 rounded text-sm mb-3">
       <div class="flex justify-end gap-2 flex-wrap">
@@ -1093,12 +485,8 @@
       <div class="flex items-center justify-between mb-2">
         <p class="text-xs text-gray-600">承認待ち: <span id="pendingCountLabel" class="font-bold text-red-700">0</span> 人</p>
       </div>
-      <div id="pendingListContainer" style="max-height: 55vh; overflow-y: auto;">
-        <p class="text-xs text-gray-400">（読み込み中...）</p>
-      </div>
-      <div class="flex justify-end mt-4">
-        <button id="pendingCloseBtn" class="reply-cancel-btn">閉じる</button>
-      </div>
+      <div id="pendingListContainer" style="max-height: 55vh; overflow-y: auto;"><p class="text-xs text-gray-400">（読み込み中...）</p></div>
+      <div class="flex justify-end mt-4"><button id="pendingCloseBtn" class="reply-cancel-btn">閉じる</button></div>
     </div>
   </div>
 
@@ -1106,8 +494,7 @@
     <div class="bg-white border border-gray-300 rounded-lg shadow p-8 max-w-md mx-auto mt-16 text-center">
       <h1 class="text-3xl font-bold text-red-900 mb-2">シクナイちゃんねる</h1>
       <p class="text-sm text-gray-600 mb-6">ご利用にはGoogleアカウントでのログインが必要です。</p>
-      <button id="googleLoginBtn"
-        class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded shadow-sm flex items-center justify-center gap-3 mx-auto transition w-full">
+      <button id="googleLoginBtn" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded shadow-sm flex items-center justify-center gap-3 mx-auto transition w-full">
         <svg width="20" height="20" viewBox="0 0 48 48">
           <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
           <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
@@ -1233,9 +620,7 @@
         <h2 class="text-xl font-bold text-gray-700">📋 掲示板</h2>
         <button onclick="showThreadList()" class="bg-gray-600 hover:bg-gray-700 text-white text-xs py-1.5 px-3 rounded transition shadow">← スレッド一覧に戻る</button>
       </div>
-      <div id="boardReadonlyNote" class="board-readonly-note hidden">
-        📖 掲示板は閲覧のみ可能です。
-      </div>
+      <div id="boardReadonlyNote" class="board-readonly-note hidden">📖 掲示板は閲覧のみ可能です。</div>
       <div id="boardFormWrapper" class="board-form-box">
         <h3 class="text-md font-bold text-gray-700 mb-2">✏️ 新しいお知らせ・イベント投稿</h3>
         <form id="boardForm" class="space-y-3">
@@ -1663,19 +1048,17 @@
       return 'fp_' + hash(raw);
     }
 
-    // 🔧 FIX: emailToKey を 64bit 相当に強化（衝突回避）
     function emailToKey(email) {
       if (!email) return '';
       const lower = email.toLowerCase().trim();
-      let h1 = 0x811c9dc5;   // FNV offset basis (32bit)
-      let h2 = 0xcbf29ce4;   // 追加ハッシュ
+      let h1 = 0x811c9dc5;
+      let h2 = 0xcbf29ce4;
       for (let i = 0; i < lower.length; i++) {
         const c = lower.charCodeAt(i);
         h1 ^= c; h1 = Math.imul(h1, 0x01000193);
         h2 ^= c; h2 = Math.imul(h2, 0x01000193);
         h2 ^= (h2 >>> 13); h2 = Math.imul(h2, 0x5bd1e995);
       }
-      // 長さも混ぜる（"ab"と"ba"対策）
       h1 ^= lower.length; h1 = Math.imul(h1, 0x01000193);
       h2 ^= lower.length; h2 = Math.imul(h2, 0x5bd1e995);
       return 'em_' + (h1 >>> 0).toString(16).padStart(8, '0') +
@@ -1900,11 +1283,6 @@
       }
     });
 
-    // 🔧 FIX: checkSelfBan を厳格化
-    // 1) UID 完全一致
-    // 2) emailKey 一致 かつ そのエントリの email が現在のメールと一致（大文字小文字無視）
-    // 3) 自分のフィンガープリントが deviceBans に登録されている
-    // のみを BAN と判定する。
     function checkSelfBan() {
       if (!currentUser) return false;
 
@@ -1917,10 +1295,8 @@
       const myEmail = (currentUser.email || '').toLowerCase().trim();
       const myEmailKey = emailToKey(currentUser.email);
 
-      // (1) UID BAN
       if (bansCache && bansCache[myUid]) {
         const entry = bansCache[myUid];
-        // UIDエントリでも email が明示されていて不一致ならスキップ（誤爆救済）
         if (!entry.email || entry.email.toLowerCase().trim() === myEmail) {
           console.log('UID BAN検知:', myUid, entry);
           executeBan();
@@ -1930,10 +1306,8 @@
         }
       }
 
-      // (2) emailKey BAN
       if (myEmailKey && bansCache && bansCache[myEmailKey]) {
         const entry = bansCache[myEmailKey];
-        // エントリに email が入っている場合は必ず照合する（衝突救済）
         if (!entry.email || entry.email.toLowerCase().trim() === myEmail) {
           console.log('メール BAN検知:', currentUser.email, entry);
           executeBan();
@@ -1943,11 +1317,8 @@
         }
       }
 
-      // (3) 自分自身のフィンガープリントが deviceBans にある
       if (myFingerprint && deviceBansCache && deviceBansCache[myFingerprint]) {
         const entry = deviceBansCache[myFingerprint];
-        // 自動連鎖（SYSTEM_DEVICE_LINK）由来のデバイスBANは、
-        // 明示的なBAN元が残っていない場合は無視する（誤爆救済）
         if (entry && entry.bannedBy === 'SYSTEM_DEVICE_LINK') {
           console.warn('自動連鎖由来のデバイスBANを無視:', myFingerprint, entry);
         } else {
@@ -1960,37 +1331,23 @@
       return false;
     }
 
-    // 🔧 FIX: 端末BAN連鎖チェックを「自分自身がBANされている場合のみ」に限定し、
-    // かつ `bans/` への自動書き込みを完全撤去。
-    // 既存の自動連鎖BANをこれ以上増やさない。
     async function checkAndApplyDeviceBan(user, currentFingerprint) {
       if (!user || !currentFingerprint) return false;
 
       const role = roleFromEmail(user.email);
-      if (role === 'admin' || role === 'owner') {
-        return false;
-      }
-      if (isProtectedEmail(user.email)) {
-        return false;
-      }
+      if (role === 'admin' || role === 'owner') return false;
+      if (isProtectedEmail(user.email)) return false;
 
-      // 自分自身が既にBANされている場合のみ、端末BAN連鎖の対象にする
       const myUid = user.uid;
       const myEmailKey = emailToKey(user.email);
       const selfBannedByUid = !!(bansCache && bansCache[myUid]);
       const selfBannedByEmail = !!(bansCache && myEmailKey && bansCache[myEmailKey]);
 
-      if (!selfBannedByUid && !selfBannedByEmail) {
-        // 自分がBANされていない → 連鎖の対象外
-        return false;
-      }
+      if (!selfBannedByUid && !selfBannedByEmail) return false;
 
-      // 端末BANが存在するか確認する（ログ目的のみ、bans/ への書き込みはしない）
       try {
         const deviceBanSnap = await get(ref(db, `deviceBans/${currentFingerprint}`));
-        if (!deviceBanSnap.exists()) {
-          return false;
-        }
+        if (!deviceBanSnap.exists()) return false;
         console.log('端末BAN検知（自分自身もBAN済み）:', currentFingerprint);
         return true;
       } catch (err) {
@@ -2769,7 +2126,6 @@
       initSiteStatusListener();
       initBadgeFeatureListener();
 
-      // 🔧 FIX: BANリスト・デバイスBANリストを「先に」完全ロードしてから判定する
       try {
         const bansSnap = await get(ref(db, 'bans'));
         bansCache = bansSnap.exists() ? bansSnap.val() : {};
@@ -2803,8 +2159,6 @@
 
       if (checkAndApplyLockdown()) return;
 
-      // 🔧 FIX: checkSelfBan を「先」に。ここで BAN されていれば終了。
-      // その後で checkAndApplyDeviceBan を呼ぶ（自動BAN登録は撤去済み）
       if (isCurrentUserProtected()) {
         console.log('管理者/主のためBAN関連チェックを全スキップ:', user.email);
         initBansListener();
@@ -3097,8 +2451,7 @@
       }, (error) => {
         console.error("スレッド一覧の取得エラー:", error);
         setConnection(false);
-        threadsContainer.innerHTML =
-          '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。</p>';
+        threadsContainer.innerHTML = '<p class="text-red-500 text-sm">スレッド一覧の読み込みに失敗しました。</p>';
         showBanner('読み込み失敗: ' + (error.code || error.message), true);
       });
     }
@@ -3578,7 +2931,6 @@
 
         await Promise.all(ops);
 
-        // デバイスBANはチェックボックスONの場合のみ
         if (banDeviceCheck.checked) {
           for (const tu of targetUids) {
             try {
@@ -3614,7 +2966,48 @@
       }
     });
 
-    // 🔧 FIX: 自動連鎖BANのクリーンアップ
+    // 🔓 全BAN強制解除（管理者・主のみ）
+    document.getElementById('forceUnbanAllBtn').addEventListener('click', async () => {
+      if (!canBan()) { alert('BAN管理権限がありません。'); return; }
+
+      if (!confirm(
+        '🔓【全BAN強制解除】🔓\n\n' +
+        '現在BANされている全ユーザーのBANを一括解除します。\n' +
+        'bans / deviceBans を完全に空にします。\n\n' +
+        'この操作は取り消せません。本当に実行しますか？'
+      )) return;
+
+      const doubleCheck = prompt(
+        '確認のため「UNBAN ALL」と入力してください（大文字・半角・スペース含む）:'
+      );
+      if (doubleCheck !== 'UNBAN ALL') {
+        alert('キャンセルしました。');
+        return;
+      }
+
+      const btn = document.getElementById('forceUnbanAllBtn');
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '解除中...';
+
+      try {
+        await update(ref(db), {
+          'bans': null,
+          'deviceBans': null
+        });
+        showBanner('✅ 全BANを強制解除しました', false);
+        alert('全BANを強制解除しました。\n\nページを再読み込みします。');
+        setTimeout(() => { location.reload(); }, 500);
+      } catch (err) {
+        console.error('全BAN解除エラー:', err);
+        showBanner('全BAN解除失敗: ' + (err.code || err.message), true);
+        alert('全BAN解除に失敗しました。\n' + (err.message || ''));
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+
+    // 🧹 自動連鎖BANのクリーンアップ
     document.getElementById('cleanupAutoBansBtn').addEventListener('click', async () => {
       if (!canBan()) { alert('BAN管理権限がありません。'); return; }
       if (!confirm('自動連鎖（SYSTEM_DEVICE_LINK）で登録されたBANを一括削除しますか？\n\n（明示的なBANは残ります）')) return;
